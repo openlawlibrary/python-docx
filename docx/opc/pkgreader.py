@@ -11,6 +11,7 @@ from .constants import RELATIONSHIP_TARGET_MODE as RTM
 from .oxml import parse_xml
 from .packuri import PACKAGE_URI, PackURI
 from .phys_pkg import PhysPkgReader
+from .non_phys_pkg import StrPkgReader
 from .shared import CaseInsensitiveDict
 
 
@@ -30,6 +31,19 @@ class PackageReader(object):
         Return a |PackageReader| instance loaded with contents of *pkg_file*.
         """
         phys_reader = PhysPkgReader(pkg_file)
+        content_types = _ContentTypeMap.from_xml(phys_reader.content_types_xml)
+        pkg_srels = PackageReader._srels_for(phys_reader, PACKAGE_URI)
+        sparts = PackageReader._load_serialized_parts(
+            phys_reader, pkg_srels, content_types
+        )
+        phys_reader.close()
+        return PackageReader(content_types, pkg_srels, sparts)
+
+    def from_str(pkg_str):
+        """
+        Return a |PackageReader| instance loaded with contents of *pkg_str*.
+        """
+        phys_reader = StrPkgReader(pkg_str)
         content_types = _ContentTypeMap.from_xml(phys_reader.content_types_xml)
         pkg_srels = PackageReader._srels_for(phys_reader, PACKAGE_URI)
         sparts = PackageReader._load_serialized_parts(
