@@ -90,7 +90,7 @@ class Paragraph(Parented):
         Sequence of |Run| instances corresponding to the <w:r> elements in
         this paragraph.
         """
-        return [Run(r, self) for r in self._p.r_lst]
+        return [Run(r, self) for r in self._p.r_lst_recursive]
 
     @property
     def style(self):

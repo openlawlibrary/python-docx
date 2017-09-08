@@ -76,3 +76,18 @@ class CT_P(BaseOxmlElement):
     def style(self, style):
         pPr = self.get_or_add_pPr()
         pPr.style = style
+
+    @property
+    def r_lst_recursive(self):
+        """
+        Override xmlchemy generated list of runs to include runs from
+        hyperlinks.
+        """
+
+        def get_runs(elem):
+            for child in elem:
+                if child.tag == qn('w:r'):
+                    yield child
+                elif child.tag == qn('w:hyperlink'):
+                    yield from get_runs(child)
+        yield from get_runs(self)
