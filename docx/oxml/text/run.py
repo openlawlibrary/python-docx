@@ -19,6 +19,14 @@ class CT_Br(BaseOxmlElement):
     clear = OptionalAttribute('w:clear', ST_BrClear)
 
 
+class CT_Cr(BaseOxmlElement):
+    """
+    ``<w:cr>`` element, indicating carriage return in a run.
+    """
+    type = OptionalAttribute('w:type', ST_BrType)
+    clear = OptionalAttribute('w:clear', ST_BrClear)
+
+
 class CT_R(BaseOxmlElement):
     """
     ``<w:r>`` element, containing the properties and text for a run.
@@ -94,8 +102,10 @@ class CT_R(BaseOxmlElement):
                 text += t_text if t_text is not None else ''
             elif child.tag == qn('w:tab'):
                 text += '\t'
-            elif child.tag in (qn('w:br'), qn('w:cr')):
+            elif child.tag == qn('w:br'):
                 text += '\n'
+            elif child.tag == qn('w:cr'):
+                text += '\r'
             elif child.tag == qn('w:noBreakHyphen'):
                 text += '-'
         return text
@@ -155,9 +165,12 @@ class _RunContentAppender(object):
         if char == '\t':
             self.flush()
             self._r.add_tab()
-        elif char in '\r\n':
+        elif char == '\n':
             self.flush()
             self._r.add_br()
+        elif char == '\r':
+            self.flush()
+            self._r.add_cr()
         else:
             self._bfr.append(char)
 
