@@ -143,3 +143,9 @@ class Paragraph(Parented):
         """
         p = self._p.add_p_before()
         return Paragraph(p, self._parent)
+
+    def __repr__(self):
+        text = self.text.strip()[:20]
+        if not text:
+            text = "EMPTY PARAGRAPH"
+        return text

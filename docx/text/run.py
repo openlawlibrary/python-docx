@@ -181,6 +181,12 @@ class Run(Parented):
     def underline(self, value):
         self.font.underline = value
 
+    def __repr__(self):
+        text = self.text.strip()[:20]
+        if not text:
+            text = "EMPTY RUN"
+        return text
+
 
 class _Text(object):
     """
