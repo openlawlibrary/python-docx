@@ -8,6 +8,7 @@ from __future__ import (
     absolute_import, division, print_function, unicode_literals
 )
 
+import copy
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
@@ -75,6 +76,50 @@ class Paragraph(Parented):
         if style is not None:
             paragraph.style = style
         return paragraph
+
+    def split(self, *positions):
+        """Splits paragraph at given positions keeping formatting.
+
+        Original unsplitted runs are retained. Original paragraph is kept but
+        the next runs are deleted. New paragraphs are created to follow with
+        the rest of the runs. Split is done in-place, i.e. this paragraph will
+        be replaced by splitted ones.
+
+        Returns: new splitted paragraphs.
+
+        """
+        positions = list(positions)
+        paras = [self]
+        splitpos = positions.pop(0)
+        curpos = 0
+        runidx = 0
+        curpara = self
+        while runidx < len(curpara.runs):
+            run = curpara.runs[runidx]
+            endpos = curpos + len(run.text)
+            while curpos <= splitpos < endpos:
+                run_split_pos = splitpos - curpos
+                run.split(run_split_pos)
+                next_para = copy.deepcopy(curpara)
+                for crunidx, crun in enumerate(curpara.runs):
+                    if crunidx > runidx:
+                        crun._r.getparent().remove(crun._r)
+                for crunidx, crun in enumerate(next_para.runs):
+                    if crunidx <= runidx:
+                        crun._r.getparent().remove(crun._r)
+                curpara._p.addnext(next_para._p)
+                paras.append(next_para)
+                if not positions:
+                    break
+                splitpos = positions.pop(0)
+                curpara = next_para
+                runidx = -1
+                run = curpara.runs[0]
+
+            runidx += 1
+            curpos = endpos
+
+        return paras
 
     @property
     def paragraph_format(self):
