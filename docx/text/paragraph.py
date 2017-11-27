@@ -89,36 +89,42 @@ class Paragraph(Parented):
 
         """
         positions = list(positions)
-        paras = [self]
+        for p in positions:
+            assert 0 < p < len(self.text)
+        paras = []
         splitpos = positions.pop(0)
         curpos = 0
         runidx = 0
         curpara = self
+        prevtextlen = 0
         while runidx < len(curpara.runs):
             run = curpara.runs[runidx]
             endpos = curpos + len(run.text)
-            while curpos <= splitpos < endpos:
+            if curpos <= splitpos < endpos:
                 run_split_pos = splitpos - curpos
-                run.split(run_split_pos)
+                lrun, _ = run.split(run_split_pos)
+                idx_cor = 0 if lrun is None else 1
                 next_para = copy.deepcopy(curpara)
                 for crunidx, crun in enumerate(curpara.runs):
-                    if crunidx > runidx:
+                    if crunidx >= runidx + idx_cor:
                         crun._r.getparent().remove(crun._r)
                 for crunidx, crun in enumerate(next_para.runs):
-                    if crunidx <= runidx:
+                    if crunidx < runidx + idx_cor:
                         crun._r.getparent().remove(crun._r)
                 curpara._p.addnext(next_para._p)
-                paras.append(next_para)
+                paras.append(curpara)
                 if not positions:
                     break
+                curpos = splitpos
                 splitpos = positions.pop(0)
+                prevtextlen += len(curpara.text)
                 curpara = next_para
-                runidx = -1
-                run = curpara.runs[0]
+                runidx = 0
+            else:
+                runidx += 1
+                curpos = endpos
 
-            runidx += 1
-            curpos = endpos
-
+        paras.append(next_para)
         return paras
 
     def remove(self):
