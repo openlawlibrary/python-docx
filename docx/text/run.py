@@ -85,11 +85,17 @@ class Run(Parented):
         """
         Splits run at the given position in the text.
         Created runs will have the same styling.
+        Returns a pair of new runs.
         """
+        if pos == 0:
+            return None, self
+        elif pos >= len(self.text):
+            return self, None
         next_run = copy.deepcopy(self)
         next_run.text = self.text[pos:]
         self.text = self.text[:pos]
         self._r.addnext(next_run._r)
+        return self, next_run
 
     @property
     def bold(self):

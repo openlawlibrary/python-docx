@@ -121,6 +121,42 @@ class Paragraph(Parented):
 
         return paras
 
+    def remove(self):
+        """Removes this paragraph from its container."""
+        self._p.getparent().remove(self._p)
+
+    def remove_text(self, start=0, end=-1):
+        """Removes part of text retaining runs and styling."""
+
+        if end == -1:
+            end = len(self.text)
+        assert end > start and end <= len(self.text)
+        runstart = 0
+        runidx = 0
+        while runidx < len(self.runs) and end > start:
+            run = self.runs[runidx]
+            runend = runstart + len(run.text)
+            to_del = None
+            if start <= runstart and runend <= end:
+                to_del = run
+            else:
+                if runstart <= start < runend:
+                    _, to_del = run.split(start - runstart)
+                if runstart < end <= runend:
+                    if to_del:
+                        run = to_del
+                        split_pos = end - start
+                    else:
+                        split_pos = end - runstart
+                    to_del, _ = run.split(split_pos)
+            if to_del:
+                runstart = runend - len(to_del.text)
+                end -= len(to_del.text)
+                to_del._r.getparent().remove(to_del._r)
+            else:
+                runstart = runend
+            runidx += 1
+
     @property
     def paragraph_format(self):
         """
