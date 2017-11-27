@@ -8,6 +8,7 @@ from __future__ import (
     absolute_import, division, print_function, unicode_literals
 )
 
+import copy
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
@@ -75,6 +76,86 @@ class Paragraph(Parented):
         if style is not None:
             paragraph.style = style
         return paragraph
+
+    def split(self, *positions):
+        """Splits paragraph at given positions keeping formatting.
+
+        Original unsplitted runs are retained. Original paragraph is kept but
+        the next runs are deleted. New paragraphs are created to follow with
+        the rest of the runs. Split is done in-place, i.e. this paragraph will
+        be replaced by splitted ones.
+
+        Returns: new splitted paragraphs.
+
+        """
+        positions = list(positions)
+        paras = [self]
+        splitpos = positions.pop(0)
+        curpos = 0
+        runidx = 0
+        curpara = self
+        while runidx < len(curpara.runs):
+            run = curpara.runs[runidx]
+            endpos = curpos + len(run.text)
+            while curpos <= splitpos < endpos:
+                run_split_pos = splitpos - curpos
+                run.split(run_split_pos)
+                next_para = copy.deepcopy(curpara)
+                for crunidx, crun in enumerate(curpara.runs):
+                    if crunidx > runidx:
+                        crun._r.getparent().remove(crun._r)
+                for crunidx, crun in enumerate(next_para.runs):
+                    if crunidx <= runidx:
+                        crun._r.getparent().remove(crun._r)
+                curpara._p.addnext(next_para._p)
+                paras.append(next_para)
+                if not positions:
+                    break
+                splitpos = positions.pop(0)
+                curpara = next_para
+                runidx = -1
+                run = curpara.runs[0]
+
+            runidx += 1
+            curpos = endpos
+
+        return paras
+
+    def remove(self):
+        """Removes this paragraph from its container."""
+        self._p.getparent().remove(self._p)
+
+    def remove_text(self, start=0, end=-1):
+        """Removes part of text retaining runs and styling."""
+
+        if end == -1:
+            end = len(self.text)
+        assert end > start and end <= len(self.text)
+        runstart = 0
+        runidx = 0
+        while runidx < len(self.runs) and end > start:
+            run = self.runs[runidx]
+            runend = runstart + len(run.text)
+            to_del = None
+            if start <= runstart and runend <= end:
+                to_del = run
+            else:
+                if runstart <= start < runend:
+                    _, to_del = run.split(start - runstart)
+                if runstart < end <= runend:
+                    if to_del:
+                        run = to_del
+                        split_pos = end - start
+                    else:
+                        split_pos = end - runstart
+                    to_del, _ = run.split(split_pos)
+            if to_del:
+                runstart = runend - len(to_del.text)
+                end -= len(to_del.text)
+                to_del._r.getparent().remove(to_del._r)
+            else:
+                runstart = runend
+            runidx += 1
 
     @property
     def paragraph_format(self):
