@@ -223,6 +223,26 @@ class Paragraph(Parented):
         self.clear()
         self.add_run(text)
 
+    def strip(self):
+        """
+        Strips paragraph text.
+        """
+        if self.runs:
+            runidx = 0
+            while True:
+                run = self.runs[runidx]
+                run.text = run.text.lstrip()
+                runidx += 1
+                if run.text or runidx == len(self.runs):
+                    break
+            runidx = len(self.runs) - 1
+            while True:
+                run = self.runs[runidx]
+                run.text = run.text.rstrip()
+                if run.text or runidx == 0:
+                    break
+                runidx -= 1
+
     def _insert_paragraph_before(self):
         """
         Return a newly created paragraph, inserted directly before this
