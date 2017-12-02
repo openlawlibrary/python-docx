@@ -154,6 +154,8 @@ class Paragraph(Parented):
                         split_pos = end - start
                     else:
                         split_pos = end - runstart
+                        # Do not increase run idx in this case.
+                        runidx -= 1
                     to_del, _ = run.split(split_pos)
             if to_del:
                 runstart = runend - len(to_del.text)
@@ -227,21 +229,20 @@ class Paragraph(Parented):
         """
         Strips paragraph text.
         """
-        if self.runs:
-            runidx = 0
-            while True:
-                run = self.runs[runidx]
-                run.text = run.text.lstrip()
-                runidx += 1
-                if run.text or runidx == len(self.runs):
-                    break
-            runidx = len(self.runs) - 1
-            while True:
-                run = self.runs[runidx]
-                run.text = run.text.rstrip()
-                if run.text or runidx == 0:
-                    break
-                runidx -= 1
+        while self.runs:
+            run = self.runs[0]
+            run.text = run.text.lstrip()
+            if not run.text:
+                run._r.getparent().remove(run._r)
+            else:
+                break
+        while self.runs:
+            run = self.runs[len(self.runs) - 1]
+            run.text = run.text.rstrip()
+            if not run.text:
+                run._r.getparent().remove(run._r)
+            else:
+                break
 
     def _insert_paragraph_before(self):
         """
