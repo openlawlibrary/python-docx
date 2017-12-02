@@ -154,6 +154,8 @@ class Paragraph(Parented):
                         split_pos = end - start
                     else:
                         split_pos = end - runstart
+                        # Do not increase run idx in this case.
+                        runidx -= 1
                     to_del, _ = run.split(split_pos)
             if to_del:
                 runstart = runend - len(to_del.text)
