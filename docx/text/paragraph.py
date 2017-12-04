@@ -152,18 +152,18 @@ class Paragraph(Parented):
                     if to_del:
                         run = to_del
                         split_pos = end - start
+                        runidx += 1
                     else:
                         split_pos = end - runstart
-                        # Do not increase run idx in this case.
-                        runidx -= 1
                     to_del, _ = run.split(split_pos)
+                else:
+                    runidx += 1
             if to_del:
                 runstart = runend - len(to_del.text)
                 end -= len(to_del.text)
                 to_del._r.getparent().remove(to_del._r)
             else:
                 runstart = runend
-            runidx += 1
 
     @property
     def paragraph_format(self):
