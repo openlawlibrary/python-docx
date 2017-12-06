@@ -137,6 +137,21 @@ class Paragraph(Parented):
         if end == -1:
             end = len(self.text)
         assert end > start and end <= len(self.text)
+
+        # Check a special case
+        # where both start and end fall in a single run.
+        runstart = 0
+        for run in self.runs:
+            runend = runstart + len(run.text)
+            if runstart <= start and end <= runend:
+                run.text = run.text[:(start-runstart)] \
+                           + run.text[(end-runstart):]
+                if not run.text:
+                    run._r.getparent().remove(run._r)
+                return self
+            runstart = runend
+
+        # We are removing text spanning multiple runs.
         runstart = 0
         runidx = 0
         while runidx < len(self.runs) and end > start:
@@ -164,6 +179,7 @@ class Paragraph(Parented):
                 to_del._r.getparent().remove(to_del._r)
             else:
                 runstart = runend
+        return self
 
     @property
     def paragraph_format(self):
@@ -225,6 +241,47 @@ class Paragraph(Parented):
         self.clear()
         self.add_run(text)
 
+    def replace_char(self, oldch, newch):
+        """
+        Replaces all occurences of oldch character with newch.
+        """
+        for run in self.runs:
+            run.text = run.text.replace(oldch, newch)
+        return self
+
+    def insert_text(self, position, new_text):
+        """
+        Inserts text at a given position.
+        """
+        runend = 0
+        runstart = 0
+        for run in self.runs:
+            runstart = runend
+            runend += len(run.text)
+            if runend >= position:
+                run.text = run.text[:(position-runstart)] \
+                           + new_text + run.text[(position-runstart):]
+                break
+        return self
+
+    def replace_text(self, old_text, new_text):
+        """
+        Replace all occurences of old_text with new_text. Keep runs formatting.
+        old_text can span multiple runs.
+        new_text is added to the run where old_text starts.
+        """
+        startpos = 0
+        while startpos < len(self.text):
+            try:
+                old_start = self.text[startpos:].index(old_text)
+                startpos = old_start + len(old_text)
+            except ValueError:
+                break
+
+            self.remove_text(start=old_start, end=startpos)\
+                .insert_text(old_start, new_text)
+        return self
+
     def strip(self):
         """
         Strips paragraph text.
@@ -243,6 +300,7 @@ class Paragraph(Parented):
                 run._r.getparent().remove(run._r)
             else:
                 break
+        return self
 
     def _insert_paragraph_before(self):
         """
