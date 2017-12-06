@@ -104,7 +104,7 @@ class Paragraph(Parented):
                 run_split_pos = splitpos - curpos
                 lrun, _ = run.split(run_split_pos)
                 idx_cor = 0 if lrun is None else 1
-                next_para = copy.deepcopy(curpara)
+                next_para = curpara.clone()
                 for crunidx, crun in enumerate(curpara.runs):
                     if crunidx >= runidx + idx_cor:
                         crun._r.getparent().remove(crun._r)
@@ -311,3 +311,27 @@ class Paragraph(Parented):
         """
         p = self._p.add_p_before()
         return Paragraph(p, self._parent)
+
+    def __repr__(self):
+        text = self.text.strip()[:20]
+        if not text:
+            text = "EMPTY PARAGRAPH"
+        return text
+
+    def clone(self):
+        """
+        Cloning by selective deep copying.
+        """
+        c = copy.deepcopy(self)
+        c._parent = self._parent
+        c._doc = self._doc
+        return c
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        del state['_parent']
+        del state['_doc']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
