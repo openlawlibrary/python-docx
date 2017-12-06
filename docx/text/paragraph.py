@@ -324,13 +324,11 @@ class Paragraph(Parented):
         """
         c = copy.deepcopy(self)
         c._parent = self._parent
-        c._doc = self._doc
         return c
 
     def __getstate__(self):
         state = dict(self.__dict__)
-        del state['_parent']
-        del state['_doc']
+        state.pop('_parent', None)
         return state
 
     def __setstate__(self, state):
