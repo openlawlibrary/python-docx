@@ -91,7 +91,7 @@ class Run(Parented):
             return None, self
         elif pos >= len(self.text):
             return self, None
-        next_run = copy.deepcopy(self)
+        next_run = self.clone()
         next_run.text = self.text[pos:]
         self.text = self.text[:pos]
         self._r.addnext(next_run._r)
@@ -203,6 +203,22 @@ class Run(Parented):
         if not text:
             text = "EMPTY RUN"
         return text
+
+    def clone(self):
+        """
+        Cloning run by selective deep copying.
+        """
+        c = copy.deepcopy(self)
+        c._parent = self._parent
+        return c
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        del state['_parent']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
 
 class _Text(object):

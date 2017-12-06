@@ -104,7 +104,7 @@ class Paragraph(Parented):
                 run_split_pos = splitpos - curpos
                 lrun, _ = run.split(run_split_pos)
                 idx_cor = 0 if lrun is None else 1
-                next_para = copy.deepcopy(curpara)
+                next_para = curpara.clone()
                 for crunidx, crun in enumerate(curpara.runs):
                     if crunidx >= runidx + idx_cor:
                         crun._r.getparent().remove(crun._r)
@@ -270,10 +270,12 @@ class Paragraph(Parented):
         old_text can span multiple runs.
         new_text is added to the run where old_text starts.
         """
+        assert new_text
+        assert old_text
         startpos = 0
         while startpos < len(self.text):
             try:
-                old_start = self.text[startpos:].index(old_text)
+                old_start = startpos + self.text[startpos:].index(old_text)
                 startpos = old_start + len(old_text)
             except ValueError:
                 break
@@ -315,3 +317,21 @@ class Paragraph(Parented):
         if not text:
             text = "EMPTY PARAGRAPH"
         return text
+
+    def clone(self):
+        """
+        Cloning by selective deep copying.
+        """
+        c = copy.deepcopy(self)
+        c._parent = self._parent
+        c._doc = self._doc
+        return c
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        del state['_parent']
+        del state['_doc']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
