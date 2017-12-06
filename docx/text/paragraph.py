@@ -270,10 +270,12 @@ class Paragraph(Parented):
         old_text can span multiple runs.
         new_text is added to the run where old_text starts.
         """
+        assert new_text
+        assert old_text
         startpos = 0
         while startpos < len(self.text):
             try:
-                old_start = self.text[startpos:].index(old_text)
+                old_start = startpos + self.text[startpos:].index(old_text)
                 startpos = old_start + len(old_text)
             except ValueError:
                 break
