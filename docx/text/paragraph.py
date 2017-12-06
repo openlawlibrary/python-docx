@@ -137,6 +137,21 @@ class Paragraph(Parented):
         if end == -1:
             end = len(self.text)
         assert end > start and end <= len(self.text)
+
+        # Check a special case
+        # where both start and end fall in a single run.
+        runstart = 0
+        for run in self.runs:
+            runend = runstart + len(run.text)
+            if runstart <= start and end <= runend:
+                run.text = run.text[:(start-runstart)] \
+                           + run.text[(end-runstart):]
+                if not run.text:
+                    run._r.getparent().remove(run._r)
+                return self
+            runstart = runend
+
+        # We are removing text spanning multiple runs.
         runstart = 0
         runidx = 0
         while runidx < len(self.runs) and end > start:
@@ -164,6 +179,7 @@ class Paragraph(Parented):
                 to_del._r.getparent().remove(to_del._r)
             else:
                 runstart = runend
+        return self
 
     @property
     def paragraph_format(self):
