@@ -214,7 +214,7 @@ class Run(Parented):
 
     def __getstate__(self):
         state = dict(self.__dict__)
-        del state['_parent']
+        state.pop('_parent', None)
         return state
 
     def __setstate__(self, state):
