@@ -198,6 +198,14 @@ class Paragraph(Parented):
         return [Run(r, self) for r in self._p.r_lst_recursive]
 
     @property
+    def bookmark_starts(self):
+        return self._element.bookmarkStart_lst
+
+    @property
+    def bookmark_ends(self):
+        return self._element.bookmarkEnd_lst
+
+    @property
     def style(self):
         """
         Read/Write. |_ParagraphStyle| object representing the style assigned
