@@ -145,6 +145,12 @@ register_element_cls('w:tcW',        CT_TblWidth)
 register_element_cls('w:tr',         CT_Row)
 register_element_cls('w:vMerge',     CT_VMerge)
 
+from .bookmark import (
+    CT_BookmarkStart, CT_BookmarkEnd
+)
+register_element_cls('w:bookmarkStart', CT_BookmarkStart)
+register_element_cls('w:bookmarkEnd', CT_BookmarkEnd)
+
 from .text.font import (
     CT_Color, CT_Fonts, CT_Highlight, CT_HpsMeasure, CT_RPr, CT_Underline,
     CT_VerticalAlignRun
