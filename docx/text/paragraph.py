@@ -284,25 +284,37 @@ class Paragraph(Parented):
                 .insert_text(old_start, new_text)
         return self
 
-    def strip(self):
+    def lstrip(self, chars=None):
         """
-        Strips paragraph text.
+        Left strip paragraph text.
         """
         while self.runs:
             run = self.runs[0]
-            run.text = run.text.lstrip()
-            if not run.text:
-                run._r.getparent().remove(run._r)
-            else:
-                break
-        while self.runs:
-            run = self.runs[len(self.runs) - 1]
-            run.text = run.text.rstrip()
+            run.text = run.text.lstrip(chars)
             if not run.text:
                 run._r.getparent().remove(run._r)
             else:
                 break
         return self
+
+    def rstrip(self, chars=None):
+        """
+        Right strip paragraph text.
+        """
+        while self.runs:
+            run = self.runs[len(self.runs) - 1]
+            run.text = run.text.rstrip(chars)
+            if not run.text:
+                run._r.getparent().remove(run._r)
+            else:
+                break
+        return self
+
+    def strip(self, chars=None):
+        """
+        Strips paragraph text.
+        """
+        return self.lstrip(chars).rstrip(chars)
 
     def _insert_paragraph_before(self):
         """
