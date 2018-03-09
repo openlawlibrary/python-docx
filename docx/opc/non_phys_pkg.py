@@ -6,8 +6,11 @@ Provides a general interface to a *non-physical* OPC package, such as a zip file
 
 from __future__ import absolute_import
 
-from .exceptions import PackageNotFoundError
-from .packuri import CONTENT_TYPES_URI, PackURI
+import base64
+
+from docx.parts.image import ImagePart
+from docx.image.image import Image
+from .packuri import PackURI
 from .part import XmlPart
 from .pkgwriter import _ContentTypesItem
 
@@ -25,11 +28,11 @@ class StrPkgReader(object):
         Return contents of "file" corresponding to *pack_uri* in package
         string.
         """
-        blob = None
-
+        image_part = '/word/media/image' in pack_uri
         pkg_part_start_tag = '<pkg:part pkg:name="' + pack_uri
-        pkg_xml_start_tag = '<pkg:xmlData>'
-        pkg_xml_end_tag = '</pkg:xmlData>'
+        pkg_xml_start_tag = '<pkg:binaryData>' \
+                            if image_part else '<pkg:xmlData>'
+        pkg_xml_end_tag = '</' + pkg_xml_start_tag[1:]
 
         pkg_start_pos = self._xml_str.find(pkg_part_start_tag)
         if pkg_start_pos >= 0:
@@ -42,8 +45,10 @@ class StrPkgReader(object):
                     pkg_xml_end_tag, pkg_xml_start_pos
                 )
                 if pkg_end_pos >= 0:
-                    return self._xml_str[pkg_xml_start_pos:pkg_end_pos]
-
+                    blob = self._xml_str[pkg_xml_start_pos:pkg_end_pos]
+                    if image_part:
+                        blob = base64.b64decode(blob)
+                    return blob
         return None
 
     def close(self):
@@ -67,7 +72,12 @@ class StrPkgReader(object):
         pkg_meta = self._get_pkg_meta()
         for part_name, content_type in pkg_meta:
             blob = self.blob_for(part_name)
-            part = XmlPart.load(PackURI(part_name), content_type, blob, None)
+            if 'image' in content_type:
+                image = Image.from_blob(blob)
+                part = ImagePart.from_image(image, PackURI(part_name))
+            else:
+                part = XmlPart.load(PackURI(part_name), content_type, blob,
+                                    None)
             parts.append(part)
         return parts
 
