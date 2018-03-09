@@ -12,7 +12,7 @@ import copy
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented
+from ..shared import Parented, lazyproperty
 
 
 class Paragraph(Parented):
@@ -354,7 +354,7 @@ class Paragraph(Parented):
     def __setstate__(self, state):
         self.__dict__ = state
 
-    @property
+    @lazyproperty
     def image_parts(self):
         """
         Return all image parts related to this paragraph.
