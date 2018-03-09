@@ -353,3 +353,19 @@ class Paragraph(Parented):
 
     def __setstate__(self, state):
         self.__dict__ = state
+
+    @property
+    def image_parts(self):
+        """
+        Return all image parts related to this paragraph.
+        """
+        drawings = []
+        for r in self.runs:
+            if r._element.drawing_lst:
+                drawings.extend(r._element.drawing_lst)
+        blips = [drawing.xpath(".//*[local-name() = 'blip']")[0]
+                 for drawing in drawings]
+        rIds = [b.embed for b in blips]
+        doc = self.part.document
+        parts = [doc.part.related_parts[rId] for rId in rIds]
+        return parts
