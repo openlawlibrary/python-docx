@@ -199,9 +199,13 @@ class Run(Parented):
         self.font.underline = value
 
     def __repr__(self):
-        text = self.text.strip()[:20]
+        text_stripped = self.text.strip()
+        text = text_stripped[:20]
+        if len(text_stripped) > len(text):
+            text += '...'
         if not text:
             text = "EMPTY RUN"
+        text = '<r:"{}">'.format(text)
         return text
 
     def clone(self):

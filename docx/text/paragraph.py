@@ -333,9 +333,13 @@ class Paragraph(Parented):
         return Paragraph(p, self._parent)
 
     def __repr__(self):
-        text = self.text.strip()[:20]
+        text_stripped = self.text.strip()
+        text = text_stripped[:20]
+        if len(text_stripped) > len(text):
+            text += '...'
         if not text:
             text = "EMPTY PARAGRAPH"
+        text = '<p:"{}">'.format(text)
         return text
 
     def clone(self):
