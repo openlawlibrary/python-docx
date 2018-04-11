@@ -73,7 +73,7 @@ class StrPkgReader(object):
         for part_name, content_type in pkg_meta:
             blob = self.blob_for(part_name)
             if 'image' in content_type:
-                image = Image.from_blob(blob)
+                image = Image(blob, None, None, content_type)
                 part = ImagePart.from_image(image, PackURI(part_name))
             else:
                 part = XmlPart.load(PackURI(part_name), content_type, blob,
