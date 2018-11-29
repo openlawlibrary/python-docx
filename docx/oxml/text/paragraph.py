@@ -10,10 +10,11 @@ from ..xmlchemy import BaseOxmlElement, OxmlElement, ZeroOrMore, ZeroOrOne
 
 class CT_P(BaseOxmlElement):
     """
-    ``<w:p>`` element, containing the properties and text for a paragraph.
+    ``<w:p>`` element, containing the properties, text for a paragraph and content controls.
     """
     pPr = ZeroOrOne('w:pPr')
     r = ZeroOrMore('w:r')
+    sdt = ZeroOrMore('w:sdt')
 
     def _insert_pPr(self, pPr):
         self.insert(0, pPr)
@@ -88,6 +89,8 @@ class CT_P(BaseOxmlElement):
             for child in elem:
                 if child.tag == qn('w:r'):
                     yield child
-                elif child.tag == qn('w:hyperlink'):
+                elif child.tag == qn('w:hyperlink') \
+                    or child.tag == qn('w:sdt') \
+                    or child.tag == qn('w:sdtContent'):
                     yield from get_runs(child)
         yield from get_runs(self)

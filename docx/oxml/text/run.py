@@ -109,6 +109,24 @@ class CT_Text(BaseOxmlElement):
     ``<w:t>`` element, containing a sequence of characters within a run.
     """
 
+class CT_SdtRun(BaseOxmlElement):
+    """
+    ``<w:sdt>`` structured document tag element specifying
+    a content control elements.
+    """
+    _tag_seq = ('w:sdtPr', 'w:stEndPr', 'w:sdtContent')
+
+    sdtPr = ZeroOrOne('w:sdtPr', successors=_tag_seq[1:])
+    stEndPr = ZeroOrOne('w:stEndPr', successors=_tag_seq[2:])
+    sdtContent = ZeroOrOne('w:sdtContent')
+
+    del _tag_seq
+
+class CT_SdtContentRun(BaseOxmlElement):
+    """
+    ``<w:sdtContent>`` represents content within ``<w:sdt>``
+    """
+    r = ZeroOrMore('w:r')
 
 class _RunContentAppender(object):
     """
