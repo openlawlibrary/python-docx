@@ -165,6 +165,13 @@ class Document(ElementProxy):
         return self._part.styles
 
     @property
+    def sdts(self):
+        """
+        A list of |SdtBlock| instances in this document.
+        """
+        return self._body.sdts
+
+    @property
     def tables(self):
         """
         A list of |Table| instances corresponding to the tables in the

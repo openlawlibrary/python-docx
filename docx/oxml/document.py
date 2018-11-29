@@ -28,6 +28,7 @@ class CT_Body(BaseOxmlElement):
     ``<w:body>``, the container element for the main document story in
     ``document.xml``.
     """
+    sdt = ZeroOrMore('w:sdt', successors=('w:p',))
     p = ZeroOrMore('w:p', successors=('w:sectPr',))
     tbl = ZeroOrMore('w:tbl', successors=('w:sectPr',))
     sectPr = ZeroOrOne('w:sectPr', successors=())

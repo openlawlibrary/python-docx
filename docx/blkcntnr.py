@@ -11,6 +11,7 @@ from __future__ import absolute_import, print_function
 from .oxml.table import CT_Tbl
 from .shared import Parented
 from .text.paragraph import Paragraph
+from .sdt import SdtBase
 
 
 class BlockItemContainer(Parented):
@@ -56,6 +57,15 @@ class BlockItemContainer(Parented):
         order. Read-only.
         """
         return [Paragraph(p, self) for p in self._element.p_lst]
+
+    @property
+    def sdts(self):
+        """
+        A list content controls in this container, in document order.
+        Read-only.
+        """
+        import pdb; pdb.set_trace()
+        return [SdtBase(s, self) for s in self._element.sdt_lst]
 
     @property
     def tables(self):
