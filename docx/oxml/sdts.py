@@ -4,7 +4,7 @@ elements within the document part.
 """
 
 from .xmlchemy import BaseOxmlElement, ZeroOrOne, ZeroOrMore
-from .ns import qn
+from .ns import nsmap
 
 class CT_SdtBase(BaseOxmlElement):
     """
@@ -19,18 +19,25 @@ class CT_SdtBase(BaseOxmlElement):
 
     del _tag_seq
 
+    @property
+    def name(self):
+        return self.sdtPr.name
+
+class CT_SdtPr(BaseOxmlElement):
+    tag = ZeroOrOne('w:tag')
+    date = ZeroOrOne('w:date')
+
+    @property
+    def name(self):
+        try:
+            return self.tag.get('{%s}val' % nsmap['w'])
+        except:
+            raise Exception('All content controls should be named (having '
+            'set unique content control tag name).')
+
+
 class CT_SdtContentBase(BaseOxmlElement):
     """
     ``<w:sdtContent>`` represents content within ``<w:sdt>``
     """
-    r = ZeroOrMore('w:r')
-
-    @property
-    def runs(self):
-        def get_runs(el):
-            for child in el:
-                if child.tag == qn('w:r'):
-                    return child
-                else:
-                    yield from get_runs(child)
-        yield from get_runs(self)
+    p = ZeroOrMore('w:p')

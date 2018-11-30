@@ -167,9 +167,16 @@ class Document(ElementProxy):
     @property
     def sdts(self):
         """
-        A list of |SdtBlock| instances in this document.
+        A list of |SdtBase| children instances in this document.
         """
         return self._body.sdts
+
+    @property
+    def sdts_all(self):
+        """
+        A list of |SdtBase| descendants instances in this document.
+        """
+        return self._body.sdts_all
 
     @property
     def tables(self):

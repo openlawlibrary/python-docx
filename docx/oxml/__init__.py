@@ -145,8 +145,11 @@ register_element_cls('w:tcW',        CT_TblWidth)
 register_element_cls('w:tr',         CT_Row)
 register_element_cls('w:vMerge',     CT_VMerge)
 
-from .sdts import CT_SdtBase, CT_SdtContentBase
+from .sdts import (
+    CT_SdtBase, CT_SdtPr, CT_SdtContentBase
+)
 register_element_cls('w:sdt',        CT_SdtBase)
+register_element_cls('w:sdtPr',      CT_SdtPr)
 register_element_cls('w:sdtContent', CT_SdtContentBase)
 
 from .text.font import (
