@@ -20,11 +20,12 @@ class Image(object):
     Graphical image stream such as JPEG, PNG, or GIF with properties and
     methods required by ImagePart.
     """
-    def __init__(self, blob, filename, image_header):
+    def __init__(self, blob, filename, image_header, content_type='unknown'):
         super(Image, self).__init__()
         self._blob = blob
         self._filename = filename
         self._image_header = image_header
+        self._content_type = content_type
 
     @classmethod
     def from_blob(cls, blob):
@@ -67,7 +68,7 @@ class Image(object):
         MIME content type for this image, e.g. ``'image/jpeg'`` for a JPEG
         image
         """
-        return self._image_header.content_type
+        return self._content_type
 
     @lazyproperty
     def ext(self):

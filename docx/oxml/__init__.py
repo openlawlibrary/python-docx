@@ -152,6 +152,12 @@ register_element_cls('w:sdt',        CT_SdtBase)
 register_element_cls('w:sdtPr',      CT_SdtPr)
 register_element_cls('w:sdtContent', CT_SdtContentBase)
 
+from .bookmark import (
+    CT_BookmarkStart, CT_BookmarkEnd
+)
+register_element_cls('w:bookmarkStart', CT_BookmarkStart)
+register_element_cls('w:bookmarkEnd', CT_BookmarkEnd)
+
 from .text.font import (
     CT_Color, CT_Fonts, CT_Highlight, CT_HpsMeasure, CT_RPr, CT_Underline,
     CT_VerticalAlignRun
@@ -203,7 +209,8 @@ register_element_cls('w:tab',             CT_TabStop)
 register_element_cls('w:tabs',            CT_TabStops)
 register_element_cls('w:widowControl',    CT_OnOff)
 
-from .text.run import CT_Br, CT_R, CT_Text
+from .text.run import CT_Br, CT_Cr, CT_R, CT_Text
 register_element_cls('w:br', CT_Br)
+register_element_cls('w:cr', CT_Cr)
 register_element_cls('w:r',  CT_R)
 register_element_cls('w:t',  CT_Text)

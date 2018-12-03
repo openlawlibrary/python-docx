@@ -8,10 +8,11 @@ from __future__ import (
     absolute_import, division, print_function, unicode_literals
 )
 
+import copy
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented
+from ..shared import Parented, lazyproperty
 
 
 class Paragraph(Parented):
@@ -76,6 +77,110 @@ class Paragraph(Parented):
             paragraph.style = style
         return paragraph
 
+    def split(self, *positions):
+        """Splits paragraph at given positions keeping formatting.
+
+        Original unsplitted runs are retained. Original paragraph is kept but
+        the next runs are deleted. New paragraphs are created to follow with
+        the rest of the runs. Split is done in-place, i.e. this paragraph will
+        be replaced by splitted ones.
+
+        Returns: new splitted paragraphs.
+
+        """
+        positions = list(positions)
+        for p in positions:
+            assert 0 < p < len(self.text)
+        paras = []
+        splitpos = positions.pop(0)
+        curpos = 0
+        runidx = 0
+        curpara = self
+        prevtextlen = 0
+        while runidx < len(curpara.runs):
+            run = curpara.runs[runidx]
+            endpos = curpos + len(run.text)
+            if curpos <= splitpos < endpos:
+                run_split_pos = splitpos - curpos
+                lrun, _ = run.split(run_split_pos)
+                idx_cor = 0 if lrun is None else 1
+                next_para = curpara.clone()
+                for crunidx, crun in enumerate(curpara.runs):
+                    if crunidx >= runidx + idx_cor:
+                        crun._r.getparent().remove(crun._r)
+                for crunidx, crun in enumerate(next_para.runs):
+                    if crunidx < runidx + idx_cor:
+                        crun._r.getparent().remove(crun._r)
+                curpara._p.addnext(next_para._p)
+                paras.append(curpara)
+                if not positions:
+                    break
+                curpos = splitpos
+                splitpos = positions.pop(0)
+                prevtextlen += len(curpara.text)
+                curpara = next_para
+                runidx = 0
+            else:
+                runidx += 1
+                curpos = endpos
+
+        paras.append(next_para)
+        return paras
+
+    def remove(self):
+        """Removes this paragraph from its container."""
+        self._p.getparent().remove(self._p)
+
+    def remove_text(self, start=0, end=-1):
+        """Removes part of text retaining runs and styling."""
+
+        if end == -1:
+            end = len(self.text)
+        assert end > start and end <= len(self.text)
+
+        # Check a special case
+        # where both start and end fall in a single run.
+        runstart = 0
+        for run in self.runs:
+            runend = runstart + len(run.text)
+            if runstart <= start and end <= runend:
+                run.text = run.text[:(start-runstart)] \
+                           + run.text[(end-runstart):]
+                if not run.text:
+                    run._r.getparent().remove(run._r)
+                return self
+            runstart = runend
+
+        # We are removing text spanning multiple runs.
+        runstart = 0
+        runidx = 0
+        while runidx < len(self.runs) and end > start:
+            run = self.runs[runidx]
+            runend = runstart + len(run.text)
+            to_del = None
+            if start <= runstart and runend <= end:
+                to_del = run
+            else:
+                if runstart <= start < runend:
+                    _, to_del = run.split(start - runstart)
+                if runstart < end <= runend:
+                    if to_del:
+                        run = to_del
+                        split_pos = end - start
+                        runidx += 1
+                    else:
+                        split_pos = end - runstart
+                    to_del, _ = run.split(split_pos)
+                else:
+                    runidx += 1
+            if to_del:
+                runstart = runend - len(to_del.text)
+                end -= len(to_del.text)
+                to_del._r.getparent().remove(to_del._r)
+            else:
+                runstart = runend
+        return self
+
     @property
     def paragraph_format(self):
         """
@@ -91,6 +196,14 @@ class Paragraph(Parented):
         this paragraph.
         """
         return [Run(r, self) for r in self._p.r_lst_recursive]
+
+    @property
+    def bookmark_starts(self):
+        return self._element.bookmarkStart_lst
+
+    @property
+    def bookmark_ends(self):
+        return self._element.bookmarkEnd_lst
 
     @property
     def style(self):
@@ -136,6 +249,81 @@ class Paragraph(Parented):
         self.clear()
         self.add_run(text)
 
+    def replace_char(self, oldch, newch):
+        """
+        Replaces all occurences of oldch character with newch.
+        """
+        for run in self.runs:
+            run.text = run.text.replace(oldch, newch)
+        return self
+
+    def insert_text(self, position, new_text):
+        """
+        Inserts text at a given position.
+        """
+        runend = 0
+        runstart = 0
+        for run in self.runs:
+            runstart = runend
+            runend += len(run.text)
+            if runend >= position:
+                run.text = run.text[:(position-runstart)] \
+                           + new_text + run.text[(position-runstart):]
+                break
+        return self
+
+    def replace_text(self, old_text, new_text):
+        """
+        Replace all occurences of old_text with new_text. Keep runs formatting.
+        old_text can span multiple runs.
+        new_text is added to the run where old_text starts.
+        """
+        assert new_text
+        assert old_text
+        startpos = 0
+        while startpos < len(self.text):
+            try:
+                old_start = startpos + self.text[startpos:].index(old_text)
+                startpos = old_start + len(old_text)
+            except ValueError:
+                break
+
+            self.remove_text(start=old_start, end=startpos)\
+                .insert_text(old_start, new_text)
+        return self
+
+    def lstrip(self, chars=None):
+        """
+        Left strip paragraph text.
+        """
+        while self.runs:
+            run = self.runs[0]
+            run.text = run.text.lstrip(chars)
+            if not run.text:
+                run._r.getparent().remove(run._r)
+            else:
+                break
+        return self
+
+    def rstrip(self, chars=None):
+        """
+        Right strip paragraph text.
+        """
+        while self.runs:
+            run = self.runs[len(self.runs) - 1]
+            run.text = run.text.rstrip(chars)
+            if not run.text:
+                run._r.getparent().remove(run._r)
+            else:
+                break
+        return self
+
+    def strip(self, chars=None):
+        """
+        Strips paragraph text.
+        """
+        return self.lstrip(chars).rstrip(chars)
+
     def _insert_paragraph_before(self):
         """
         Return a newly created paragraph, inserted directly before this
@@ -143,3 +331,45 @@ class Paragraph(Parented):
         """
         p = self._p.add_p_before()
         return Paragraph(p, self._parent)
+
+    def __repr__(self):
+        text_stripped = self.text.strip()
+        text = text_stripped[:20]
+        if len(text_stripped) > len(text):
+            text += '...'
+        if not text:
+            text = "EMPTY PARAGRAPH"
+        text = '<p:"{}">'.format(text)
+        return text
+
+    def clone(self):
+        """
+        Cloning by selective deep copying.
+        """
+        c = copy.deepcopy(self)
+        c._parent = self._parent
+        return c
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop('_parent', None)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+
+    @lazyproperty
+    def image_parts(self):
+        """
+        Return all image parts related to this paragraph.
+        """
+        drawings = []
+        for r in self.runs:
+            if r._element.drawing_lst:
+                drawings.extend(r._element.drawing_lst)
+        blips = [drawing.xpath(".//*[local-name() = 'blip']")[0]
+                 for drawing in drawings]
+        rIds = [b.embed for b in blips]
+        doc = self.part.document
+        parts = [doc.part.related_parts[rId] for rId in rIds]
+        return parts

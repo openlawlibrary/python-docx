@@ -15,6 +15,8 @@ class CT_P(BaseOxmlElement):
     pPr = ZeroOrOne('w:pPr')
     r = ZeroOrMore('w:r')
     sdt = ZeroOrMore('w:sdt')
+    bookmarkStart = ZeroOrMore('w:bookmarkStart')
+    bookmarkEnd = ZeroOrMore('w:bookmarkEnd')
 
     def _insert_pPr(self, pPr):
         self.insert(0, pPr)
