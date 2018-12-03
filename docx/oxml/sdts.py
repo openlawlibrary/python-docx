@@ -8,7 +8,7 @@ all occurrences of `w:sdt` within the document.
 """
 
 from .xmlchemy import BaseOxmlElement, ZeroOrOne, ZeroOrMore
-from .ns import nsmap
+from .ns import nsmap, qn
 
 class CT_SdtBase(BaseOxmlElement):
     """
@@ -49,3 +49,12 @@ class CT_SdtContentBase(BaseOxmlElement):
     It contains all paragraphs within the content control.
     """
     p = ZeroOrMore('w:p')
+
+    def get_runs(self):
+        def walk(el):
+            for child in el:
+                if child.tag == qn('w:r'):
+                    yield child
+                else:
+                    yield from walk(child)
+        yield from walk(self)
