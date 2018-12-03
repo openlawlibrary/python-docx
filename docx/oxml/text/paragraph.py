@@ -82,7 +82,7 @@ class CT_P(BaseOxmlElement):
     def r_lst_recursive(self):
         """
         Override xmlchemy generated list of runs to include runs from
-        hyperlinks.
+        hyperlinks and content controls.
         """
 
         def get_runs(elem):

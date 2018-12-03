@@ -1,6 +1,10 @@
 """
 Custom element classes that represent content control
-elements within the document part.
+elements within the document. Since there are four
+types of `sdt` and `sdtContent` elements and types
+for each part of the document (block, cell, row and run).
+`Base` represents single element and element type covering
+all occurrences of `w:sdt` within the document.
 """
 
 from .xmlchemy import BaseOxmlElement, ZeroOrOne, ZeroOrMore
@@ -8,8 +12,8 @@ from .ns import nsmap
 
 class CT_SdtBase(BaseOxmlElement):
     """
-    ``<w:sdt>`` structured document tag element specifying
-    a content control elements.
+    ``<w:sdt>`` structured document tag element (content control)
+    specifies content control elements on any level of document.
     """
     _tag_seq = ('w:sdtPr', 'w:stEndPr', 'w:sdtContent')
 
@@ -24,6 +28,9 @@ class CT_SdtBase(BaseOxmlElement):
         return self.sdtPr.name
 
 class CT_SdtPr(BaseOxmlElement):
+    """
+    ``<w:sdtPr>`` represents property element of ``<w:sdt>`` (content control).
+    """
     tag = ZeroOrOne('w:tag')
     date = ZeroOrOne('w:date')
 
@@ -32,12 +39,13 @@ class CT_SdtPr(BaseOxmlElement):
         try:
             return self.tag.get('{%s}val' % nsmap['w'])
         except:
-            raise Exception('All content controls should be named (having '
-            'set unique content control tag name).')
+            raise Exception('All content controls must have unique names'
+            '(having set unique content control tag name).')
 
 
 class CT_SdtContentBase(BaseOxmlElement):
     """
-    ``<w:sdtContent>`` represents content within ``<w:sdt>``
+    ``<w:sdtContent>`` represents content within ``<w:sdt>`` (content control).'
+    It contains all paragraphs within the content control.
     """
     p = ZeroOrMore('w:p')
