@@ -94,6 +94,7 @@ class CT_Numbering(BaseOxmlElement):
     ``<w:numbering>`` element, the root element of a numbering part, i.e.
     numbering.xml
     """
+    abstractNum = ZeroOrMore('w:abstractNum', successors=('w:num', 'w:numIdMacAtCleanup'))
     num = ZeroOrMore('w:num', successors=('w:numIdMacAtCleanup',))
 
     def add_num(self, abstractNum_id):
@@ -104,6 +105,15 @@ class CT_Numbering(BaseOxmlElement):
         next_num_id = self._next_numId
         num = CT_Num.new(next_num_id, abstractNum_id)
         return self._insert_num(num)
+
+    def get_abstractNum(self, abstractNum_id):
+        """
+        Returns |CT_AbstractNum| instance with corresponding
+        ``abstractNum_id`` if any
+        """
+        for el in self.abstractNum_lst:
+            if el.abstractNumId == abstractNum_id:
+                return el
 
     def num_having_numId(self, numId):
         """
@@ -129,3 +139,28 @@ class CT_Numbering(BaseOxmlElement):
             if num not in num_ids:
                 break
         return num
+
+class CT_AbstractNum(BaseOxmlElement):
+    """
+    ``<w:abstractNum>`` element, contains definitions for numbering part.
+    """
+    abstractNumId = RequiredAttribute('w:abstractNumId', ST_DecimalNumber)
+    lvl = ZeroOrMore('w:lvl')
+
+    def get_lvl(self, ilvl):
+        """
+        Returns |CT_Lvl| instance with corresponding ``ilvl`` if any
+        """
+        for el in self.lvl_lst:
+            if el.ilvl == ilvl:
+                return el
+
+class CT_Lvl(BaseOxmlElement):
+    """
+    ``<w:lvl>`` element located within ``<w:abstractNum>`` describing
+    list item formatting
+    """
+    ilvl = RequiredAttribute('w:ilvl', ST_DecimalNumber)
+    start = ZeroOrOne('w:start', CT_DecimalNumber)
+    numFmt = ZeroOrOne('w:numFmt')
+    lvlText = ZeroOrOne('w:lvlText')

@@ -52,6 +52,21 @@ class CT_P(BaseOxmlElement):
                 continue
             self.remove(child)
 
+    def number(self, numbering_el, style_el):
+        pPr = self.pPr
+        if pPr is None:
+            return None
+        numPr = pPr.numPr
+        if numPr:
+            ilvl, numId = numPr.ilvl.val, numPr.numId.val
+            num_el = numbering_el.num_having_numId(numId)
+            abstractNum_id = num_el.abstractNumId.val
+            abstractNum_el = numbering_el.get_abstractNum(abstractNum_id)
+            import pdb; pdb.set_trace()
+            pass # TODO: handle simple list
+        else:
+            pass # TODO: handle style formated lists
+
     def set_sectPr(self, sectPr):
         """
         Unconditionally replace or add *sectPr* as a grandchild in the
