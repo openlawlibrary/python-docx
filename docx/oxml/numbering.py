@@ -3,6 +3,8 @@
 """
 Custom element classes related to the numbering part
 """
+import re
+from roman import toRoman
 
 from . import OxmlElement
 from .shared import CT_DecimalNumber
@@ -10,6 +12,7 @@ from .simpletypes import ST_DecimalNumber
 from .xmlchemy import (
     BaseOxmlElement, OneAndOnlyOne, RequiredAttribute, ZeroOrMore, ZeroOrOne
 )
+from .ns import nsmap
 
 
 class CT_Num(BaseOxmlElement):
@@ -71,6 +74,10 @@ class CT_NumPr(BaseOxmlElement):
     ))
     numId = ZeroOrOne('w:numId', successors=('w:numberingChange', 'w:ins'))
 
+    @property
+    def values(self):
+        return self.ilvl.val, self.numId.val
+
     # @ilvl.setter
     # def _set_ilvl(self, val):
     #     """
@@ -97,6 +104,14 @@ class CT_Numbering(BaseOxmlElement):
     abstractNum = ZeroOrMore('w:abstractNum', successors=('w:num', 'w:numIdMacAtCleanup'))
     num = ZeroOrMore('w:num', successors=('w:numIdMacAtCleanup',))
 
+    fmt_map = {
+        'lowerLetter': lambda num: chr(num + 96),
+        'decimal': lambda num: num,
+        'upperLetter': lambda num: chr(num + 64),
+        'lowerRoman': lambda num: toRoman(num).lower(),
+        'none': lambda num: '',
+    }
+
     def add_num(self, abstractNum_id):
         """
         Return a newly added CT_Num (<w:num>) element referencing the
@@ -106,14 +121,36 @@ class CT_Numbering(BaseOxmlElement):
         num = CT_Num.new(next_num_id, abstractNum_id)
         return self._insert_num(num)
 
-    def get_abstractNum(self, abstractNum_id):
+    def get_abstractNum(self, numId):
         """
         Returns |CT_AbstractNum| instance with corresponding
-        ``abstractNum_id`` if any
+        paragraph ``pPr.numPr.numId`` if any
         """
+        num_el = self.num_having_numId(numId)
+        abstractNum_id = num_el.abstractNumId.val
+
         for el in self.abstractNum_lst:
             if el.abstractNumId == abstractNum_id:
                 return el
+
+    def get_num_for_p(self, p, styles_el):
+        """
+        Returns list item for the given paragraph.
+        """
+        ilvl, numId = p.pPr.get_numPr_tuple(styles_el)
+        abstractNum_el = self.get_abstractNum(numId)
+        lvl_el = abstractNum_el.get_lvl(ilvl)
+        p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
+        for pp in p.itersiblings(preceding=True):
+            try:
+                pp_ilvl, pp_numId = pp.pPr.get_numPr_tuple(styles_el)
+                if (pp_ilvl, pp_numId) == (ilvl, numId):
+                    p_num += 1
+            except:
+                continue
+        p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
+        lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
+        return re.sub(r'%(\d)', str(p_num), lvlText, 1)
 
     def num_having_numId(self, numId):
         """

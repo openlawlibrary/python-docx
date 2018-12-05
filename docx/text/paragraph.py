@@ -78,7 +78,7 @@ class Paragraph(Parented):
 
     @property
     def number(self):
-        return self._p.number(self.part.numbering_part._element, self.style._element)
+        return self._p.number(self.part.numbering_part._element, self.part.styles._element)
 
     @property
     def paragraph_format(self):
