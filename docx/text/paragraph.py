@@ -130,7 +130,7 @@ class Paragraph(Parented):
         Paragraph-level formatting, such as style, is preserved. All
         run-level formatting, such as bold or italic, is removed.
         """
-        text = ''
+        text = self.number if self.number is not None else ''
         for run in self.runs:
             text += run.text
         return text
