@@ -74,10 +74,6 @@ class CT_NumPr(BaseOxmlElement):
     ))
     numId = ZeroOrOne('w:numId', successors=('w:numberingChange', 'w:ins'))
 
-    @property
-    def values(self):
-        return self.ilvl.val, self.numId.val
-
     # @ilvl.setter
     # def _set_ilvl(self, val):
     #     """
