@@ -138,6 +138,8 @@ class CT_Numbering(BaseOxmlElement):
         Returns list item for the given paragraph.
         """
         ilvl, numId = p.pPr.get_numPr_tuple(styles_el)
+        if None in (ilvl, numId):
+            return
         abstractNum_el = self.get_abstractNum(numId)
         lvl_el = abstractNum_el.get_lvl(ilvl)
         p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
@@ -150,7 +152,7 @@ class CT_Numbering(BaseOxmlElement):
                 continue
         p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
         lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
-        return re.sub(r'%(\d)', str(p_num), lvlText, 1)
+        return re.sub(r'%(\d)', str(p_num), lvlText, 1) + lvl_el.suffix
 
     def num_having_numId(self, numId):
         """
@@ -201,3 +203,12 @@ class CT_Lvl(BaseOxmlElement):
     start = ZeroOrOne('w:start', CT_DecimalNumber)
     numFmt = ZeroOrOne('w:numFmt')
     lvlText = ZeroOrOne('w:lvlText')
+    suff = ZeroOrOne('w:suff')
+
+    @property
+    def suffix(self):
+        if self.suff is not None:
+            if self.suff.get('{%s}val' % nsmap['w']) == 'space':
+                return ' '
+        else:
+            return '\t'
