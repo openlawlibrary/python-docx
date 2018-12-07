@@ -60,12 +60,10 @@ class CT_Body(BaseOxmlElement):
         for content_elm in content_elms:
             self.remove(content_elm)
 
-    @property
-    def sdts(self):
+    def iter_sdts(self):
         for sdt in self.sdt_lst:
             yield sdt, sdt.name
 
-    @property
-    def sdts_all(self):
+    def iter_sdts_all(self):
         for sdt in self.iterdescendants('{%s}sdt' % nsmap['w']):
             yield sdt, sdt.name

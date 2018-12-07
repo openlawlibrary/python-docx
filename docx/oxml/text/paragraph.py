@@ -80,8 +80,7 @@ class CT_P(BaseOxmlElement):
         pPr = self.get_or_add_pPr()
         pPr.style = style
 
-    @property
-    def r_lst_recursive(self):
+    def iter_r_lst_recursive(self):
         """
         Override xmlchemy generated list of runs to include runs from
         hyperlinks and content controls.

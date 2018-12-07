@@ -50,7 +50,7 @@ class CT_SdtContentBase(BaseOxmlElement):
     """
     p = ZeroOrMore('w:p')
 
-    def get_runs(self):
+    def iter_runs(self):
         def walk(el):
             for child in el:
                 if child.tag == qn('w:r'):

@@ -53,6 +53,6 @@ class SdtContentBase(ElementProxy):
     @property
     def text(self):
         text = ''
-        for r in self._element.get_runs():
+        for r in self._element.iter_runs():
             text += r.text
         return text

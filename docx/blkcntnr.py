@@ -65,7 +65,7 @@ class BlockItemContainer(Parented):
         A list of children sdts (content controls) in this container, in
         document order. Read-only.
         """
-        return OrderedDict({k:SdtBase(s, self) for (s,k) in self._element.sdts})
+        return OrderedDict({k:SdtBase(s, self) for (s,k) in self._element.iter_sdts()})
 
     @property
     def sdts_all(self):
@@ -73,7 +73,7 @@ class BlockItemContainer(Parented):
         A list of descendants sdts (content controls) in this container, in
         document order. Read-only.
         """
-        return OrderedDict({k:SdtBase(s, self) for (s,k) in self._element.sdts_all})
+        return OrderedDict({k:SdtBase(s, self) for (s,k) in self._element.iter_sdts_all()})
 
     @property
     def tables(self):
