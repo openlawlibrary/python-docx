@@ -195,7 +195,7 @@ class Paragraph(Parented):
         Sequence of |Run| instances corresponding to the <w:r> elements in
         this paragraph.
         """
-        return [Run(r, self) for r in self._p.r_lst_recursive]
+        return [Run(r, self) for r in self._p.iter_r_lst_recursive()]
 
     @property
     def bookmark_starts(self):

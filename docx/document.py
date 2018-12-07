@@ -165,6 +165,20 @@ class Document(ElementProxy):
         return self._part.styles
 
     @property
+    def sdts(self):
+        """
+        A list of |SdtBase| children instances in this document.
+        """
+        return self._body.sdts
+
+    @property
+    def sdts_all(self):
+        """
+        A list of |SdtBase| descendants instances in this document.
+        """
+        return self._body.sdts_all
+
+    @property
     def tables(self):
         """
         A list of |Table| instances corresponding to the tables in the

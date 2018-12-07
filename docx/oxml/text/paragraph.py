@@ -10,10 +10,11 @@ from ..xmlchemy import BaseOxmlElement, OxmlElement, ZeroOrMore, ZeroOrOne
 
 class CT_P(BaseOxmlElement):
     """
-    ``<w:p>`` element, containing the properties and text for a paragraph.
+    ``<w:p>`` element, containing the properties, text for a paragraph and content controls.
     """
     pPr = ZeroOrOne('w:pPr')
     r = ZeroOrMore('w:r')
+    sdt = ZeroOrMore('w:sdt')
     bookmarkStart = ZeroOrMore('w:bookmarkStart')
     bookmarkEnd = ZeroOrMore('w:bookmarkEnd')
 
@@ -79,17 +80,16 @@ class CT_P(BaseOxmlElement):
         pPr = self.get_or_add_pPr()
         pPr.style = style
 
-    @property
-    def r_lst_recursive(self):
+    def iter_r_lst_recursive(self):
         """
         Override xmlchemy generated list of runs to include runs from
-        hyperlinks.
+        hyperlinks and content controls.
         """
 
         def get_runs(elem):
             for child in elem:
                 if child.tag == qn('w:r'):
                     yield child
-                elif child.tag == qn('w:hyperlink'):
+                elif child.tag in (qn('w:hyperlink'), qn('w:sdt'), qn('w:sdtContent')):
                     yield from get_runs(child)
         yield from get_runs(self)

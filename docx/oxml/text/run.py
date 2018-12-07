@@ -121,7 +121,6 @@ class CT_Text(BaseOxmlElement):
     ``<w:t>`` element, containing a sequence of characters within a run.
     """
 
-
 class _RunContentAppender(object):
     """
     Service object that knows how to translate a Python string into run
