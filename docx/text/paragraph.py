@@ -62,7 +62,7 @@ class Paragraph(Parented):
         self._p.clear_content()
         return self
 
-    def insert_paragraph_before(self, text=None, style=None):
+    def insert_paragraph_before(self, text=None, style=None, ilvl=None):
         """
         Return a newly created paragraph, inserted directly before this
         paragraph. If *text* is supplied, the new paragraph contains that
@@ -74,6 +74,8 @@ class Paragraph(Parented):
             paragraph.add_run(text)
         if style is not None:
             paragraph.style = style
+        if ilvl is not None:
+            paragraph.set_li_indent(self.part.styles, self, ilvl)
         return paragraph
 
     @property
@@ -115,6 +117,16 @@ class Paragraph(Parented):
             style_or_name, WD_STYLE_TYPE.PARAGRAPH
         )
         self._p.style = style_id
+
+    def set_li_indent(self, styles, prev, ilvl):
+        """
+        Sets list indentation for this paragraph. If ``prev`` is not specified
+        it starts a new list. ``ilvl`` specifies indentation level. Default
+        indentation level is 0.
+        """
+        prev_el = prev._element if prev else None
+        _ilvl = 0 if ilvl is None else ilvl
+        self._p.set_li_indent(self.part.numbering_part._element, styles._element, prev_el, _ilvl)
 
     @property
     def text(self):

@@ -108,6 +108,11 @@ class CT_Numbering(BaseOxmlElement):
         'none': lambda num: '',
     }
 
+    # xpath_options = {
+    #     True: {'single': 'count(w:lvl)=1 and ', 'level': 0},
+    #     False: {'single': '', 'level': level},
+    # }
+
     def add_num(self, abstractNum_id):
         """
         Return a newly added CT_Num (<w:num>) element referencing the
@@ -174,6 +179,29 @@ class CT_Numbering(BaseOxmlElement):
             if num not in num_ids:
                 break
         return num
+
+    def set_li_indent(self, para_el, style, prev_p, ilvl):
+        """
+        Sets paragraph list item indentation.
+        """
+        if (prev_p is None or
+                prev_p.pPr is None or
+                prev_p.pPr.numPr is None or
+                prev_p.pPr.numPr.numId is None):
+            if ilvl is None:
+                ilvl = 0
+            _, numId = para_el.pPr.get_numPr_tuple(style)
+            num_el = self.num_having_numId(numId)
+            anum = num_el.abstractNumId.val
+            num = self.add_num(anum)
+            num.add_lvlOverride(ilvl=ilvl).add_startOverride(1)
+            num = num.numId
+        else:
+            if ilvl is None:
+                ilvl = prev_p.pPr.numPr.ilvl.val
+            num = prev_p.pPr.numPr.numId.val
+        para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_numId().val = num
+        para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_ilvl().val = ilvl
 
 class CT_AbstractNum(BaseOxmlElement):
     """

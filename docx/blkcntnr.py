@@ -24,7 +24,7 @@ class BlockItemContainer(Parented):
         super(BlockItemContainer, self).__init__(parent)
         self._element = element
 
-    def add_paragraph(self, text='', style=None):
+    def add_paragraph(self, text='', style=None, prev=None, ilvl=None):
         """
         Return a paragraph newly added to the end of the content in this
         container, having *text* in a single run if present, and having
@@ -36,6 +36,8 @@ class BlockItemContainer(Parented):
             paragraph.add_run(text)
         if style is not None:
             paragraph.style = style
+        if prev is not None or ilvl is not None:
+            paragraph.set_li_indent(self.part.styles, prev, ilvl)
         return paragraph
 
     def add_table(self, rows, cols, width):

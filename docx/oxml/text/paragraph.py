@@ -65,6 +65,12 @@ class CT_P(BaseOxmlElement):
         pPr._remove_sectPr()
         pPr._insert_sectPr(sectPr)
 
+    def set_li_indent(self, numbering_el, styles_el, prev_el, ilvl):
+        """
+        Sets list indentation for this paragraph.
+        """
+        numbering_el.set_li_indent(self, styles_el, prev_el, ilvl)
+
     @property
     def style(self):
         """
