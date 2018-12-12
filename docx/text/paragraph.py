@@ -78,7 +78,14 @@ class Paragraph(Parented):
 
     @property
     def number(self):
-        return self._p.number(self.part.numbering_part._element, self.part.styles._element)
+        """
+        Gets the list item number with trailing space, if paragraph is part of the numbered
+        list, otherwise returns None.
+        """
+        try:
+            return self._p.number(self.part.numbering_part._element, self.part.styles._element)
+        except:
+            return None
 
     @property
     def paragraph_format(self):
