@@ -182,6 +182,10 @@ class Paragraph(Parented):
         return self
 
     @property
+    def number(self):
+        return self._p.number(self.part.numbering_part._element, self.part.styles._element)
+
+    @property
     def paragraph_format(self):
         """
         The |ParagraphFormat| object providing access to the formatting
@@ -239,7 +243,7 @@ class Paragraph(Parented):
         Paragraph-level formatting, such as style, is preserved. All
         run-level formatting, such as bold or italic, is removed.
         """
-        text = ''
+        text = self.number if self.number is not None else ''
         for run in self.runs:
             text += run.text
         return text

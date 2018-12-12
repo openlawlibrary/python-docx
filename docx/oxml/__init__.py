@@ -75,9 +75,12 @@ register_element_cls('w:body',     CT_Body)
 register_element_cls('w:document', CT_Document)
 
 from .numbering import (
-    CT_Num, CT_Numbering, CT_NumLvl, CT_NumPr
+    CT_Num, CT_Numbering, CT_NumLvl, CT_NumPr,
+    CT_AbstractNum, CT_Lvl
 )
+register_element_cls('w:abstractNum',   CT_AbstractNum)
 register_element_cls('w:abstractNumId', CT_DecimalNumber)
+register_element_cls('w:lvl',           CT_Lvl)
 register_element_cls('w:ilvl',          CT_DecimalNumber)
 register_element_cls('w:lvlOverride',   CT_NumLvl)
 register_element_cls('w:num',           CT_Num)

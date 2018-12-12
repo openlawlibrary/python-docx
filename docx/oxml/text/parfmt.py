@@ -91,6 +91,20 @@ class CT_PPr(BaseOxmlElement):
         else:
             ind.firstLine = value
 
+    def get_numPr_tuple(self, styles_el):
+        """
+        Returns tuple `(ilvl, numId)`. If there's no ``ilvl``
+        default value is 0.
+        """
+        if self.numPr is None:
+            try:
+                numPr = styles_el.get_by_id(self.pStyle.val).pPr.numPr
+                return 0, numPr.numId.val
+            except:
+                return (None, None)
+        else:
+            return self.numPr.ilvl.val, self.numPr.numId.val
+
     @property
     def ind_left(self):
         """

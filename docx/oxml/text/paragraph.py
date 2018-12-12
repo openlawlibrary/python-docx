@@ -3,7 +3,6 @@
 """
 Custom element classes related to paragraphs (CT_P).
 """
-
 from ..ns import qn
 from ..xmlchemy import BaseOxmlElement, OxmlElement, ZeroOrMore, ZeroOrOne
 
@@ -54,6 +53,11 @@ class CT_P(BaseOxmlElement):
             if child.tag == qn('w:pPr'):
                 continue
             self.remove(child)
+
+    def number(self, numbering_el, styles_el):
+        if self.pPr is None:
+            return None
+        return numbering_el.get_num_for_p(self, styles_el)
 
     def set_sectPr(self, sectPr):
         """
