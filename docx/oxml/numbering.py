@@ -142,6 +142,8 @@ class CT_Numbering(BaseOxmlElement):
         for pp in p.itersiblings(preceding=True):
             try:
                 pp_ilvl, pp_numId = pp.pPr.get_numPr_tuple(styles_el)
+                if ilvl > pp_ilvl:
+                    break
                 if (pp_ilvl, pp_numId) == (ilvl, numId):
                     p_num += 1
             except:
