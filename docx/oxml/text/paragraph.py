@@ -51,10 +51,8 @@ class CT_P(BaseOxmlElement):
                 continue
             self.remove(child)
 
-    def number(self, numbering_el, styles_el):
-        if self.pPr is None:
-            return None
-        return numbering_el.get_num_for_p(self, styles_el)
+    def number(self, numbering_el, styles_cache):
+        return numbering_el.get_num_for_p(self, styles_cache)
 
     def set_sectPr(self, sectPr):
         """
