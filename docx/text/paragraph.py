@@ -19,9 +19,13 @@ class Paragraph(Parented):
     """
     Proxy object wrapping ``<w:p>`` element.
     """
+
+    _p_style_cache = {}
+
     def __init__(self, p, parent):
         super(Paragraph, self).__init__(parent)
         self._p = self._element = p
+        self._number = None
 
     def add_run(self, text=None, style=None):
         """
@@ -187,10 +191,18 @@ class Paragraph(Parented):
         Gets the list item number with trailing space, if paragraph is part of the numbered
         list, otherwise returns None.
         """
-        try:
-            return self._p.number(self.part.numbering_part._element, self.part.styles._element)
-        except:
-            return None
+        if self._number is None:
+            try:
+                if not __class__._p_style_cache:
+                    styles_dict = {s.style_id:s._element for s in self.part.styles}
+                    __class__._p_style_cache.update(styles_dict)
+                self._number = self._p.number(self.part.numbering_part._element,
+                                             __class__._p_style_cache)
+                return self._number
+            except:
+                return None
+        else:
+            return self._number
 
     @property
     def paragraph_format(self):
@@ -250,7 +262,8 @@ class Paragraph(Parented):
         Paragraph-level formatting, such as style, is preserved. All
         run-level formatting, such as bold or italic, is removed.
         """
-        text = self.number if self.number is not None else ''
+        para_num = self.number
+        text = para_num if para_num is not None else ''
         for run in self.runs:
             text += run.text
         return text

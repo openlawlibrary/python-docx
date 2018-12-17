@@ -129,20 +129,23 @@ class CT_Numbering(BaseOxmlElement):
             if el.abstractNumId == abstractNum_id:
                 return el
 
-    def get_num_for_p(self, p, styles_el):
+    def get_num_for_p(self, p, styles_cache):
         """
         Returns list item for the given paragraph.
         """
-        ilvl, numId = p.pPr.get_numPr_tuple(styles_el)
-        if None in (ilvl, numId):
-            return
+        numPr = p.pPr.get_numPr(p.pPr.pStyle.val, styles_cache)
+        ilvl, numId = numPr.ilvl, numPr.numId.val
+        ilvl = ilvl.val if ilvl is not None else 0
         abstractNum_el = self.get_abstractNum(numId)
         lvl_el = abstractNum_el.get_lvl(ilvl)
         p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
+
         for pp in p.itersiblings(preceding=True):
             try:
-                pp_ilvl, pp_numId = pp.pPr.get_numPr_tuple(styles_el)
-                if ilvl > pp_ilvl:
+                pp_numPr = pp.pPr.get_numPr(pp.pPr.pStyle.val, styles_cache)
+                pp_ilvl, pp_numId = pp_numPr.ilvl, pp_numPr.numId.val
+                pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
+                if ilvl > pp_ilvl or (pp_numId != numId and ilvl == pp_ilvl):
                     break
                 if (pp_ilvl, pp_numId) == (ilvl, numId):
                     p_num += 1
