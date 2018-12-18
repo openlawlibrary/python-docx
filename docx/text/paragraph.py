@@ -99,6 +99,10 @@ class Paragraph(Parented):
         else:
             return self._number
 
+    @number.setter
+    def number(self, new_number):
+        self._number = new_number
+
     @property
     def paragraph_format(self):
         """
