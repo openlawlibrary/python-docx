@@ -199,7 +199,7 @@ class Paragraph(Parented):
                 self._number = self._p.number(self.part.numbering_part._element,
                                               __class__._p_style_cache)
                 return self._number
-            except:
+            except (AttributeError, NotImplementedError):
                 return None
         else:
             return self._number
