@@ -223,5 +223,7 @@ class CT_Lvl(BaseOxmlElement):
         if self.suff is not None:
             if self.suff.get('{%s}val' % nsmap['w']) == 'space':
                 return ' '
+            else:
+                return ''
         else:
             return '\t'
