@@ -145,7 +145,9 @@ class CT_Numbering(BaseOxmlElement):
                 pp_numPr = pp.pPr.get_numPr(pp.pPr.pStyle.val, styles_cache)
                 pp_ilvl, pp_numId = pp_numPr.ilvl, pp_numPr.numId.val
                 pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
-                if ilvl > pp_ilvl or (pp_numId != numId and ilvl == pp_ilvl):
+                if pp_numId == 0:
+                    continue
+                if ilvl > pp_ilvl:
                     break
                 if (pp_ilvl, pp_numId) == (ilvl, numId):
                     p_num += 1
