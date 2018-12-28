@@ -19,8 +19,6 @@ class Paragraph(Parented):
     Proxy object wrapping ``<w:p>`` element.
     """
 
-    _p_style_cache = {}
-
     def __init__(self, p, parent):
         super(Paragraph, self).__init__(parent)
         self._p = self._element = p
@@ -88,11 +86,8 @@ class Paragraph(Parented):
         """
         if self._number is None:
             try:
-                if not __class__._p_style_cache:
-                    styles_dict = {s.style_id: s._element for s in self.part.styles}
-                    __class__._p_style_cache.update(styles_dict)
                 self._number = self._p.number(self.part.numbering_part._element,
-                                              __class__._p_style_cache)
+                                              self.part.cached_styles)
                 return self._number
             except (AttributeError, NotImplementedError):
                 return None
