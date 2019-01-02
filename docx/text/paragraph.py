@@ -24,6 +24,7 @@ class Paragraph(Parented):
         super(Paragraph, self).__init__(parent)
         self._p = self._element = p
         self._number = None
+        self._lvl = None
 
     def add_run(self, text=None, style=None):
         """
@@ -198,6 +199,28 @@ class Paragraph(Parented):
                 return None
         else:
             return self._number
+
+    @property
+    def lvl(self):
+        """
+        Gets the `lvl` element based on the indentation index.
+        """
+        if self._lvl is None:
+            try:
+                self._lvl = self._p.lvl(self.part.numbering_part._element, self.part.cached_styles)
+                return self._lvl
+            except:
+                return None
+        else:
+            return self._lvl
+
+    @property
+    def numbering_format(self):
+        """
+        Returns |ParagraphFormat| object based on the formatting for the given
+        level of the numbered list.
+        """
+        return ParagraphFormat(self.lvl) if self.lvl is not None else None
 
     @property
     def paragraph_format(self):

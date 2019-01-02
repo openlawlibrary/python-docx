@@ -54,7 +54,16 @@ class CT_P(BaseOxmlElement):
                 continue
             self.remove(child)
 
+    def lvl(self, numbering_el, styles_cache):
+        """
+        Returns ``<w:lvl>`` element formatting for the current paragraph.
+        """
+        return numbering_el.get_lvl_for_p(self, styles_cache)
+
     def number(self, numbering_el, styles_cache):
+        """
+        Returns numbering part of the paragraph if any, else returns None.
+        """
         return numbering_el.get_num_for_p(self, styles_cache)
 
     def set_sectPr(self, sectPr):
