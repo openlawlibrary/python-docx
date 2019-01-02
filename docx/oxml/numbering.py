@@ -6,6 +6,7 @@ Custom element classes related to the numbering part
 import re
 from roman import toRoman
 
+from .text.parfmt import CT_PPr
 from . import OxmlElement
 from .shared import CT_DecimalNumber
 from .simpletypes import ST_DecimalNumber
@@ -133,6 +134,16 @@ class CT_Numbering(BaseOxmlElement):
             if el.abstractNumId == abstractNum_id:
                 return el
 
+    def get_lvl_for_p(self, p, styles_cache):
+        """
+        Gets the formatting based on current paragraph indentation level.
+        """
+        numPr = p.pPr.get_numPr(p.pPr.pStyle.val, styles_cache)
+        ilvl, numId = numPr.ilvl, numPr.numId.val
+        ilvl = ilvl.val if ilvl is not None else 0
+        abstractNum_el = self.get_abstractNum(numId)
+        return abstractNum_el.get_lvl(ilvl)
+
     def get_num_for_p(self, p, styles_cache):
         """
         Returns list item for the given paragraph.
@@ -216,6 +227,7 @@ class CT_Lvl(BaseOxmlElement):
     """
     ilvl = RequiredAttribute('w:ilvl', ST_DecimalNumber)
     start = ZeroOrOne('w:start', CT_DecimalNumber)
+    pPr = ZeroOrOne('w:pPr', CT_PPr)
     numFmt = ZeroOrOne('w:numFmt')
     lvlText = ZeroOrOne('w:lvlText')
     suff = ZeroOrOne('w:suff')
