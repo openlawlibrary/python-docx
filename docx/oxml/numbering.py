@@ -123,7 +123,11 @@ class CT_Numbering(BaseOxmlElement):
         Returns |CT_AbstractNum| instance with corresponding
         paragraph ``pPr.numPr.numId`` if any
         """
-        num_el = self.num_having_numId(numId)
+        try:
+            num_el = self.num_having_numId(numId)
+        except KeyError:
+            return None
+
         abstractNum_id = num_el.abstractNumId.val
 
         for el in self.abstractNum_lst:
@@ -148,6 +152,8 @@ class CT_Numbering(BaseOxmlElement):
         ilvl, numId = numPr.ilvl, numPr.numId.val
         ilvl = ilvl.val if ilvl is not None else 0
         abstractNum_el = self.get_abstractNum(numId)
+        if abstractNum_el is None:
+            return None
         lvl_el = abstractNum_el.get_lvl(ilvl)
         p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
 
@@ -162,9 +168,13 @@ class CT_Numbering(BaseOxmlElement):
                     break
                 if (pp_ilvl, pp_numId) == (ilvl, numId):
                     p_num += 1
-            except:
+            except (KeyError, AttributeError):
                 continue
-        p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
+        try:
+            p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
+        except KeyError:
+            return None
+
         lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
         return re.sub(r'%(\d)', str(p_num), lvlText, 1) + lvl_el.suffix
 
@@ -193,6 +203,7 @@ class CT_Numbering(BaseOxmlElement):
                 break
         return num
 
+
 class CT_AbstractNum(BaseOxmlElement):
     """
     ``<w:abstractNum>`` element, contains definitions for numbering part.
@@ -207,6 +218,7 @@ class CT_AbstractNum(BaseOxmlElement):
         for el in self.lvl_lst:
             if el.ilvl == ilvl:
                 return el
+
 
 class CT_Lvl(BaseOxmlElement):
     """
@@ -225,5 +237,7 @@ class CT_Lvl(BaseOxmlElement):
         if self.suff is not None:
             if self.suff.get('{%s}val' % nsmap['w']) == 'space':
                 return ' '
+            else:
+                return ''
         else:
             return '\t'

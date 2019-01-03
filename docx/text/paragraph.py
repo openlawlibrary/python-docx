@@ -195,10 +195,14 @@ class Paragraph(Parented):
                 self._number = self._p.number(self.part.numbering_part._element,
                                               self.part.cached_styles)
                 return self._number
-            except AttributeError:
+            except (AttributeError, NotImplementedError):
                 return None
         else:
             return self._number
+
+    @number.setter
+    def number(self, new_number):
+        self._number = new_number
 
     @property
     def lvl(self):
@@ -209,7 +213,7 @@ class Paragraph(Parented):
             try:
                 self._lvl = self._p.lvl(self.part.numbering_part._element, self.part.cached_styles)
                 return self._lvl
-            except AttributeError:
+            except (AttributeError, NotImplementedError):
                 return None
         else:
             return self._lvl
