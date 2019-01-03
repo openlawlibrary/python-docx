@@ -5,6 +5,7 @@ Custom element classes related to paragraphs (CT_P).
 """
 
 from ..ns import qn
+from ..sdts import CT_SdtBase
 from ..xmlchemy import BaseOxmlElement, OxmlElement, ZeroOrMore, ZeroOrOne
 
 
@@ -14,7 +15,7 @@ class CT_P(BaseOxmlElement):
     """
     pPr = ZeroOrOne('w:pPr')
     r = ZeroOrMore('w:r')
-    sdt = ZeroOrMore('w:sdt')
+    sdt = ZeroOrMore('w:sdt', CT_SdtBase)
     bookmarkStart = ZeroOrMore('w:bookmarkStart')
     bookmarkEnd = ZeroOrMore('w:bookmarkEnd')
 
