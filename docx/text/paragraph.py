@@ -385,7 +385,9 @@ class Paragraph(Parented):
             text += '...'
         if not text:
             text = "EMPTY PARAGRAPH"
-        text = '<p:"{}">'.format(text)
+        text = '<p:"{}{}">'.format(
+            "{} ".format(str(self.num))
+            if hasattr(self, 'num') and self.num else '', text)
         return text
 
     def clone(self):
