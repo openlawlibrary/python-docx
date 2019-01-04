@@ -21,7 +21,7 @@ class Document(ElementProxy):
     Use :func:`docx.Document` to open or create a document.
     """
 
-    __slots__ = ('_part', '__body')
+    #__slots__ = ('_part', '__body')
 
     def __init__(self, element, part):
         super(Document, self).__init__(element)
@@ -164,6 +164,20 @@ class Document(ElementProxy):
         A |Styles| object providing access to the styles in this document.
         """
         return self._part.styles
+
+    @property
+    def sdts(self):
+        """
+        A list of |SdtBase| children instances in this document.
+        """
+        return self._body.sdts
+
+    @property
+    def sdts_all(self):
+        """
+        A list of |SdtBase| descendants instances in this document.
+        """
+        return self._body.sdts_all
 
     @property
     def tables(self):

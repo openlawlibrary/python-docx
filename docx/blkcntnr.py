@@ -7,10 +7,12 @@ ones like structured document tags.
 """
 
 from __future__ import absolute_import, print_function
+from collections import OrderedDict
 
 from .oxml.table import CT_Tbl
 from .shared import Parented
 from .text.paragraph import Paragraph
+from .sdt import SdtBase
 
 
 class BlockItemContainer(Parented):
@@ -58,6 +60,22 @@ class BlockItemContainer(Parented):
         order. Read-only.
         """
         return [Paragraph(p, self) for p in self._element.p_lst]
+
+    @property
+    def sdts(self):
+        """
+        A list of children sdts (content controls) in this container, in
+        document order. Read-only.
+        """
+        return OrderedDict({k:SdtBase(s, self) for (s,k) in self._element.iter_sdts()})
+
+    @property
+    def sdts_all(self):
+        """
+        A list of descendants sdts (content controls) in this container, in
+        document order. Read-only.
+        """
+        return OrderedDict({k:SdtBase(s, self) for (s,k) in self._element.iter_sdts_all()})
 
     @property
     def tables(self):
