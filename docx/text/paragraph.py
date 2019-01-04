@@ -14,7 +14,6 @@ from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented, lazyproperty
 
-
 class Paragraph(Parented):
     """
     Proxy object wrapping ``<w:p>`` element.
@@ -383,6 +382,14 @@ class Paragraph(Parented):
         """
         return self.lstrip(chars).rstrip(chars)
 
+    @property
+    def sdts(self):
+        """
+        Returns list of inline content controls for this paragraph.
+        """
+        from ..sdt import SdtBase
+        return [SdtBase(sdt, self) for sdt in self._element.sdt_lst]
+
     def _insert_paragraph_before(self):
         """
         Return a newly created paragraph, inserted directly before this
@@ -398,7 +405,9 @@ class Paragraph(Parented):
             text += '...'
         if not text:
             text = "EMPTY PARAGRAPH"
-        text = '<p:"{}">'.format(text)
+        text = '<p:"{}{}">'.format(
+            "{} ".format(str(self.num))
+            if hasattr(self, 'num') and self.num else '', text)
         return text
 
     def clone(self):
