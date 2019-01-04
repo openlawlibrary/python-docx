@@ -18,9 +18,12 @@ class Paragraph(Parented):
     """
     Proxy object wrapping ``<w:p>`` element.
     """
+
     def __init__(self, p, parent):
         super(Paragraph, self).__init__(parent)
         self._p = self._element = p
+        self._number = None
+        self._lvl = None
 
     def add_run(self, text=None, style=None):
         """
@@ -78,7 +81,45 @@ class Paragraph(Parented):
 
     @property
     def number(self):
-        return self._p.number(self.part.numbering_part._element, self.part.styles._element)
+        """
+        Gets the list item number with trailing space, if paragraph is part of the numbered
+        list, otherwise returns None.
+        """
+        if self._number is None:
+            try:
+                self._number = self._p.number(self.part.numbering_part._element,
+                                              self.part.cached_styles)
+                return self._number
+            except (AttributeError, NotImplementedError):
+                return None
+        else:
+            return self._number
+
+    @number.setter
+    def number(self, new_number):
+        self._number = new_number
+
+    @property
+    def lvl(self):
+        """
+        Gets the `lvl` element based on the indentation index.
+        """
+        if self._lvl is None:
+            try:
+                self._lvl = self._p.lvl(self.part.numbering_part._element, self.part.cached_styles)
+                return self._lvl
+            except AttributeError:
+                return None
+        else:
+            return self._lvl
+
+    @property
+    def numbering_format(self):
+        """
+        Returns |ParagraphFormat| object based on the formatting for the given
+        level of the numbered list.
+        """
+        return ParagraphFormat(self.lvl) if self.lvl is not None else None
 
     @property
     def paragraph_format(self):
@@ -130,7 +171,8 @@ class Paragraph(Parented):
         Paragraph-level formatting, such as style, is preserved. All
         run-level formatting, such as bold or italic, is removed.
         """
-        text = self.number if self.number is not None else ''
+        para_num = self.number
+        text = para_num if para_num is not None else ''
         for run in self.runs:
             text += run.text
         return text
