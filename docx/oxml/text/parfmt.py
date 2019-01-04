@@ -91,19 +91,18 @@ class CT_PPr(BaseOxmlElement):
         else:
             ind.firstLine = value
 
-    def get_numPr_tuple(self, styles_el):
+    def get_numPr(self, style_id, styles_cache):
         """
-        Returns tuple `(ilvl, numId)`. If there's no ``ilvl``
-        default value is 0.
+        Returns ``numPr`` for paragraph if any, otherwise returns related
+        paragraph style ``numPr`` if exists or ``None`` otherwise.
         """
-        if self.numPr is None:
-            try:
-                numPr = styles_el.get_by_id(self.pStyle.val).pPr.numPr
-                return 0, numPr.numId.val
-            except:
-                return (None, None)
+        if self.numPr is not None:
+            return self.numPr
         else:
-            return self.numPr.ilvl.val, self.numPr.numId.val
+            try:
+                return styles_cache[style_id].pPr.numPr
+            except KeyError:
+                return None
 
     @property
     def ind_left(self):

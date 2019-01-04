@@ -6,6 +6,7 @@ Custom element classes related to the numbering part
 import re
 from roman import toRoman
 
+from .text.parfmt import CT_PPr
 from . import OxmlElement
 from .shared import CT_DecimalNumber
 from .simpletypes import ST_DecimalNumber
@@ -127,31 +128,58 @@ class CT_Numbering(BaseOxmlElement):
         Returns |CT_AbstractNum| instance with corresponding
         paragraph ``pPr.numPr.numId`` if any
         """
-        num_el = self.num_having_numId(numId)
+        try:
+            num_el = self.num_having_numId(numId)
+        except KeyError:
+            return None
+
         abstractNum_id = num_el.abstractNumId.val
 
         for el in self.abstractNum_lst:
             if el.abstractNumId == abstractNum_id:
                 return el
 
-    def get_num_for_p(self, p, styles_el):
+    def get_lvl_for_p(self, p, styles_cache):
+        """
+        Gets the formatting based on current paragraph indentation level.
+        """
+        numPr = p.pPr.get_numPr(p.pPr.pStyle.val, styles_cache)
+        ilvl, numId = numPr.ilvl, numPr.numId.val
+        ilvl = ilvl.val if ilvl is not None else 0
+        abstractNum_el = self.get_abstractNum(numId)
+        return abstractNum_el.get_lvl(ilvl)
+
+    def get_num_for_p(self, p, styles_cache):
         """
         Returns list item for the given paragraph.
         """
-        ilvl, numId = p.pPr.get_numPr_tuple(styles_el)
-        if None in (ilvl, numId):
-            return
+        numPr = p.pPr.get_numPr(p.pPr.pStyle.val, styles_cache)
+        ilvl, numId = numPr.ilvl, numPr.numId.val
+        ilvl = ilvl.val if ilvl is not None else 0
         abstractNum_el = self.get_abstractNum(numId)
+        if abstractNum_el is None:
+            return None
         lvl_el = abstractNum_el.get_lvl(ilvl)
         p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
+
         for pp in p.itersiblings(preceding=True):
             try:
-                pp_ilvl, pp_numId = pp.pPr.get_numPr_tuple(styles_el)
+                pp_numPr = pp.pPr.get_numPr(pp.pPr.pStyle.val, styles_cache)
+                pp_ilvl, pp_numId = pp_numPr.ilvl, pp_numPr.numId.val
+                pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
+                if pp_numId == 0:
+                    continue
+                if ilvl > pp_ilvl:
+                    break
                 if (pp_ilvl, pp_numId) == (ilvl, numId):
                     p_num += 1
-            except:
+            except (KeyError, AttributeError):
                 continue
-        p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
+        try:
+            p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
+        except KeyError:
+            return None
+
         lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
         return re.sub(r'%(\d)', str(p_num), lvlText, 1) + lvl_el.suffix
 
@@ -180,7 +208,7 @@ class CT_Numbering(BaseOxmlElement):
                 break
         return num
 
-    def set_li_indent(self, para_el, style, prev_p, ilvl):
+    def set_li_indent(self, para_el, styles, prev_p, ilvl):
         """
         Sets paragraph list item indentation.
         """
@@ -190,7 +218,8 @@ class CT_Numbering(BaseOxmlElement):
                 prev_p.pPr.numPr.numId is None):
             if ilvl is None:
                 ilvl = 0
-            _, numId = para_el.pPr.get_numPr_tuple(style)
+            numPr = para_el.pPr.get_numPr(para_el.pPr.pStyle.val, styles)
+            numId = numPr.numId.val
             num_el = self.num_having_numId(numId)
             anum = num_el.abstractNumId.val
             num = self.add_num(anum)
@@ -218,6 +247,7 @@ class CT_AbstractNum(BaseOxmlElement):
             if el.ilvl == ilvl:
                 return el
 
+
 class CT_Lvl(BaseOxmlElement):
     """
     ``<w:lvl>`` element located within ``<w:abstractNum>`` describing
@@ -225,6 +255,7 @@ class CT_Lvl(BaseOxmlElement):
     """
     ilvl = RequiredAttribute('w:ilvl', ST_DecimalNumber)
     start = ZeroOrOne('w:start', CT_DecimalNumber)
+    pPr = ZeroOrOne('w:pPr', CT_PPr)
     numFmt = ZeroOrOne('w:numFmt')
     lvlText = ZeroOrOne('w:lvlText')
     suff = ZeroOrOne('w:suff')
@@ -234,5 +265,7 @@ class CT_Lvl(BaseOxmlElement):
         if self.suff is not None:
             if self.suff.get('{%s}val' % nsmap['w']) == 'space':
                 return ' '
+            else:
+                return ''
         else:
             return '\t'

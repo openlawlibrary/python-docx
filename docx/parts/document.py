@@ -28,6 +28,18 @@ class DocumentPart(XmlPart):
     inherited by many content objects provides access to this part object for
     that purpose.
     """
+
+    @property
+    def cached_styles(self):
+        """
+        Caching collection of styles on document loading, since method `styles`
+        is generating new styles per call, and can be time consuming
+        """
+        if not hasattr(self, '_cached_styles'):
+            cached_styles = {s.style_id: s._element for s in self.styles}
+            setattr(self, '_cached_styles', cached_styles)
+        return self._cached_styles
+
     @property
     def core_properties(self):
         """
