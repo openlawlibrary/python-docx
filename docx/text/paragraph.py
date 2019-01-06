@@ -108,7 +108,7 @@ class Paragraph(Parented):
             try:
                 self._lvl = self._p.lvl(self.part.numbering_part._element, self.part.cached_styles)
                 return self._lvl
-            except AttributeError:
+            except (AttributeError, NotImplementedError):
                 return None
         else:
             return self._lvl
