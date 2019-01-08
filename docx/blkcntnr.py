@@ -32,6 +32,8 @@ class BlockItemContainer(Parented):
         container, having *text* in a single run if present, and having
         paragraph style *style*. If *style* is |None|, no paragraph style is
         applied, which has the same effect as applying the 'Normal' style.
+        If paragraph is part of numbered list then ``prev_p`` (previous para)
+        and ``ilvl``(indentation level) should be specified.
         """
         paragraph = self._add_paragraph()
         if text:
@@ -39,7 +41,7 @@ class BlockItemContainer(Parented):
         if style is not None:
             paragraph.style = style
         if prev is not None or ilvl is not None:
-            paragraph.set_li_indent(self.part.styles, prev, ilvl)
+            paragraph.set_li_lvl(self.part.styles, prev, ilvl)
         return paragraph
 
     def add_table(self, rows, cols, width):

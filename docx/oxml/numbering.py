@@ -208,9 +208,12 @@ class CT_Numbering(BaseOxmlElement):
                 break
         return num
 
-    def set_li_indent(self, para_el, styles, prev_p, ilvl):
+    def set_li_lvl(self, para_el, styles, prev_p, ilvl):
         """
-        Sets paragraph list item indentation.
+        Sets paragraph list item indentation level. When previous
+        paragraph ``prev_p`` is specified, it will look up for existing numbering
+        list of ``prev_p`` and add new list item. If no ``prev_p`` is specified,
+        it will create a new numbering list with specified indentation level ``ilvl``.
         """
         if (prev_p is None or
                 prev_p.pPr is None or

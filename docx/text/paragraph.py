@@ -78,7 +78,7 @@ class Paragraph(Parented):
         if style is not None:
             paragraph.style = style
         if ilvl is not None:
-            paragraph.set_li_indent(self.part.styles, self, ilvl)
+            paragraph.set_li_lvl(self.part.styles, self, ilvl)
         return paragraph
 
     def split(self, *positions):
@@ -271,15 +271,15 @@ class Paragraph(Parented):
         )
         self._p.style = style_id
 
-    def set_li_indent(self, styles, prev, ilvl):
+    def set_li_lvl(self, styles, prev, ilvl):
         """
-        Sets list indentation for this paragraph. If ``prev`` is not specified
+        Sets list indentation level for this paragraph. If ``prev`` is not specified
         it starts a new list. ``ilvl`` specifies indentation level. Default
         indentation level is 0.
         """
         prev_el = prev._element if prev else None
         _ilvl = 0 if ilvl is None else ilvl
-        self._p.set_li_indent(self.part.numbering_part._element,
+        self._p.set_li_lvl(self.part.numbering_part._element,
                               self.part.cached_styles, prev_el, _ilvl)
 
     @property
