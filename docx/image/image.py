@@ -177,7 +177,7 @@ class Image(object):
         image_header = _ImageHeaderFactory(stream)
         if filename is None:
             filename = 'image.%s' % image_header.default_ext
-        return cls(blob, filename, image_header)
+        return cls(blob, filename, image_header, 'image/%s' % image_header.default_ext)
 
 
 def _ImageHeaderFactory(stream):
