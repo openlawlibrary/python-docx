@@ -3,13 +3,17 @@
 """
 Custom element classes related to the numbering part
 """
+import re
+from roman import toRoman
 
+from .text.parfmt import CT_PPr
 from . import OxmlElement
 from .shared import CT_DecimalNumber
 from .simpletypes import ST_DecimalNumber
 from .xmlchemy import (
     BaseOxmlElement, OneAndOnlyOne, RequiredAttribute, ZeroOrMore, ZeroOrOne
 )
+from .ns import nsmap
 
 
 class CT_Num(BaseOxmlElement):
@@ -94,7 +98,21 @@ class CT_Numbering(BaseOxmlElement):
     ``<w:numbering>`` element, the root element of a numbering part, i.e.
     numbering.xml
     """
+    abstractNum = ZeroOrMore('w:abstractNum', successors=('w:num', 'w:numIdMacAtCleanup'))
     num = ZeroOrMore('w:num', successors=('w:numIdMacAtCleanup',))
+
+    fmt_map = {
+        'lowerLetter': lambda num: chr(num + 96),
+        'decimal': lambda num: num,
+        'upperLetter': lambda num: chr(num + 64),
+        'lowerRoman': lambda num: toRoman(num).lower(),
+        'none': lambda num: '',
+    }
+
+    # xpath_options = {
+    #     True: {'single': 'count(w:lvl)=1 and ', 'level': 0},
+    #     False: {'single': '', 'level': level},
+    # }
 
     def add_num(self, abstractNum_id):
         """
@@ -104,6 +122,66 @@ class CT_Numbering(BaseOxmlElement):
         next_num_id = self._next_numId
         num = CT_Num.new(next_num_id, abstractNum_id)
         return self._insert_num(num)
+
+    def get_abstractNum(self, numId):
+        """
+        Returns |CT_AbstractNum| instance with corresponding
+        paragraph ``pPr.numPr.numId`` if any
+        """
+        try:
+            num_el = self.num_having_numId(numId)
+        except KeyError:
+            return None
+
+        abstractNum_id = num_el.abstractNumId.val
+
+        for el in self.abstractNum_lst:
+            if el.abstractNumId == abstractNum_id:
+                return el
+
+    def get_lvl_for_p(self, p, styles_cache):
+        """
+        Gets the formatting based on current paragraph indentation level.
+        """
+        numPr = p.pPr.get_numPr(p.pPr.pStyle.val, styles_cache)
+        ilvl, numId = numPr.ilvl, numPr.numId.val
+        ilvl = ilvl.val if ilvl is not None else 0
+        abstractNum_el = self.get_abstractNum(numId)
+        return abstractNum_el.get_lvl(ilvl)
+
+    def get_num_for_p(self, p, styles_cache):
+        """
+        Returns list item for the given paragraph.
+        """
+        numPr = p.pPr.get_numPr(p.pPr.pStyle.val, styles_cache)
+        ilvl, numId = numPr.ilvl, numPr.numId.val
+        ilvl = ilvl.val if ilvl is not None else 0
+        abstractNum_el = self.get_abstractNum(numId)
+        if abstractNum_el is None:
+            return None
+        lvl_el = abstractNum_el.get_lvl(ilvl)
+        p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
+
+        for pp in p.itersiblings(preceding=True):
+            try:
+                pp_numPr = pp.pPr.get_numPr(pp.pPr.pStyle.val, styles_cache)
+                pp_ilvl, pp_numId = pp_numPr.ilvl, pp_numPr.numId.val
+                pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
+                if pp_numId == 0:
+                    continue
+                if ilvl > pp_ilvl:
+                    break
+                if (pp_ilvl, pp_numId) == (ilvl, numId):
+                    p_num += 1
+            except (KeyError, AttributeError):
+                continue
+        try:
+            p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
+        except KeyError:
+            return None
+
+        lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
+        return re.sub(r'%(\d)', str(p_num), lvlText, 1) + lvl_el.suffix
 
     def num_having_numId(self, numId):
         """
@@ -129,3 +207,68 @@ class CT_Numbering(BaseOxmlElement):
             if num not in num_ids:
                 break
         return num
+
+    def set_li_lvl(self, para_el, styles, prev_p, ilvl):
+        """
+        Sets paragraph list item indentation level. When previous
+        paragraph ``prev_p`` is specified, it will look up for existing numbering
+        list of ``prev_p`` and add new list item. If no ``prev_p`` is specified,
+        it will create a new numbering list with specified indentation level ``ilvl``.
+        """
+        if (prev_p is None or
+                prev_p.pPr is None or
+                prev_p.pPr.numPr is None or
+                prev_p.pPr.numPr.numId is None):
+            if ilvl is None:
+                ilvl = 0
+            numPr = para_el.pPr.get_numPr(para_el.pPr.pStyle.val, styles)
+            numId = numPr.numId.val
+            num_el = self.num_having_numId(numId)
+            anum = num_el.abstractNumId.val
+            num = self.add_num(anum)
+            num.add_lvlOverride(ilvl=ilvl).add_startOverride(1)
+            num = num.numId
+        else:
+            if ilvl is None:
+                ilvl = prev_p.pPr.numPr.ilvl.val
+            num = prev_p.pPr.numPr.numId.val
+        para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_numId().val = num
+        para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_ilvl().val = ilvl
+
+class CT_AbstractNum(BaseOxmlElement):
+    """
+    ``<w:abstractNum>`` element, contains definitions for numbering part.
+    """
+    abstractNumId = RequiredAttribute('w:abstractNumId', ST_DecimalNumber)
+    lvl = ZeroOrMore('w:lvl')
+
+    def get_lvl(self, ilvl):
+        """
+        Returns |CT_Lvl| instance with corresponding ``ilvl`` if any
+        """
+        for el in self.lvl_lst:
+            if el.ilvl == ilvl:
+                return el
+
+
+class CT_Lvl(BaseOxmlElement):
+    """
+    ``<w:lvl>`` element located within ``<w:abstractNum>`` describing
+    list item formatting
+    """
+    ilvl = RequiredAttribute('w:ilvl', ST_DecimalNumber)
+    start = ZeroOrOne('w:start', CT_DecimalNumber)
+    pPr = ZeroOrOne('w:pPr', CT_PPr)
+    numFmt = ZeroOrOne('w:numFmt')
+    lvlText = ZeroOrOne('w:lvlText')
+    suff = ZeroOrOne('w:suff')
+
+    @property
+    def suffix(self):
+        if self.suff is not None:
+            if self.suff.get('{%s}val' % nsmap['w']) == 'space':
+                return ' '
+            else:
+                return ''
+        else:
+            return '\t'

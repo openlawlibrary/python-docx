@@ -108,12 +108,15 @@ class OpcPackage(object):
         return self.part_related_by(RT.OFFICE_DOCUMENT)
 
     @classmethod
-    def open(cls, pkg_file):
+    def open(cls, pkg, is_from_file=True):
         """
         Return an |OpcPackage| instance loaded with the contents of
         *pkg_file*.
         """
-        pkg_reader = PackageReader.from_file(pkg_file)
+        if is_from_file:
+            pkg_reader = PackageReader.from_file(pkg)
+        else:
+            pkg_reader = PackageReader.from_str(pkg)
         package = cls()
         Unmarshaller.unmarshal(pkg_reader, package, PartFactory)
         return package
