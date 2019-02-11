@@ -11,7 +11,7 @@ from __future__ import (
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented
+from ..shared import Parented, Length
 
 
 class Paragraph(Parented):
@@ -143,3 +143,35 @@ class Paragraph(Parented):
         """
         p = self._p.add_p_before()
         return Paragraph(p, self._parent)
+
+    @property
+    def norm_left_indent(self):
+        """
+        Returns left indentation by unifying different approaches for paragraph
+        indentation like: tab characters, tab stops, and first line indentation.
+        Default tab stop is predefined as ``default_tab_stop`` (.5 Inches).
+        """
+        indent = 0
+        default_tab_stop = 457200
+        if self.paragraph_format.left_indent:
+            indent += self.paragraph_format.left_indent
+        if self.paragraph_format.first_line_indent:
+            indent += self.paragraph_format.first_line_indent
+        tab_cnt = 0
+        for char in self.text:
+            if char != '\t':
+                break
+            tab_cnt += 1
+        if tab_cnt:
+            if self.paragraph_format.tab_stops:
+                last_tab_stop = self.paragraph_format.tab_stops[tab_cnt-1]
+                if self.paragraph_format.first_line_indent:
+                    if self.paragraph_format.first_line_indent < last_tab_stop.position:
+                        indent = last_tab_stop.position
+                    else:
+                        indent += tab_cnt * default_tab_stop
+                else:
+                    indent += last_tab_stop.position
+            else:
+                indent += default_tab_stop * tab_cnt
+        return Length(indent)

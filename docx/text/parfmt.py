@@ -254,25 +254,6 @@ class ParagraphFormat(ElementProxy):
         return TabStops(pPr)
 
     @property
-    def unified_left_indent(self):
-        """
-        Returns left indentation by unifying different approaches for paragraph
-        indentation like: tab characters, tab stops, and first line indentation.
-        It also takes care about indentation inhereted from applied style.
-        """
-        # TODO: 1. look through runs and see if there are \t runs before any text
-        # occurs. Each \t is .5 inch.
-        #       2. check for first line indentation. If first line indentation is
-        # applied for the given paragraph, it should be added to the final indent.
-        #       3. check for tab stops. and get the tab stop position for the given
-        # paragraph.
-        #       4. check for space char occurrences within the para runs. handle like
-        # step 1.
-        #       5. check the whole paragraph indentation, and add to calculated indentation
-        # if any.
-        pass
-
-    @property
     def widow_control(self):
         """
         |True| if the first and last lines in the paragraph remain on the
