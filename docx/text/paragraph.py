@@ -12,7 +12,7 @@ import copy
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented, Length, lazyproperty
+from ..shared import Parented, Length, lazyproperty, Inches
 
 
 class Paragraph(Parented):
@@ -407,11 +407,13 @@ class Paragraph(Parented):
         Default tab stop is predefined as ``default_tab_stop`` (.5 Inches).
         """
         indent = 0
-        default_tab_stop = 457200
+        default_tab_stop = Inches(0.5)
         if self.paragraph_format.left_indent:
             indent += self.paragraph_format.left_indent
         if self.paragraph_format.first_line_indent:
             indent += self.paragraph_format.first_line_indent
+        if self.numbering_format:
+            indent += self.numbering_format.first_line_indent + self.numbering_format.left_indent
         tab_cnt = 0
         for char in self.text:
             if char != '\t':
