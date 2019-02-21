@@ -407,18 +407,22 @@ class Paragraph(Parented):
         Default tab stop is predefined as ``default_tab_stop`` (.5 Inches).
         """
         indent = 0
-        default_tab_stop = Inches(0.5)
-        if self.paragraph_format.left_indent:
-            indent += self.paragraph_format.left_indent
-        if self.paragraph_format.first_line_indent:
-            indent += self.paragraph_format.first_line_indent
-        if self.numbering_format:
-            indent += self.numbering_format.first_line_indent + self.numbering_format.left_indent
         tab_cnt = 0
+        default_tab_stop = Inches(0.5)
         for char in self.text:
             if char != '\t':
                 break
             tab_cnt += 1
+        if self.paragraph_format.left_indent:
+            indent += self.paragraph_format.left_indent
+        if self.paragraph_format.first_line_indent:
+            if self.paragraph_format.first_line_indent < 0 and tab_cnt:
+                indent = 0
+                tab_cnt -= 1
+            else:
+                indent += self.paragraph_format.first_line_indent
+        if self.numbering_format:
+            indent += self.numbering_format.first_line_indent + self.numbering_format.left_indent
         if tab_cnt:
             if self.paragraph_format.tab_stops:
                 try:
