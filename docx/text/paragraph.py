@@ -421,7 +421,12 @@ class Paragraph(Parented):
             tab_cnt += 1
         if tab_cnt:
             if self.paragraph_format.tab_stops:
-                last_tab_stop = self.paragraph_format.tab_stops[tab_cnt-1]
+                try:
+                    last_tab_stop = self.paragraph_format.tab_stops[tab_cnt-1]
+                except IndexError:
+                    last_tab_stop_diff = tab_cnt - len(self.paragraph_format.tab_stops)
+                    last_tab_stop = self.paragraph_format.tab_stops[last_tab_stop_diff]
+                    indent += last_tab_stop_diff * default_tab_stop
                 if self.paragraph_format.first_line_indent:
                     if self.paragraph_format.first_line_indent < last_tab_stop.position:
                         indent = last_tab_stop.position
