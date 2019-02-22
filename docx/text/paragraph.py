@@ -402,45 +402,59 @@ class Paragraph(Parented):
     @property
     def norm_left_indent(self):
         """
-        Returns left indentation by unifying different approaches for paragraph
-        indentation like: tab characters, tab stops, and first line indentation.
-        Default tab stop is predefined as ``default_tab_stop`` (.5 Inches).
+        Returns left indentation ``i`` by unifying different approaches for paragraph
+        indentation like: tab characters, tab stops ``ts``, and first line indentation ``fli``.
+        It takes into account user parameters ``u_*``, and inherited style parameters ``s_*``,
+        where ``*`` is param name. Default tab stop ``def_ts`` has (.5 Inches) val.
         """
-        indent = 0
-        tab_cnt = 0
-        default_tab_stop = Inches(0.5)
-        for char in self.text:
-            if char != '\t':
-                break
-            tab_cnt += 1
-        if self.paragraph_format.left_indent:
-            indent += self.paragraph_format.left_indent
-        if self.paragraph_format.first_line_indent:
-            if self.paragraph_format.first_line_indent < 0 and tab_cnt:
-                indent = 0
-                tab_cnt -= 1
-            else:
-                indent += self.paragraph_format.first_line_indent
+        i = 0
+        t_cnt = 0
+        def_ts = Inches(0.5)
+        u_li, s_li = (self.paragraph_format.left_indent, self.style.paragraph_format.left_indent)
+        li = u_li if u_li is not None else s_li
+        u_fli, s_fli = (self.paragraph_format.first_line_indent, \
+                        self.style.paragraph_format.first_line_indent)
+        fli = u_fli if u_fli is not None else s_fli
+        t_stops = [ts for ts in self.paragraph_format.tab_stops if ts.position > 0]
+        t_stops += [ts for ts in self.style.paragraph_format.tab_stops if ts.position > 0]
+        t_stops.sort(key=lambda x: x.position)
         if self.numbering_format:
-            indent += self.numbering_format.first_line_indent + self.numbering_format.left_indent
-        if tab_cnt:
-            if self.paragraph_format.tab_stops:
-                try:
-                    last_tab_stop = self.paragraph_format.tab_stops[tab_cnt-1]
-                except IndexError:
-                    last_tab_stop_diff = tab_cnt - len(self.paragraph_format.tab_stops)
-                    last_tab_stop = self.paragraph_format.tab_stops[last_tab_stop_diff]
-                    indent += last_tab_stop_diff * default_tab_stop
-                if self.paragraph_format.first_line_indent:
-                    if self.paragraph_format.first_line_indent < last_tab_stop.position:
-                        indent = last_tab_stop.position
-                    else:
-                        indent += tab_cnt * default_tab_stop
+            i += self.numbering_format.first_line_indent + self.numbering_format.left_indent
+        else:
+            for c in self.text:
+                if c != '\t':
+                    break
+                t_cnt += 1
+            if li:
+                i += li
+            if fli:
+                if fli < 0 and t_cnt > 0:
+                    i = 0
+                    t_cnt -= 1
                 else:
-                    indent += last_tab_stop.position
-            else:
-                indent += default_tab_stop * tab_cnt
-        return Length(indent)
+                    i += fli
+            if t_cnt:
+                if t_stops:
+                    last_ts = None
+                    if fli:
+                        t_stops = list(filter(lambda x: x.position > fli, t_stops))
+                    if t_stops:
+                        try:
+                            last_ts = t_stops[t_cnt-1]
+                        except IndexError:
+                            last_ts_dif = t_cnt - len(t_stops)
+                            last_ts = t_stops[last_ts_dif]
+                            i += last_ts_dif * def_ts
+                    if fli:
+                        if last_ts and fli < last_ts.position:
+                            i = last_ts.position
+                        else:
+                            i += t_cnt * def_ts
+                    else:
+                        i += last_ts.position
+                else:
+                    i += def_ts * t_cnt
+        return Length(i)
 
     def __repr__(self):
         text_stripped = self.text.strip()
