@@ -428,7 +428,7 @@ class Paragraph(Parented):
             if li:
                 i += li
             if fli:
-                if fli < 0 and t_cnt > 0:
+                if fli < 0 and t_cnt > 0 and abs(fli) != li:
                     i = 0
                     t_cnt -= 1
                 else:
@@ -453,6 +453,9 @@ class Paragraph(Parented):
                     else:
                         i += last_ts.position
                 else:
+                    if all((fli, li)) and abs(fli) == li:
+                        i = li
+                        t_cnt -= 1
                     i += def_ts * t_cnt
         return Length(i)
 
