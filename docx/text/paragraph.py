@@ -9,6 +9,7 @@ from __future__ import (
 )
 
 import copy
+import math
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
@@ -407,57 +408,57 @@ class Paragraph(Parented):
         It takes into account user parameters ``u_*``, and inherited style parameters ``s_*``,
         where ``*`` is param name. Default tab stop ``def_ts`` has (.5 Inches) val.
         """
-        i = 0
-        t_cnt = 0
+        i = t_cnt = 0
         def_ts = Inches(0.5)
-        u_li, s_li = (self.paragraph_format.left_indent, self.style.paragraph_format.left_indent)
-        li = u_li if u_li is not None else s_li
+        doc_sec = self.part.document.sections[0]
+        pg_content_w = round(Length(doc_sec.page_width - \
+                            (doc_sec.left_margin + doc_sec.right_margin)).inches)
+        u_li, s_li = (self.paragraph_format.left_indent, \
+                      self.style.paragraph_format.left_indent)
+        li = (u_li if u_li is not None else s_li) or Inches(0)
         u_fli, s_fli = (self.paragraph_format.first_line_indent, \
                         self.style.paragraph_format.first_line_indent)
-        fli = u_fli if u_fli is not None else s_fli
-        t_stops = [ts for ts in self.paragraph_format.tab_stops if ts.position > 0]
-        t_stops += [ts for ts in self.style.paragraph_format.tab_stops if ts.position > 0]
-        t_stops.sort(key=lambda x: x.position)
+        fli = (u_fli if u_fli is not None else s_fli) or Inches(0)
+        t_fli = Length(fli + li)
+        t_stops = [ts.position.inches for ts in \
+                    self.paragraph_format.tab_stops if ts.position > 0]
+        t_stops += [ts.position.inches for ts in \
+                    self.style.paragraph_format.tab_stops if ts.position > 0]
+        if t_fli < li:
+            t_stops.append(li.inches)
+        t_stops.sort(key=lambda x: x)
+        t_stops = list(filter(lambda x: x > t_fli.inches, t_stops))
+        t_stops = [ii for n,ii in enumerate(t_stops) if ii not in t_stops[:n]]
+        start_dts = None
+        if t_fli:
+            start_dts = round(max((li.inches, t_fli.inches)))
+        elif len(t_stops):
+            start_dts = round(t_stops[-1])
+        else:
+            start_dts = 0
+        dt_stops = [x*def_ts.inches for x in range(2*(start_dts), 2*pg_content_w+1)]
+        last_ts = max((li.inches, t_fli.inches, t_stops[-1] if t_stops else 0, 0))
+        f_dt_stop, c_dt_stop = math.modf(last_ts)
+        if f_dt_stop > def_ts.inches:
+            start_dts = round(last_ts)
+        else:
+            start_dts = c_dt_stop + def_ts.inches
+        dt_stops = list(filter(lambda x: x >= start_dts and x > 0, dt_stops))
         if self.numbering_format:
-            i += self.numbering_format.first_line_indent + self.numbering_format.left_indent
+            i += self.numbering_format.first_line_indent.inches \
+                + self.numbering_format.left_indent.inches
         else:
             for c in self.text:
-                if c != '\t':
-                    break
-                t_cnt += 1
-            if li:
-                i += li
-            if fli:
-                if fli < 0 and t_cnt > 0 and abs(fli) != li:
-                    i = 0
-                    t_cnt -= 1
-                else:
-                    i += fli
+                if c == '\t':
+                    t_cnt +=1
+                    continue
+                break
             if t_cnt:
-                if t_stops:
-                    last_ts = None
-                    if fli:
-                        t_stops = list(filter(lambda x: x.position > fli, t_stops))
-                    if t_stops:
-                        try:
-                            last_ts = t_stops[t_cnt-1]
-                        except IndexError:
-                            last_ts_dif = t_cnt - len(t_stops)
-                            last_ts = t_stops[last_ts_dif]
-                            i += last_ts_dif * def_ts
-                    if fli:
-                        if last_ts and fli < last_ts.position:
-                            i = last_ts.position
-                        else:
-                            i += t_cnt * def_ts
-                    else:
-                        i += last_ts.position
-                else:
-                    if all((fli, li)) and abs(fli) == li:
-                        i = li
-                        t_cnt -= 1
-                    i += def_ts * t_cnt
-        return Length(i)
+                all_t_stops = t_stops + dt_stops
+                i += all_t_stops[t_cnt-1]
+            else:
+                i += t_fli.inches
+        return Inches(i)
 
     def __repr__(self):
         text_stripped = self.text.strip()
