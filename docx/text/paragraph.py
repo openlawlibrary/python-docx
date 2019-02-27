@@ -14,6 +14,7 @@ from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented, Length, lazyproperty, Inches
+from ..oxml.ns import nsmap
 
 
 class Paragraph(Parented):
@@ -409,40 +410,43 @@ class Paragraph(Parented):
         where ``*`` is param name. Default tab stop ``def_ts`` has (.5 Inches) val.
         """
         i = t_cnt = 0
-        def_ts = Inches(0.5)
+        t_stops = []
+        def_ts = 0.5
         doc_sec = self.part.document.sections[0]
         pg_content_w = round(Length(doc_sec.page_width - \
                             (doc_sec.left_margin + doc_sec.right_margin)).inches)
         u_li, s_li = (self.paragraph_format.left_indent, \
                       self.style.paragraph_format.left_indent)
-        li = (u_li if u_li is not None else s_li) or Inches(0)
+        li = round((u_li.inches if u_li is not None else getattr(s_li,'inches', 0)), 2)
         u_fli, s_fli = (self.paragraph_format.first_line_indent, \
                         self.style.paragraph_format.first_line_indent)
-        fli = (u_fli if u_fli is not None else s_fli) or Inches(0)
-        t_fli = Length(fli + li)
-        t_stops = [ts.position.inches for ts in \
-                    self.paragraph_format.tab_stops if ts.position > 0]
-        t_stops += [ts.position.inches for ts in \
-                    self.style.paragraph_format.tab_stops if ts.position > 0]
+        fli = round((u_fli.inches if u_fli is not None else getattr(s_fli,'inches', 0)), 2)
+        t_fli = fli + li
+        t_stops = [round(ts.position.inches, 2) for ts in \
+                    self.paragraph_format.tab_stops if ts.position.inches > t_fli]
+        t_stops += [round(ts.position.inches, 2) for ts in \
+                    self.style.paragraph_format.tab_stops if ts.position.inches > t_fli]
+        clear_t_stops = [round(ts.position.inches, 2) for ts in self.paragraph_format.tab_stops \
+                    if ts._element.attrib['{%s}val' % nsmap['w']] == 'clear']
+        t_stops = [ts for ts in t_stops if ts not in clear_t_stops]
         if t_fli < li:
-            t_stops.append(li.inches)
+            t_stops.append(li)
         t_stops.sort(key=lambda x: x)
-        t_stops = list(filter(lambda x: x > t_fli.inches, t_stops))
         t_stops = [ii for n,ii in enumerate(t_stops) if ii not in t_stops[:n]]
         start_dts = None
         if t_fli:
-            start_dts = round(max((li.inches, t_fli.inches)))
+            start_dts = round(max((li, t_fli)), 2)
         elif len(t_stops):
-            start_dts = round(t_stops[-1])
+            start_dts = round(t_stops[-1], 2)
         else:
             start_dts = 0
-        dt_stops = [x*def_ts.inches for x in range(2*(start_dts), 2*pg_content_w+1)]
-        last_ts = max((li.inches, t_fli.inches, t_stops[-1] if t_stops else 0, 0))
+        dt_stops = [x*def_ts for x in range(2*(round(start_dts)), 2*pg_content_w+1)]
+        last_ts = max((li, t_fli, t_stops[-1] if t_stops else 0, 0))
         f_dt_stop, c_dt_stop = math.modf(last_ts)
-        if f_dt_stop > def_ts.inches:
+        if f_dt_stop > def_ts:
             start_dts = round(last_ts)
         else:
-            start_dts = c_dt_stop + def_ts.inches
+            start_dts = c_dt_stop + def_ts
         dt_stops = list(filter(lambda x: x >= start_dts and x > 0, dt_stops))
         if self.numbering_format:
             i += self.numbering_format.first_line_indent.inches \
@@ -457,7 +461,7 @@ class Paragraph(Parented):
                 all_t_stops = t_stops + dt_stops
                 i += all_t_stops[t_cnt-1]
             else:
-                i += t_fli.inches
+                i += t_fli
         return Inches(i)
 
     def __repr__(self):
