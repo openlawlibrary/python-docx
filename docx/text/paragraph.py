@@ -409,27 +409,60 @@ class Paragraph(Parented):
         It takes into account user parameters ``u_*``, and inherited style parameters ``s_*``,
         where ``*`` is param name. Default tab stop ``def_ts`` has (.5 Inches) val.
         """
+
+        def get_attr_with_style(obj, attr_name):
+            """
+            Return the first non-None attribute following the style hierarchy.
+            """
+            if getattr(obj.paragraph_format, attr_name, None) is not None:
+                return getattr(obj.paragraph_format, attr_name)
+            elif getattr(obj, 'style', None) is not None:
+                return get_attr_with_style(obj.style, attr_name)
+            elif getattr(obj, 'base_style', None) is not None:
+                return get_attr_with_style(obj.base_style, attr_name)
+            else:
+                # If the attribute is not defined we end-up here and return
+                # zero
+                return Length(0)
+
+        def get_tabstops(para):
+            """
+            Build tab-stop list from elements found following the style hierarchy.
+            `clear` tab-stops lower in the hierarchy remove tab-stops from upper in
+            the hierarchy.
+            """
+            tabstops = []
+
+            def _inner_get_tabstops(obj):
+                nonlocal tabstops
+                if obj is None:
+                    return
+                if hasattr(obj, 'base_style'):
+                    _inner_get_tabstops(obj.base_style)
+                elif hasattr(obj, 'style'):
+                    _inner_get_tabstops(obj.style)
+
+                obj = obj.paragraph_format
+
+                tabstops.extend([round(ts.position.inches, 2) for ts in obj.tab_stops])
+                clear_t_stops = [round(ts.position.inches, 2)
+                                 for ts in obj.tab_stops
+                                 if ts._element.attrib['{%s}val' % nsmap['w']] == 'clear']
+                tabstops = [ts for ts in tabstops if ts not in clear_t_stops]
+
+            _inner_get_tabstops(para)
+            return tabstops
+
         i = t_cnt = 0
         t_stops = []
         def_ts = 0.5
         doc_sec = self.part.document.sections[0]
         pg_content_w = round(Length(doc_sec.page_width
                                     - (doc_sec.left_margin + doc_sec.right_margin)).inches)
-        u_li, s_li = (self.paragraph_format.left_indent,
-                      self.style.paragraph_format.left_indent)
-        li = round((u_li.inches if u_li is not None else getattr(s_li, 'inches', 0)), 2)
-        u_fli, s_fli = (self.paragraph_format.first_line_indent,
-                        self.style.paragraph_format.first_line_indent)
-        fli = round((u_fli.inches if u_fli is not None else getattr(s_fli, 'inches', 0)), 2)
+        li = round(get_attr_with_style(self, 'left_indent').inches, 2)
+        fli = round(get_attr_with_style(self, 'first_line_indent').inches, 2)
         t_fli = fli + li
-        t_stops = [round(ts.position.inches, 2)
-                   for ts in self.paragraph_format.tab_stops if ts.position.inches > t_fli]
-        t_stops += [round(ts.position.inches, 2)
-                    for ts in self.style.paragraph_format.tab_stops if ts.position.inches > t_fli]
-        clear_t_stops = [round(ts.position.inches, 2)
-                         for ts in self.paragraph_format.tab_stops
-                         if ts._element.attrib['{%s}val' % nsmap['w']] == 'clear']
-        t_stops = [ts for ts in t_stops if ts not in clear_t_stops]
+        t_stops = [ts for ts in get_tabstops(self) if ts > t_fli]
         if t_fli < li:
             t_stops.append(li)
         t_stops.sort(key=lambda x: x)
