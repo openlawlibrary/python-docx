@@ -413,26 +413,27 @@ class Paragraph(Parented):
         t_stops = []
         def_ts = 0.5
         doc_sec = self.part.document.sections[0]
-        pg_content_w = round(Length(doc_sec.page_width - \
-                            (doc_sec.left_margin + doc_sec.right_margin)).inches)
-        u_li, s_li = (self.paragraph_format.left_indent, \
+        pg_content_w = round(Length(doc_sec.page_width
+                                    - (doc_sec.left_margin + doc_sec.right_margin)).inches)
+        u_li, s_li = (self.paragraph_format.left_indent,
                       self.style.paragraph_format.left_indent)
-        li = round((u_li.inches if u_li is not None else getattr(s_li,'inches', 0)), 2)
-        u_fli, s_fli = (self.paragraph_format.first_line_indent, \
+        li = round((u_li.inches if u_li is not None else getattr(s_li, 'inches', 0)), 2)
+        u_fli, s_fli = (self.paragraph_format.first_line_indent,
                         self.style.paragraph_format.first_line_indent)
-        fli = round((u_fli.inches if u_fli is not None else getattr(s_fli,'inches', 0)), 2)
+        fli = round((u_fli.inches if u_fli is not None else getattr(s_fli, 'inches', 0)), 2)
         t_fli = fli + li
-        t_stops = [round(ts.position.inches, 2) for ts in \
-                    self.paragraph_format.tab_stops if ts.position.inches > t_fli]
-        t_stops += [round(ts.position.inches, 2) for ts in \
-                    self.style.paragraph_format.tab_stops if ts.position.inches > t_fli]
-        clear_t_stops = [round(ts.position.inches, 2) for ts in self.paragraph_format.tab_stops \
-                    if ts._element.attrib['{%s}val' % nsmap['w']] == 'clear']
+        t_stops = [round(ts.position.inches, 2)
+                   for ts in self.paragraph_format.tab_stops if ts.position.inches > t_fli]
+        t_stops += [round(ts.position.inches, 2)
+                    for ts in self.style.paragraph_format.tab_stops if ts.position.inches > t_fli]
+        clear_t_stops = [round(ts.position.inches, 2)
+                         for ts in self.paragraph_format.tab_stops
+                         if ts._element.attrib['{%s}val' % nsmap['w']] == 'clear']
         t_stops = [ts for ts in t_stops if ts not in clear_t_stops]
         if t_fli < li:
             t_stops.append(li)
         t_stops.sort(key=lambda x: x)
-        t_stops = [ii for n,ii in enumerate(t_stops) if ii not in t_stops[:n]]
+        t_stops = [ii for n, ii in enumerate(t_stops) if ii not in t_stops[:n]]
         start_dts = None
         if t_fli:
             start_dts = round(max((li, t_fli)), 2)
@@ -454,7 +455,7 @@ class Paragraph(Parented):
         else:
             for c in self.text:
                 if c == '\t':
-                    t_cnt +=1
+                    t_cnt += 1
                     continue
                 break
             if t_cnt:
