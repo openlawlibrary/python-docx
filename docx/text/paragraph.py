@@ -9,10 +9,13 @@ from __future__ import (
 )
 
 import copy
+import math
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented, lazyproperty
+from ..shared import Parented, Length, lazyproperty, Inches
+from ..oxml.ns import nsmap
+
 
 class Paragraph(Parented):
     """
@@ -397,6 +400,103 @@ class Paragraph(Parented):
         """
         p = self._p.add_p_before()
         return Paragraph(p, self._parent)
+
+    @property
+    def norm_left_indent(self):
+        """
+        Returns left indentation ``i`` by unifying different approaches for paragraph
+        indentation like: tab characters, tab stops ``ts``, and first line indentation ``fli``.
+        It takes into account user parameters ``u_*``, and inherited style parameters ``s_*``,
+        where ``*`` is param name. Default tab stop ``def_ts`` has (.5 Inches) val.
+        """
+
+        def get_attr_with_style(obj, attr_name):
+            """
+            Return the first non-None attribute following the style hierarchy.
+            """
+            if getattr(obj.paragraph_format, attr_name, None) is not None:
+                return getattr(obj.paragraph_format, attr_name)
+            elif getattr(obj, 'style', None) is not None:
+                return get_attr_with_style(obj.style, attr_name)
+            elif getattr(obj, 'base_style', None) is not None:
+                return get_attr_with_style(obj.base_style, attr_name)
+            else:
+                # If the attribute is not defined we end-up here and return
+                # zero
+                return Length(0)
+
+        def get_tabstops(para):
+            """
+            Build tab-stop list from elements found following the style hierarchy.
+            `clear` tab-stops lower in the hierarchy remove tab-stops from upper in
+            the hierarchy.
+            """
+            tabstops = []
+
+            def _inner_get_tabstops(obj):
+                nonlocal tabstops
+                if obj is None:
+                    return
+                if hasattr(obj, 'base_style'):
+                    _inner_get_tabstops(obj.base_style)
+                elif hasattr(obj, 'style'):
+                    _inner_get_tabstops(obj.style)
+
+                obj = obj.paragraph_format
+
+                tabstops.extend([round(ts.position.inches, 2) for ts in obj.tab_stops])
+                clear_t_stops = [round(ts.position.inches, 2)
+                                 for ts in obj.tab_stops
+                                 if ts._element.attrib['{%s}val' % nsmap['w']] == 'clear']
+                tabstops = [ts for ts in tabstops if ts not in clear_t_stops]
+
+            _inner_get_tabstops(para)
+            return tabstops
+
+        i = t_cnt = 0
+        t_stops = []
+        def_ts = 0.5
+        doc_sec = self.part.document.sections[0]
+        pg_content_w = round(Length(doc_sec.page_width
+                                    - (doc_sec.left_margin + doc_sec.right_margin)).inches)
+        li = round(get_attr_with_style(self, 'left_indent').inches, 2)
+        fli = round(get_attr_with_style(self, 'first_line_indent').inches, 2)
+        t_fli = fli + li
+        t_stops = [ts for ts in get_tabstops(self) if ts > t_fli]
+        if t_fli < li:
+            t_stops.append(li)
+        t_stops.sort(key=lambda x: x)
+        t_stops = [ii for n, ii in enumerate(t_stops) if ii not in t_stops[:n]]
+        start_dts = None
+        if t_fli:
+            start_dts = round(max((li, t_fli)), 2)
+        elif len(t_stops):
+            start_dts = round(t_stops[-1], 2)
+        else:
+            start_dts = 0
+        dt_stops = [x*def_ts for x in range(2*(round(start_dts)), 2*pg_content_w+1)]
+        last_ts = max((li, t_fli, t_stops[-1] if t_stops else 0, 0))
+        f_dt_stop, c_dt_stop = math.modf(last_ts)
+        if f_dt_stop > def_ts:
+            start_dts = round(last_ts)
+        else:
+            start_dts = c_dt_stop + def_ts
+        dt_stops = list(filter(lambda x: x >= start_dts and x > 0, dt_stops))
+        if self.numbering_format:
+            i += self.numbering_format.first_line_indent.inches \
+                + self.numbering_format.left_indent.inches
+        else:
+            for c in self.text:
+                if c == '\t':
+                    t_cnt += 1
+                    continue
+                break
+            if t_cnt:
+                all_t_stops = t_stops + dt_stops
+                i += all_t_stops[t_cnt-1]
+            else:
+                i += t_fli
+        return Inches(i)
 
     def __repr__(self):
         text_stripped = self.text.strip()
