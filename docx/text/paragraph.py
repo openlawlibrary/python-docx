@@ -407,7 +407,7 @@ class Paragraph(Parented):
         Returns left indentation ``i`` by unifying different approaches for paragraph
         indentation like: tab characters, tab stops ``ts``, and first line indentation ``fli``.
         It takes into account user parameters ``u_*``, and inherited style parameters ``s_*``,
-        where ``*`` is param name. Default tab stop ``def_ts`` has (.5 Inches) val.
+        where ``*`` is param name. Default tab stop ``DEFAULT_TAB_STOP`` has (.5 Inches) val.
         """
 
         def get_attr_with_style(obj, attr_name):
@@ -453,50 +453,60 @@ class Paragraph(Parented):
             _inner_get_tabstops(para)
             return tabstops
 
-        i = t_cnt = 0
-        t_stops = []
-        def_ts = 0.5
-        doc_sec = self.part.document.sections[0]
-        pg_content_w = round(Length(doc_sec.page_width
-                                    - (doc_sec.left_margin + doc_sec.right_margin)).inches)
-        li = round(get_attr_with_style(self, 'left_indent').inches, 2)
-        fli = round(get_attr_with_style(self, 'first_line_indent').inches, 2)
-        t_fli = fli + li
-        t_stops = [ts for ts in get_tabstops(self) if ts > t_fli]
-        if t_fli < li:
-            t_stops.append(li)
-        t_stops.sort(key=lambda x: x)
-        t_stops = [ii for n, ii in enumerate(t_stops) if ii not in t_stops[:n]]
-        start_dts = None
-        if t_fli:
-            start_dts = round(max((li, t_fli)), 2)
-        elif len(t_stops):
-            start_dts = round(t_stops[-1], 2)
-        else:
-            start_dts = 0
-        dt_stops = [x*def_ts for x in range(2*(round(start_dts)), 2*pg_content_w+1)]
-        last_ts = max((li, t_fli, t_stops[-1] if t_stops else 0, 0))
-        f_dt_stop, c_dt_stop = math.modf(last_ts)
-        if f_dt_stop > def_ts:
-            start_dts = round(last_ts)
-        else:
-            start_dts = c_dt_stop + def_ts
-        dt_stops = list(filter(lambda x: x >= start_dts and x > 0, dt_stops))
         if self.numbering_format:
-            i += self.numbering_format.first_line_indent.inches \
+            indent = self.numbering_format.first_line_indent.inches \
                 + self.numbering_format.left_indent.inches
         else:
-            for c in self.text:
-                if c == '\t':
-                    t_cnt += 1
-                    continue
-                break
-            if t_cnt:
-                all_t_stops = t_stops + dt_stops
-                i += all_t_stops[t_cnt-1]
-            else:
-                i += t_fli
-        return Inches(i)
+            # If para is not numbered we shall calculate using tabs and tab stops
+            DEFAULT_TAB_STOP = 0.5
+            tab_count = 0
+
+            # Calculate the base first line indent and para left indent.
+            left_indent = round(get_attr_with_style(self, 'left_indent').inches, 2)
+            indent = first_line_indent = \
+                round(get_attr_with_style(self, 'first_line_indent').inches, 2) + left_indent
+
+            # Find out the number of tabs at the beginning of the paragraph.
+            tab_count = len(self.text) - len(self.text.lstrip('\t'))
+
+            if tab_count:
+
+                # Get tab stops but only those to the right of first line indent as the previous
+                # don't affect the indentation.
+                tab_stops = [ts for ts in get_tabstops(self) if ts > first_line_indent]
+
+                # If the first line indent is left of the paragraph indent, first tab will tab to
+                # the paragraph indent.
+                if first_line_indent < left_indent:
+                    tab_stops.append(left_indent)
+
+                # Eliminate duplicates and sort.
+                tab_stops = list(sorted(set(tab_stops)))
+
+                if len(tab_stops) >= tab_count:
+                    # We have enough tab stops to cover all tab chars.
+                    if tab_stops:
+                        indent = tab_stops[tab_count - 1]
+
+                else:
+                    if tab_stops:
+                        indent = tab_stops[-1]
+                        tab_count -= len(tab_stops)
+
+                    # It's easier to calculate in whole tab stop indents instead of inches
+                    indent *= (1 / DEFAULT_TAB_STOP)
+
+                    # Let's round up to the first tab char indent. If already rounded add one.
+                    tab_count -= 1
+                    indent = math.ceil(indent) if not indent.is_integer() else indent + 1
+
+                    # The remaining tab chars just adds whole indents.
+                    indent += tab_count
+
+                    # Scale back to inches
+                    indent /= (1 / DEFAULT_TAB_STOP)
+
+        return Inches(indent)
 
     def __repr__(self):
         text_stripped = self.text.strip()
