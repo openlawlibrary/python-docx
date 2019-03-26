@@ -102,9 +102,9 @@ class CT_Numbering(BaseOxmlElement):
     num = ZeroOrMore('w:num', successors=('w:numIdMacAtCleanup',))
 
     fmt_map = {
-        'lowerLetter': lambda num: chr(num + 96),
+        'lowerLetter': lambda num: chr(96 + num%26 if num%26 != 0 else 26) * (num//26+1) if num%26 != 0 else 1,
         'decimal': lambda num: num,
-        'upperLetter': lambda num: chr(num + 64),
+        'upperLetter': lambda num: chr(64 + num%26 if num%26 != 0 else 26) * (num//26+1) if num%26 != 0 else 1,
         'lowerRoman': lambda num: toRoman(num).lower(),
         'none': lambda num: '',
     }
