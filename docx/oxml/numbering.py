@@ -4,6 +4,7 @@
 Custom element classes related to the numbering part
 """
 import re
+import math
 from roman import toRoman
 
 from .text.parfmt import CT_PPr
@@ -102,9 +103,11 @@ class CT_Numbering(BaseOxmlElement):
     num = ZeroOrMore('w:num', successors=('w:numIdMacAtCleanup',))
 
     fmt_map = {
-        'lowerLetter': lambda num: chr(num + 96),
+        'lowerLetter': lambda num: (chr(96 + (num % 26 if num % 26 != 0 else 26))
+                                    * math.ceil(num / 26)),
         'decimal': lambda num: num,
-        'upperLetter': lambda num: chr(num + 64),
+        'upperLetter': lambda num: (chr(64 + (num % 26 if num % 26 != 0 else 26))
+                                    * math.ceil(num / 26)),
         'lowerRoman': lambda num: toRoman(num).lower(),
         'none': lambda num: '',
     }
