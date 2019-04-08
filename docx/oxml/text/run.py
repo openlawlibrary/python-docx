@@ -23,6 +23,8 @@ class CT_R(BaseOxmlElement):
     """
     ``<w:r>`` element, containing the properties and text for a run.
     """
+    bookmarkStart = ZeroOrMore("w:bookmarkStart")
+    bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
     rPr = ZeroOrOne('w:rPr')
     t = ZeroOrMore('w:t')
     br = ZeroOrMore('w:br')
