@@ -7,11 +7,13 @@ ones like structured document tags.
 """
 
 from __future__ import absolute_import, print_function
+from collections import OrderedDict
 
 from .oxml.table import CT_Tbl
 from .shared import Parented
 from .text.paragraph import Paragraph
 from docx.bookmark import BookmarkParent
+from .sdt import SdtBase
 
 
 class BlockItemContainer(Parented, BookmarkParent):
@@ -25,18 +27,22 @@ class BlockItemContainer(Parented, BookmarkParent):
         super(BlockItemContainer, self).__init__(parent)
         self._element = element
 
-    def add_paragraph(self, text='', style=None):
+    def add_paragraph(self, text='', style=None, prev=None, ilvl=None):
         """
         Return a paragraph newly added to the end of the content in this
         container, having *text* in a single run if present, and having
         paragraph style *style*. If *style* is |None|, no paragraph style is
         applied, which has the same effect as applying the 'Normal' style.
+        If paragraph is part of numbered list then ``prev_p`` (previous para)
+        and ``ilvl``(indentation level) should be specified.
         """
         paragraph = self._add_paragraph()
         if text:
             paragraph.add_run(text)
         if style is not None:
             paragraph.style = style
+        if prev is not None or ilvl is not None:
+            paragraph.set_li_lvl(self.part.styles, prev, ilvl)
         return paragraph
 
     def add_table(self, rows, cols, width):
@@ -57,6 +63,22 @@ class BlockItemContainer(Parented, BookmarkParent):
         order. Read-only.
         """
         return [Paragraph(p, self) for p in self._element.p_lst]
+
+    @property
+    def sdts(self):
+        """
+        A list of children sdts (content controls) in this container, in
+        document order. Read-only.
+        """
+        return OrderedDict({k:SdtBase(s, self) for (s,k) in self._element.iter_sdts()})
+
+    @property
+    def sdts_all(self):
+        """
+        A list of descendants sdts (content controls) in this container, in
+        document order. Read-only.
+        """
+        return OrderedDict({k:SdtBase(s, self) for (s,k) in self._element.iter_sdts_all()})
 
     @property
     def tables(self):

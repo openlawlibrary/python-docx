@@ -6,6 +6,7 @@ Run-related proxy objects for python-docx, Run in particular.
 
 from __future__ import absolute_import, print_function, unicode_literals
 
+import copy
 from ..enum.style import WD_STYLE_TYPE
 from ..enum.text import WD_BREAK
 from .font import Font
@@ -80,6 +81,22 @@ class Run(Parented, BookmarkParent):
         """
         t = self._r.add_t(text)
         return _Text(t)
+
+    def split(self, pos):
+        """
+        Splits run at the given position in the text.
+        Created runs will have the same styling.
+        Returns a pair of new runs.
+        """
+        if pos == 0:
+            return None, self
+        elif pos >= len(self.text):
+            return self, None
+        next_run = self.clone()
+        next_run.text = self.text[pos:]
+        self.text = self.text[:pos]
+        self._r.addnext(next_run._r)
+        return self, next_run
 
     @property
     def bold(self):
@@ -181,6 +198,32 @@ class Run(Parented, BookmarkParent):
     @underline.setter
     def underline(self, value):
         self.font.underline = value
+
+    def __repr__(self):
+        text_stripped = self.text.strip()
+        text = text_stripped[:20]
+        if len(text_stripped) > len(text):
+            text += '...'
+        if not text:
+            text = "EMPTY RUN"
+        text = '<r:"{}">'.format(text)
+        return text
+
+    def clone(self):
+        """
+        Cloning run by selective deep copying.
+        """
+        c = copy.deepcopy(self)
+        c._parent = self._parent
+        return c
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop('_parent', None)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
 
 
 class _Text(object):

@@ -381,7 +381,7 @@ class _Row(Parented):
         """
         Sequence of |_Cell| instances corresponding to cells in this row.
         """
-        return tuple(self.table.row_cells(self._index))
+        return [_Cell(tc, self) for tc in self._tr.tc_lst]
 
     @property
     def table(self):

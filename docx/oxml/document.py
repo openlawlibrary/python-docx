@@ -6,6 +6,7 @@ Custom element classes that correspond to the document part, e.g.
 """
 
 from .xmlchemy import BaseOxmlElement, ZeroOrOne, ZeroOrMore
+from .ns import qn, nsmap
 
 
 class CT_Document(BaseOxmlElement):
@@ -30,6 +31,7 @@ class CT_Body(BaseOxmlElement):
     """
     bookmarkStart = ZeroOrMore("w:bookmarkStart", successors=("w:sectPr",))
     bookmarkEnd = ZeroOrMore("w:bookmarkEnd", successors=("w:sectPr",))
+    sdt = ZeroOrMore('w:sdt', successors=('w:p',))
     p = ZeroOrMore('w:p', successors=('w:sectPr',))
     tbl = ZeroOrMore('w:tbl', successors=('w:sectPr',))
     sectPr = ZeroOrOne('w:sectPr', successors=())
@@ -59,3 +61,11 @@ class CT_Body(BaseOxmlElement):
             content_elms = self[:]
         for content_elm in content_elms:
             self.remove(content_elm)
+
+    def iter_sdts(self):
+        for sdt in self.sdt_lst:
+            yield sdt, sdt.name
+
+    def iter_sdts_all(self):
+        for sdt in self.iterdescendants('{%s}sdt' % nsmap['w']):
+            yield sdt, sdt.name
