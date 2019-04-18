@@ -23,12 +23,14 @@ class CT_R(BaseOxmlElement):
     """
     ``<w:r>`` element, containing the properties and text for a run.
     """
+    bookmarkStart = ZeroOrMore("w:bookmarkStart", successors=('w:t', 'w:rPr', 'w:br', 'w:cr', 'w:tab', 'w:drawing'))
     rPr = ZeroOrOne('w:rPr')
     t = ZeroOrMore('w:t')
     br = ZeroOrMore('w:br')
     cr = ZeroOrMore('w:cr')
     tab = ZeroOrMore('w:tab')
     drawing = ZeroOrMore('w:drawing')
+    bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
 
     def _insert_rPr(self, rPr):
         self.insert(0, rPr)

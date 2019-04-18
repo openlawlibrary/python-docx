@@ -28,6 +28,8 @@ class CT_Body(BaseOxmlElement):
     ``<w:body>``, the container element for the main document story in
     ``document.xml``.
     """
+    bookmarkStart = ZeroOrMore("w:bookmarkStart", successors=("w:sectPr",))
+    bookmarkEnd = ZeroOrMore("w:bookmarkEnd", successors=("w:sectPr",))
     p = ZeroOrMore('w:p', successors=('w:sectPr',))
     tbl = ZeroOrMore('w:tbl', successors=('w:sectPr',))
     sectPr = ZeroOrOne('w:sectPr', successors=())

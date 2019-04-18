@@ -12,9 +12,10 @@ from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented
+from docx.bookmark import BookmarkParent
 
 
-class Paragraph(Parented):
+class Paragraph(Parented, BookmarkParent):
     """
     Proxy object wrapping ``<w:p>`` element.
     """
