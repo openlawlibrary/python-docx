@@ -15,9 +15,10 @@ from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented, Length, lazyproperty, Inches
 from ..oxml.ns import nsmap
+from docx.bookmark import BookmarkParent
 
 
-class Paragraph(Parented):
+class Paragraph(Parented, BookmarkParent):
     """
     Proxy object wrapping ``<w:p>`` element.
     """
