@@ -7,7 +7,7 @@
 from __future__ import (
     absolute_import, division, print_function, unicode_literals
 )
-
+from itertools import chain
 from ..document import Document
 from .numbering import NumberingPart
 from ..opc.constants import RELATIONSHIP_TYPE as RT
@@ -86,6 +86,19 @@ class DocumentPart(XmlPart):
         present in the document.
         """
         return self.styles.get_style_id(style_or_name, style_type)
+
+    def iter_story_parts(self):
+        """Generate all parts in document that contain a story.
+        A story is a sequence of block-level items (paragraphs and tables).
+        Story parts include this main document part, headers, footers,
+        footnotes, and endnotes.
+        """
+        return chain(
+            (self,),
+            self.iter_parts_related_by(
+                {RT.COMMENTS, RT.ENDNOTES, RT.FOOTER, RT.FOOTNOTES, RT.HEADER}
+            )
+        )
 
     @lazyproperty
     def inline_shapes(self):

@@ -9,10 +9,11 @@ from __future__ import (
 )
 
 from .blkcntnr import BlockItemContainer
+from docx.bookmark import Bookmarks
 from .enum.section import WD_SECTION
 from .enum.text import WD_BREAK
 from .section import Section, Sections
-from .shared import ElementProxy, Emu
+from .shared import ElementProxy, Emu, lazyproperty
 
 
 class Document(ElementProxy):
@@ -21,7 +22,7 @@ class Document(ElementProxy):
     Use :func:`docx.Document` to open or create a document.
     """
 
-    #__slots__ = ('_part', '__body')
+    __slots__ = ('_part', '__body', '_bookmarks')
 
     def __init__(self, element, part):
         super(Document, self).__init__(element)
@@ -100,6 +101,31 @@ class Document(ElementProxy):
         table = self._body.add_table(rows, cols, self._block_width)
         table.style = style
         return table
+
+    def end_bookmark(self, bookmark):
+        """
+        The :func:`end_bookmark` method is used to end a bookmark. It takes a
+        :any:`Bookmark<docx.text.bookmarks.Bookmark>` as input.
+        :param obj bookmark: Bookmark object that needs an end.
+        """
+        return self._body.end_bookmark(bookmark)
+
+    def start_bookmark(self, name):
+        """
+        The :func:`start_bookmark` method is used to place the start of  a
+        bookmark. It requires a name as input.
+        :param str name: Bookmark name
+        """
+        return self._body.start_bookmark(name=name)
+
+    @lazyproperty
+    def bookmarks(self):
+        """|Bookmarks| object providing access to |Bookmark| objects.
+        A bookmark may exist in the main document story, but also in headers,
+        footers, footnotes or endnotes. This collection contains all
+        bookmarks defined in any of these parts.
+        """
+        return Bookmarks(self._part)
 
     @property
     def core_properties(self):

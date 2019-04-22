@@ -12,9 +12,10 @@ from ..enum.text import WD_BREAK
 from .font import Font
 from ..shape import InlineShape
 from ..shared import Parented
+from docx.bookmark import BookmarkParent
 
 
-class Run(Parented):
+class Run(Parented, BookmarkParent):
     """
     Proxy object wrapping ``<w:r>`` element. Several of the properties on Run
     take a tri-state value, |True|, |False|, or |None|. |True| and |False|
