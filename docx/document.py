@@ -22,7 +22,7 @@ class Document(ElementProxy):
     Use :func:`docx.Document` to open or create a document.
     """
 
-    __slots__ = ('_part', '__body', '_bookmarks')
+    # __slots__ = ('_part', '__body', '_bookmarks')
 
     def __init__(self, element, part):
         super(Document, self).__init__(element)
