@@ -454,18 +454,27 @@ class Paragraph(Parented, BookmarkParent):
             _inner_get_tabstops(para)
             return tabstops
 
+        # Get explicitly set indentation
+        first_line_indent = self.paragraph_format.first_line_indent
+        if first_line_indent is not None:
+            first_line_indent = round(first_line_indent.inches, 2)
+        left_indent = self.paragraph_format.left_indent
+        if left_indent is not None:
+            left_indent = round(left_indent.inches, 2)
+
         if self.numbering_format:
-            indent = self.numbering_format.first_line_indent.inches \
-                + self.numbering_format.left_indent.inches
+            indent = (first_line_indent or self.numbering_format.first_line_indent.inches) \
+                + (left_indent or self.numbering_format.left_indent.inches)
         else:
             # If para is not numbered we shall calculate using tabs and tab stops
             DEFAULT_TAB_STOP = 0.5
             tab_count = 0
 
             # Calculate the base first line indent and para left indent.
-            left_indent = round(get_attr_with_style(self, 'left_indent').inches, 2)
+            left_indent = left_indent or round(get_attr_with_style(self, 'left_indent').inches, 2)
             indent = first_line_indent = \
-                round(get_attr_with_style(self, 'first_line_indent').inches, 2) + left_indent
+                (first_line_indent
+                 or round(get_attr_with_style(self, 'first_line_indent').inches, 2)) + left_indent
 
             # Find out the number of tabs at the beginning of the paragraph.
             tab_count = len(self.text) - len(self.text.lstrip('\t'))
