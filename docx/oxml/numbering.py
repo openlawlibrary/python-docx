@@ -109,6 +109,7 @@ class CT_Numbering(BaseOxmlElement):
         'upperLetter': lambda num: (chr(64 + (num % 26 if num % 26 != 0 else 26))
                                     * math.ceil(num / 26)),
         'lowerRoman': lambda num: toRoman(num).lower(),
+        'upperRoman': lambda num: toRoman(num),
         'none': lambda num: '',
     }
 
