@@ -13,7 +13,7 @@ import math
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented, Length, lazyproperty, Inches
+from ..shared import Parented, Length, lazyproperty, Inches, cache
 from ..oxml.ns import nsmap
 from docx.bookmark import BookmarkParent
 
@@ -28,6 +28,7 @@ class Paragraph(Parented, BookmarkParent):
         self._p = self._element = p
         self._number = None
         self._lvl = None
+        self._cache = {}
 
     def add_run(self, text=None, style=None):
         """
@@ -104,6 +105,7 @@ class Paragraph(Parented, BookmarkParent):
         curpos = 0
         runidx = 0
         curpara = self
+        self._cache = {}
         prevtextlen = 0
         while runidx < len(curpara.runs):
             run = curpara.runs[runidx]
@@ -156,6 +158,7 @@ class Paragraph(Parented, BookmarkParent):
                            + run.text[(end-runstart):]
                 if not run.text:
                     run._r.getparent().remove(run._r)
+                self._cache['text'] = {}
                 return self
             runstart = runend
 
@@ -187,6 +190,7 @@ class Paragraph(Parented, BookmarkParent):
                 to_del._r.getparent().remove(to_del._r)
             else:
                 runstart = runend
+        self._cache['text'] = {}
         return self
 
     @property
@@ -256,6 +260,7 @@ class Paragraph(Parented, BookmarkParent):
         return self._element.bookmarkEnd_lst
 
     @property
+    @cache
     def style(self):
         """
         Read/Write. |_ParagraphStyle| object representing the style assigned
@@ -274,6 +279,7 @@ class Paragraph(Parented, BookmarkParent):
             style_or_name, WD_STYLE_TYPE.PARAGRAPH
         )
         self._p.style = style_id
+        self._cache = {}
 
     def set_li_lvl(self, styles, prev, ilvl):
         """
@@ -287,6 +293,7 @@ class Paragraph(Parented, BookmarkParent):
                               self.part.cached_styles, prev_el, _ilvl)
 
     @property
+    @cache
     def text(self):
         """
         String formed by concatenating the text of each run in the paragraph.
@@ -310,6 +317,7 @@ class Paragraph(Parented, BookmarkParent):
     def text(self, text):
         self.clear()
         self.add_run(text)
+        self._cache['text'] = {}
 
     def replace_char(self, oldch, newch):
         """
@@ -317,6 +325,23 @@ class Paragraph(Parented, BookmarkParent):
         """
         for run in self.runs:
             run.text = run.text.replace(oldch, newch)
+        self._cache = {}
+        self._cache['text'] = {}
+        return self
+
+    def replace_chars(self, *replacement_pairs):
+        """
+        *replacement_pairs is tuples of (oldch, newch)
+
+        Replaces all occurances of each replacement pair's oldch with the newch.
+        """
+        for run in self.runs:
+            new_text = run.text
+            for oldch, newch in replacement_pairs:
+                new_text = new_text.replace(oldch, newch)
+            run.text = new_text
+        self._cache = {}
+        self._cache['text'] = {}
         return self
 
     def insert_text(self, position, new_text):
@@ -332,6 +357,7 @@ class Paragraph(Parented, BookmarkParent):
                 run.text = run.text[:(position-runstart)] \
                            + new_text + run.text[(position-runstart):]
                 break
+        self._cache['text'] = {}
         return self
 
     def replace_text(self, old_text, new_text):
@@ -352,6 +378,7 @@ class Paragraph(Parented, BookmarkParent):
 
             self.remove_text(start=old_start, end=startpos)\
                 .insert_text(old_start, new_text)
+        self._cache['text'] = {}
         return self
 
     def lstrip(self, chars=None):
@@ -365,6 +392,7 @@ class Paragraph(Parented, BookmarkParent):
                 run._r.getparent().remove(run._r)
             else:
                 break
+        self._cache['text'] = {}
         return self
 
     def rstrip(self, chars=None):
@@ -378,6 +406,7 @@ class Paragraph(Parented, BookmarkParent):
                 run._r.getparent().remove(run._r)
             else:
                 break
+        self._cache['text'] = {}
         return self
 
     def strip(self, chars=None):
@@ -385,6 +414,7 @@ class Paragraph(Parented, BookmarkParent):
         Strips paragraph text.
         """
         return self.lstrip(chars).rstrip(chars)
+        self._cache['text'] = {}
 
     @property
     def sdts(self):
@@ -415,16 +445,21 @@ class Paragraph(Parented, BookmarkParent):
             """
             Return the first non-None attribute following the style hierarchy.
             """
-            if getattr(obj.paragraph_format, attr_name, None) is not None:
-                return getattr(obj.paragraph_format, attr_name)
-            elif getattr(obj, 'style', None) is not None:
-                return get_attr_with_style(obj.style, attr_name)
-            elif getattr(obj, 'base_style', None) is not None:
-                return get_attr_with_style(obj.base_style, attr_name)
-            else:
-                # If the attribute is not defined we end-up here and return
-                # zero
-                return Length(0)
+            attr = getattr(obj.paragraph_format, attr_name, None)
+            if attr is not None:
+                return attr
+
+            new_obj = getattr(obj, 'style', None)
+            if new_obj is not None:
+                return get_attr_with_style(new_obj, attr_name)
+
+            new_obj = getattr(obj, 'base_style', None)
+            if new_obj is not None:
+                return get_attr_with_style(new_obj, attr_name)
+
+            # If the attribute is not defined we end-up here and return
+            # zero
+            return Length(0)
 
         def get_tabstops(para):
             """
@@ -536,6 +571,7 @@ class Paragraph(Parented, BookmarkParent):
         """
         c = copy.deepcopy(self)
         c._parent = self._parent
+        c._cache = {}
         return c
 
     def __getstate__(self):
