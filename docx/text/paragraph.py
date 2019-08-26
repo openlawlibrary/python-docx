@@ -13,9 +13,13 @@ import math
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented, Length, lazyproperty, Inches, cache
+from ..shared import Parented, Length, lazyproperty, Inches, cache, bust_cache
 from ..oxml.ns import nsmap
 from docx.bookmark import BookmarkParent
+
+
+# Decorator for all text changing functions used to invalidate text cache.
+text_changing = bust_cache(('text', 'run_text'))
 
 
 class Paragraph(Parented, BookmarkParent):
@@ -141,6 +145,7 @@ class Paragraph(Parented, BookmarkParent):
         """Removes this paragraph from its container."""
         self._p.getparent().remove(self._p)
 
+    @text_changing
     def remove_text(self, start=0, end=-1):
         """Removes part of text retaining runs and styling."""
 
@@ -158,7 +163,6 @@ class Paragraph(Parented, BookmarkParent):
                            + run.text[(end-runstart):]
                 if not run.text:
                     run._r.getparent().remove(run._r)
-                self._cache['text'] = {}
                 return self
             runstart = runend
 
@@ -190,7 +194,6 @@ class Paragraph(Parented, BookmarkParent):
                 to_del._r.getparent().remove(to_del._r)
             else:
                 runstart = runend
-        self._cache['text'] = {}
         return self
 
     @property
@@ -319,21 +322,21 @@ class Paragraph(Parented, BookmarkParent):
         return (para_num if para_num is not None else '') + self.run_text
 
     @text.setter
+    @text_changing
     def text(self, text):
         self.clear()
         self.add_run(text)
-        self._cache['text'] = {}
 
+    @text_changing
     def replace_char(self, oldch, newch):
         """
         Replaces all occurences of oldch character with newch.
         """
         for run in self.runs:
             run.text = run.text.replace(oldch, newch)
-        self._cache = {}
-        self._cache['text'] = {}
         return self
 
+    @text_changing
     def replace_chars(self, *replacement_pairs):
         """
         *replacement_pairs is tuples of (oldch, newch)
@@ -345,10 +348,9 @@ class Paragraph(Parented, BookmarkParent):
             for oldch, newch in replacement_pairs:
                 new_text = new_text.replace(oldch, newch)
             run.text = new_text
-        self._cache = {}
-        self._cache['text'] = {}
         return self
 
+    @text_changing
     def insert_text(self, position, new_text):
         """
         Inserts text at a given position.
@@ -362,9 +364,9 @@ class Paragraph(Parented, BookmarkParent):
                 run.text = run.text[:(position-runstart)] \
                            + new_text + run.text[(position-runstart):]
                 break
-        self._cache['text'] = {}
         return self
 
+    @text_changing
     def replace_text(self, old_text, new_text):
         """
         Replace all occurences of old_text with new_text. Keep runs formatting.
@@ -383,9 +385,9 @@ class Paragraph(Parented, BookmarkParent):
 
             self.remove_text(start=old_start, end=startpos)\
                 .insert_text(old_start, new_text)
-        self._cache['text'] = {}
         return self
 
+    @text_changing
     def lstrip(self, chars=None):
         """
         Left strip paragraph text.
@@ -397,9 +399,9 @@ class Paragraph(Parented, BookmarkParent):
                 run._r.getparent().remove(run._r)
             else:
                 break
-        self._cache['text'] = {}
         return self
 
+    @text_changing
     def rstrip(self, chars=None):
         """
         Right strip paragraph text.
@@ -411,15 +413,14 @@ class Paragraph(Parented, BookmarkParent):
                 run._r.getparent().remove(run._r)
             else:
                 break
-        self._cache['text'] = {}
         return self
 
+    @text_changing
     def strip(self, chars=None):
         """
         Strips paragraph text.
         """
         return self.lstrip(chars).rstrip(chars)
-        self._cache['text'] = {}
 
     @property
     def sdts(self):
