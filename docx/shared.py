@@ -264,12 +264,14 @@ def cache(fn):
             return out
     return wrapper
 
-def bust_cache(fn_name):
+
+def bust_cache(fn_names):
     def decorator(fn):
         @wraps(fn)
         def wrapper(self, *args, **kwargs):
             out = fn(self, *args, **kwargs)
-            self._cache[fn_name] = {}
+            for fn_name in fn_names:
+                self._cache[fn_name] = {}
             return out
         return wrapper
     return decorator
