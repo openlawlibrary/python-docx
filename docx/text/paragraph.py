@@ -290,7 +290,15 @@ class Paragraph(Parented, BookmarkParent):
         prev_el = prev._element if prev else None
         _ilvl = 0 if ilvl is None else ilvl
         self._p.set_li_lvl(self.part.numbering_part._element,
-                              self.part.cached_styles, prev_el, _ilvl)
+                           self.part.cached_styles, prev_el, _ilvl)
+
+    @property
+    @cache
+    def run_text(self):
+        if self.runs:
+            return ''.join(r.text for r in self.runs)
+        else:
+            return ''
 
     @property
     @cache
@@ -308,10 +316,7 @@ class Paragraph(Parented, BookmarkParent):
         run-level formatting, such as bold or italic, is removed.
         """
         para_num = self.number
-        text = para_num if para_num is not None else ''
-        for run in self.runs:
-            text += run.text
-        return text
+        return (para_num if para_num is not None else '') + self.run_text
 
     @text.setter
     def text(self, text):
