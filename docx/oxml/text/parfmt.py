@@ -91,17 +91,17 @@ class CT_PPr(BaseOxmlElement):
         else:
             ind.firstLine = value
 
-    def get_numPr(self, style_id, styles_cache):
+    def get_numPr(self, pPr, styles_cache):
         """
         Returns ``numPr`` for paragraph if any, otherwise returns related
         paragraph style ``numPr`` if exists or ``None`` otherwise.
         """
-        if self.numPr is not None:
-            return self.numPr
+        if pPr.numPr is not None:
+            return pPr.numPr
         else:
             try:
-                return styles_cache[style_id].pPr.numPr
-            except KeyError:
+                return styles_cache[pPr.pStyle.val].pPr.numPr
+            except (KeyError, AttributeError):
                 return None
 
     @property

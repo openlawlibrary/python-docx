@@ -142,7 +142,7 @@ class CT_Numbering(BaseOxmlElement):
         """
         Gets the formatting based on current paragraph indentation level.
         """
-        numPr = p.pPr.get_numPr(p.pPr.pStyle.val, styles_cache)
+        numPr = p.pPr.get_numPr(p.pPr, styles_cache)
         ilvl, numId = numPr.ilvl, numPr.numId.val
         ilvl = ilvl.val if ilvl is not None else 0
         abstractNum_el = self.get_abstractNum(numId)
@@ -152,7 +152,7 @@ class CT_Numbering(BaseOxmlElement):
         """
         Returns list item for the given paragraph.
         """
-        numPr = p.pPr.get_numPr(p.pPr.pStyle.val, styles_cache)
+        numPr = p.pPr.get_numPr(p.pPr, styles_cache)
         ilvl, numId = numPr.ilvl, numPr.numId.val
         ilvl = ilvl.val if ilvl is not None else 0
         abstractNum_el = self.get_abstractNum(numId)
@@ -163,7 +163,7 @@ class CT_Numbering(BaseOxmlElement):
 
         for pp in p.itersiblings(preceding=True):
             try:
-                pp_numPr = pp.pPr.get_numPr(pp.pPr.pStyle.val, styles_cache)
+                pp_numPr = pp.pPr.get_numPr(pp.pPr, styles_cache)
                 pp_ilvl, pp_numId = pp_numPr.ilvl, pp_numPr.numId.val
                 pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
                 if pp_numId == 0:
