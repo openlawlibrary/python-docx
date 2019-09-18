@@ -177,7 +177,11 @@ class _PartBookmarkFinder(object):
 
         Elements appear in document order.
         """
-        return self._part.element.xpath("//w:bookmarkStart|//w:bookmarkEnd")
+        part_el = getattr(self._part, 'element', None)
+        if part_el is not None:
+            return part_el.xpath("//w:bookmarkStart|//w:bookmarkEnd")
+        else:
+            return []
 
     def _iter_starts(self):
         """Generate (idx, bookmarkStart) elements in story.
