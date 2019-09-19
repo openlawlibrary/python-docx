@@ -69,9 +69,11 @@ class CT_Tbl(BaseOxmlElement):
     """
     ``<w:tbl>`` element
     """
+    bookmarkStart = ZeroOrMore('w:bookmarkStart', successors=('w:tblPr', 'w:tblGrid', 'w:tr',))
     tblPr = OneAndOnlyOne('w:tblPr')
     tblGrid = OneAndOnlyOne('w:tblGrid')
     tr = ZeroOrMore('w:tr')
+    bookmarkEnd = ZeroOrMore('w:bookmarkEnd')
 
     @property
     def bidiVisual_val(self):
