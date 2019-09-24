@@ -504,8 +504,10 @@ class Paragraph(Parented, BookmarkParent):
             left_indent = round(left_indent.inches, 2)
 
         if self.numbering_format:
-            indent = (first_line_indent or self.numbering_format.first_line_indent.inches) \
-                + (left_indent or self.numbering_format.left_indent.inches)
+            indent = first_line_indent if first_line_indent is not None \
+                 else self.numbering_format.first_line_indent.inches
+            indent += left_indent if left_indent is not None \
+                else self.numbering_format.left_indent.inches
         else:
             # If para is not numbered we shall calculate using tabs and tab stops
             DEFAULT_TAB_STOP = 0.5
