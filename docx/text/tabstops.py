@@ -8,6 +8,7 @@ from __future__ import (
     absolute_import, division, print_function, unicode_literals
 )
 
+from ..oxml.ns import qn
 from ..shared import ElementProxy
 from docx.enum.text import WD_TAB_ALIGNMENT, WD_TAB_LEADER
 
@@ -111,6 +112,15 @@ class TabStop(ElementProxy):
     @alignment.setter
     def alignment(self, value):
         self._tab.val = value
+
+    @property
+    def is_clear(self):
+        """
+        Returns `True` if |TabStop| "w:val" is "clear" which means that tabstop
+        is overridden by some substyle / paragraph settings, and it's not actively used.
+        Otherwise returns `False`.
+        """
+        return self._tab.attrib[qn('w:val')] == 'clear'
 
     @property
     def leader(self):
