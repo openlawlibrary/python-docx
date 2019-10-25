@@ -140,9 +140,10 @@ class CT_Numbering(BaseOxmlElement):
 
     def get_numId_lvl_for_p(self, p, styles_cache):
         """
-        Returns tuple of `(numId, lvl)` where `numId` represent identifier which
-        references to numbering instance, and `lvl` object represents relevant level of
-        numbering scheme necessary information about paragraph indentation level and formating.
+        Returns tuple of `(numId, lvl)` where `w:numId` points to
+        related numbering instance defined in numbering part, and
+        `w:lvl` provides information about particular numbering level for
+        given paragraph `p`.
         """
         lvl = None
         if p.pPr.numPr is not None: # numbering using paragraph formatting
@@ -173,7 +174,7 @@ class CT_Numbering(BaseOxmlElement):
         Returns list item for the given paragraph.
         """
         numId, lvl_el = self.get_numId_lvl_for_p(p, styles_cache)
-        if not all(map(lambda x: x is not None, (numId, lvl_el))):
+        if numId is None or lvl_el is None:
             return None
         ilvl = lvl_el.ilvl
         linked_styles = {s.pStyle.val for s in lvl_el.xpath('preceding-sibling::w:lvl[w:pStyle]')}
