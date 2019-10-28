@@ -243,8 +243,7 @@ class CT_Numbering(BaseOxmlElement):
                 prev_p.pPr.numPr.numId is None):
             if ilvl is None:
                 ilvl = 0
-            numPr = para_el.pPr.get_numPr(styles)
-            numId = numPr.numId.val
+            numId, _ = self.get_numId_lvl_for_p(para_el, styles)
             num_el = self.num_having_numId(numId)
             anum = num_el.abstractNumId.val
             num = self.add_num(anum)

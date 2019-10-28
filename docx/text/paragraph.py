@@ -303,6 +303,17 @@ class Paragraph(Parented, BookmarkParent):
         else:
             return ''
 
+    def set_li_lvl(self, styles, prev, ilvl):
+        """
+        Sets list indentation level for this paragraph. If ``prev`` is not specified
+        it starts a new list. ``ilvl`` specifies indentation level. Default
+        indentation level is 0.
+        """
+        prev_el = prev._element if prev else None
+        _ilvl = 0 if ilvl is None else ilvl
+        self._p.set_li_lvl(self.part.numbering_part._element,
+                              self.part.cached_styles, prev_el, _ilvl)
+
     @property
     @cache
     def text(self):
