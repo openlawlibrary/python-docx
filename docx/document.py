@@ -21,7 +21,7 @@ class Document(ElementProxy):
     Use :func:`docx.Document` to open or create a document.
     """
 
-    __slots__ = ('_part', '__body')
+    #__slots__ = ('_part', '__body')
 
     def __init__(self, element, part):
         super(Document, self).__init__(element)
@@ -51,16 +51,17 @@ class Document(ElementProxy):
         paragraph.add_run().add_break(WD_BREAK.PAGE)
         return paragraph
 
-    def add_paragraph(self, text='', style=None):
+    def add_paragraph(self, text='', style=None, prev_p=None, ilvl=None):
         """
         Return a paragraph newly added to the end of the document, populated
         with *text* and having paragraph style *style*. *text* can contain
         tab (``\\t``) characters, which are converted to the appropriate XML
         form for a tab. *text* can also include newline (``\\n``) or carriage
         return (``\\r``) characters, each of which is converted to a line
-        break.
+        break. If paragraph is part of numbered list then ``prev_p`` (previous para)
+        and ``ilvl``(indentation level) should be specified.
         """
-        return self._body.add_paragraph(text, style)
+        return self._body.add_paragraph(text, style, prev_p, ilvl)
 
     def add_picture(self, image_path_or_stream, width=None, height=None):
         """
