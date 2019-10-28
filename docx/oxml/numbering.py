@@ -9,7 +9,7 @@ from roman import toRoman
 
 from .text.parfmt import CT_PPr
 from . import OxmlElement
-from .shared import CT_DecimalNumber
+from .shared import CT_DecimalNumber, CT_String
 from .simpletypes import ST_DecimalNumber
 from .xmlchemy import (
     BaseOxmlElement, OneAndOnlyOne, RequiredAttribute, ZeroOrMore, ZeroOrOne
@@ -138,37 +138,55 @@ class CT_Numbering(BaseOxmlElement):
             if el.abstractNumId == abstractNum_id:
                 return el
 
+    def get_numId_lvl_for_p(self, p, styles_cache):
+        """
+        Returns tuple of `(numId, lvl)` where `w:numId` points to
+        related numbering instance defined in numbering part, and
+        `w:lvl` provides information about particular numbering level for
+        given paragraph `p`.
+        """
+        lvl = None
+        if p.pPr.numPr is not None: # numbering using paragraph formatting
+            numPr = p.pPr.numPr
+            abstractNum_el = self.get_abstractNum(numPr.numId.val)
+            lvl = abstractNum_el.get_lvl(numPr.ilvl.val)
+        else:
+            numPr = styles_cache[p.pPr.pStyle.val].pPr.numPr # numbering using styles
+            if numPr is None:
+                return None, None
+            abstractNum_el = self.get_abstractNum(numPr.numId.val)
+            for lvl_el in abstractNum_el.lvl_lst:
+                if getattr(lvl_el.pStyle, 'val', None) == p.pPr.pStyle.val:
+                    lvl = lvl_el
+                    break
+        numId = numPr.numId.val
+        return numId, lvl
+
     def get_lvl_for_p(self, p, styles_cache):
         """
         Gets the formatting based on current paragraph indentation level.
         """
-        numPr = p.pPr.get_numPr(styles_cache)
-        ilvl, numId = numPr.ilvl, numPr.numId.val
-        ilvl = ilvl.val if ilvl is not None else 0
-        abstractNum_el = self.get_abstractNum(numId)
-        return abstractNum_el.get_lvl(ilvl)
+        _, lvl = self.get_numId_lvl_for_p(p, styles_cache)
+        return lvl
 
     def get_num_for_p(self, p, styles_cache):
         """
         Returns list item for the given paragraph.
         """
-        numPr = p.pPr.get_numPr(styles_cache)
-        ilvl, numId = numPr.ilvl, numPr.numId.val
-        ilvl = ilvl.val if ilvl is not None else 0
-        abstractNum_el = self.get_abstractNum(numId)
-        if abstractNum_el is None:
+        numId, lvl_el = self.get_numId_lvl_for_p(p, styles_cache)
+        if numId is None or lvl_el is None:
             return None
-        lvl_el = abstractNum_el.get_lvl(ilvl)
+        ilvl = lvl_el.ilvl
+        linked_styles = {s.pStyle.val for s in lvl_el.xpath('preceding-sibling::w:lvl[w:pStyle]')}
         p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
 
         for pp in p.itersiblings(preceding=True):
             try:
-                pp_numPr = pp.pPr.get_numPr(styles_cache)
-                pp_ilvl, pp_numId = pp_numPr.ilvl, pp_numPr.numId.val
-                pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
-                if pp_numId == 0:
+                pp_numId, pp_lvl_el = self.get_numId_lvl_for_p(pp, styles_cache)
+                pp_ilvl = pp_lvl_el.ilvl
+                if pp_numId == 0:   # numbering removed (not displayed) for particular para
                     continue
-                if ilvl > pp_ilvl:
+                if ilvl > pp_ilvl and (numId == pp_numId or pp.pPr.pStyle.val in linked_styles):
                     break
                 if (pp_ilvl, pp_numId) == (ilvl, numId):
                     p_num += 1
@@ -231,6 +249,7 @@ class CT_Lvl(BaseOxmlElement):
     ilvl = RequiredAttribute('w:ilvl', ST_DecimalNumber)
     start = ZeroOrOne('w:start', CT_DecimalNumber)
     pPr = ZeroOrOne('w:pPr', CT_PPr)
+    pStyle = ZeroOrOne('w:pStyle', CT_String)
     numFmt = ZeroOrOne('w:numFmt')
     lvlText = ZeroOrOne('w:lvlText')
     suff = ZeroOrOne('w:suff')
