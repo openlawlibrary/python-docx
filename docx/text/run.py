@@ -181,7 +181,6 @@ class Run(Parented):
     def underline(self, value):
         self.font.underline = value
 
-
 class _Text(object):
     """
     Proxy object wrapping ``<w:t>`` element.

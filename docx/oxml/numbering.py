@@ -159,6 +159,8 @@ class CT_Numbering(BaseOxmlElement):
         if abstractNum_el is None:
             return None
         lvl_el = abstractNum_el.get_lvl(ilvl)
+        linked_styles = {s.xpath('w:pStyle/@w:val')[0]
+            for s in lvl_el.xpath('preceding-sibling::w:lvl[w:pStyle]')}
         p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
 
         for pp in p.itersiblings(preceding=True):
@@ -168,7 +170,7 @@ class CT_Numbering(BaseOxmlElement):
                 pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
                 if pp_numId == 0:
                     continue
-                if ilvl > pp_ilvl:
+                if ilvl > pp_ilvl and (numId == pp_numId or pp.pPr.pStyle.val in linked_styles):
                     break
                 if (pp_ilvl, pp_numId) == (ilvl, numId):
                     p_num += 1
@@ -206,6 +208,33 @@ class CT_Numbering(BaseOxmlElement):
             if num not in num_ids:
                 break
         return num
+
+    def set_li_lvl(self, para_el, styles, prev_p, ilvl):
+        """
+        Sets paragraph list item indentation level. When previous
+        paragraph ``prev_p`` is specified, it will look up for existing numbering
+        list of ``prev_p`` and add new list item. If no ``prev_p`` is specified,
+        it will create a new numbering list with specified indentation level ``ilvl``.
+        """
+        if (prev_p is None or
+                prev_p.pPr is None or
+                prev_p.pPr.numPr is None or
+                prev_p.pPr.numPr.numId is None):
+            if ilvl is None:
+                ilvl = 0
+            numPr = para_el.pPr.get_numPr(styles)
+            numId = numPr.numId.val
+            num_el = self.num_having_numId(numId)
+            anum = num_el.abstractNumId.val
+            num = self.add_num(anum)
+            num.add_lvlOverride(ilvl=ilvl).add_startOverride(1)
+            num = num.numId
+        else:
+            if ilvl is None:
+                ilvl = prev_p.pPr.numPr.ilvl.val
+            num = prev_p.pPr.numPr.numId.val
+        para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_numId().val = num
+        para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_ilvl().val = ilvl
 
 class CT_AbstractNum(BaseOxmlElement):
     """
