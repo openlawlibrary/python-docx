@@ -164,6 +164,8 @@ class CT_Numbering(BaseOxmlElement):
         if abstractNum_el is None:
             return None
         lvl_el = abstractNum_el.get_lvl(ilvl)
+        linked_styles = {s.xpath('w:pStyle/@w:val')[0]
+            for s in lvl_el.xpath('preceding-sibling::w:lvl[w:pStyle]')}
         p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
 
         for pp in p.itersiblings(preceding=True):
@@ -173,7 +175,7 @@ class CT_Numbering(BaseOxmlElement):
                 pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
                 if pp_numId == 0:
                     continue
-                if ilvl > pp_ilvl:
+                if ilvl > pp_ilvl and (numId == pp_numId or pp.pPr.pStyle.val in linked_styles):
                     break
                 if (pp_ilvl, pp_numId) == (ilvl, numId):
                     p_num += 1
