@@ -10,7 +10,6 @@ from itertools import chain
 from docx.oxml.ns import qn
 from docx.shared import lazyproperty
 
-
 class BookmarkParent(object):
     """
     The :class:`BookmarkParent` object is used as mixin object for the
@@ -31,7 +30,7 @@ class BookmarkParent(object):
         else:
             raise KeyError("Bookmark name already present in document.")
 
-        return _Bookmark((bookmarkstart, None))
+        return _Bookmark((bookmarkstart, None), self.part)
 
     def end_bookmark(self, bookmark):
         """Closes supplied bookmark at current element."""
@@ -55,12 +54,12 @@ class Bookmarks(Sequence):
         """Supports indexed and sliced access."""
         bookmark_pairs = self._finder.bookmark_pairs
         if isinstance(idx, slice):
-            return [_Bookmark(pair) for pair in bookmark_pairs[idx]]
-        return _Bookmark(bookmark_pairs[idx])
+            return [_Bookmark(pair, self._document_part) for pair in bookmark_pairs[idx]]
+        return _Bookmark(bookmark_pairs[idx], self._document_part)
 
     def __iter__(self):
         """Supports iteration."""
-        return (_Bookmark(pair) for pair in self._finder.bookmark_pairs)
+        return (_Bookmark(pair, self._document_part) for pair in self._finder.bookmark_pairs)
 
     def __len__(self):
         return len(self._finder.bookmark_pairs)
@@ -88,7 +87,8 @@ class Bookmarks(Sequence):
 class _Bookmark(object):
     """Proxy for a (w:bookmarkStart, w:bookmarkEnd) element pair."""
 
-    def __init__(self, bookmark_pair):
+    def __init__(self, bookmark_pair, document_part):
+        self._document_part = document_part
         self._bookmarkStart, self._bookmarkEnd = bookmark_pair
 
     @property
@@ -100,6 +100,26 @@ class _Bookmark(object):
     def name(self):
         """Provides access to the bookmark name."""
         return self._bookmarkStart.name
+
+    @property
+    def previous_para(self):
+        """
+        Returns first previous sibling paragraph if any. Returns `None` otherwise.
+        """
+        from docx.text.paragraph import Paragraph
+        p = self._bookmarkStart.xpath('preceding-sibling::w:p[1]')
+        p = Paragraph(p[0], self._document_part) if p else None
+        return p
+
+    @property
+    def next_para(self):
+        """
+        Returns first next sibling paragraph if any. Returns `None` otherwise.
+        """
+        from docx.text.paragraph import Paragraph
+        p = self._bookmarkStart.xpath('following-sibling::w:p[1]')
+        p = Paragraph(p[0], self._document_part) if p else None
+        return p
 
 
 class _DocumentBookmarkFinder(object):
