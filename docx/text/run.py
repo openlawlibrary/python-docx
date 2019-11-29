@@ -80,6 +80,22 @@ class Run(Parented):
         t = self._r.add_t(text)
         return _Text(t)
 
+    def add_fldChar(self, fldCharType="begin"):
+        """
+        Adds new ``<w:fldChar>`` element with specified ``w:fldCharType`` attr.
+        Available options for ``w:fldCharType`` attr are `('begin', 'separate', 'end')`.
+        """
+        fldChar = self._r.add_fldChar()
+        fldChar.set('{%s}fldCharType' % fldChar.nsmap['w'], fldCharType)
+
+    def add_instrText(self, instruction_text):
+        """
+        Adds new ``<w:instrText>`` element with specified instruction text
+        `instrText`. It represents instruction for related ``<w:fldChar>``.
+        """
+        instrText = self._r.add_instrText()
+        instrText.text = instruction_text
+
     @property
     def bold(self):
         """
