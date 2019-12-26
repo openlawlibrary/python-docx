@@ -39,6 +39,8 @@ class CT_R(BaseOxmlElement):
     tab = ZeroOrMore('w:tab')
     drawing = ZeroOrMore('w:drawing')
     bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
+    fldChar = ZeroOrMore('w:fldChar')
+    instrText = ZeroOrMore('w:instrText')
 
     def _insert_rPr(self, rPr):
         self.insert(0, rPr)
@@ -122,6 +124,14 @@ class CT_Text(BaseOxmlElement):
     """
     ``<w:t>`` element, containing a sequence of characters within a run.
     """
+
+class CT_FldChar(BaseOxmlElement):
+    """
+    ``<w:fldChr>`` element, containing properties related to field.
+    """
+    fldData = ZeroOrOne('w:fldData')
+    ffData = ZeroOrOne('w:ffData')
+    numberingChange = ZeroOrOne('w:numberingChange')
 
 class _RunContentAppender(object):
     """
