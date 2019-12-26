@@ -20,6 +20,7 @@ from docx.oxml.xmlchemy import (
 class CT_HdrFtr(BaseOxmlElement):
     """`w:hdr` and `w:ftr`, the root element for header and footer part respectively"""
 
+    sdt = ZeroOrMore('w:sdt', successors=('w:p',))
     p = ZeroOrMore('w:p', successors=())
     tbl = ZeroOrMore('w:tbl', successors=())
 
