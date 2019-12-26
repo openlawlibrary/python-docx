@@ -51,6 +51,16 @@ class Paragraph(Parented, BookmarkParent):
             run.style = style
         return run
 
+    def add_field(self, instrText=None):
+        """
+        Adds new field `w:fldChar` to run. Pass `instrText` to specify
+        filed instruction.
+        """
+        self.add_run().add_fldChar()
+        if instrText:
+            self.add_run().add_instrText(instrText)
+        self.add_run().add_fldChar(fldCharType='end')
+
     @property
     def alignment(self):
         """
