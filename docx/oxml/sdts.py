@@ -38,9 +38,8 @@ class CT_SdtPr(BaseOxmlElement):
     def name(self):
         try:
             return self.tag.get('{%s}val' % nsmap['w'])
-        except:
-            raise Exception('All content controls must have unique names'
-            '(having set unique content control tag name).')
+        except AttributeError:
+            return None
 
 
 class CT_SdtContentBase(BaseOxmlElement):
