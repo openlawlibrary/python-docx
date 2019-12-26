@@ -1,12 +1,12 @@
 # encoding: utf-8
 
-"""
-Block item container, used by body, cell, header, etc. Block level items are
-things like paragraph and table, although there are a few other specialized
-ones like structured document tags.
+"""Block item container, used by body, cell, header, etc.
+
+Block level items are things like paragraph and table, although there are a few other
+specialized ones like structured document tags.
 """
 
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function, unicode_literals
 from collections import OrderedDict
 
 from .oxml.table import CT_Tbl
@@ -15,14 +15,14 @@ from .text.paragraph import Paragraph
 from .sdt import SdtBase
 from docx.bookmark import BookmarkParent
 
-
 class BlockItemContainer(Parented, BookmarkParent):
+    """Base class for proxy objects that can contain block items.
+
+    These containers include _Body, _Cell, header, footer, footnote, endnote, comment,
+    and text box objects. Provides the shared functionality to add a block item like
+    a paragraph or table.
     """
-    Base class for proxy objects that can contain block items, such as _Body,
-    _Cell, header, footer, footnote, endnote, comment, and text box objects.
-    Provides the shared functionality to add a block item like a paragraph or
-    table.
-    """
+
     def __init__(self, element, parent):
         super(BlockItemContainer, self).__init__(parent)
         self._element = element
