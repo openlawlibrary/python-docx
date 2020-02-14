@@ -186,11 +186,11 @@ def _ImageHeaderFactory(stream):
     """
     from docx.image import SIGNATURES
 
-    def read_32(stream):
+    def read_64(stream):
         stream.seek(0)
-        return stream.read(32)
+        return stream.read(64)
 
-    header = read_32(stream)
+    header = read_64(stream)
     for cls, offset, signature_bytes in SIGNATURES:
         end = offset + len(signature_bytes)
         found_bytes = header[offset:end]
