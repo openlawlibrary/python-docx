@@ -8,10 +8,13 @@ from __future__ import (
     absolute_import, division, print_function, unicode_literals
 )
 
+import os
+import pathlib
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented
+from docx.parts.image import ImagePart
 
 
 class Paragraph(Parented):
@@ -144,23 +147,42 @@ class Paragraph(Parented):
         p = self._p.add_p_before()
         return Paragraph(p, self._parent)
 
-    @property
+
+    @lazyproperty
     def image_parts(self):
         """
         Return all image parts related to this paragraph.
         """
+        doc = self.part.document
         drawings = []
         parts = []
+
         for r in self.runs:
             if r._element.drawing_lst:
                 drawings.extend(r._element.drawing_lst)
+
         blips = [drawing.xpath(".//*[local-name() = 'blip']")[0]
                  for drawing in drawings]
-        doc = self.part.document
+
+
         for b in blips:
             if b.link:
                 rel = doc.part.rels[b.link]
-                import pdb; pdb.set_trace()
+                target_ref = pathlib.Path(rel.target_ref)
+                doc_path = pathlib.Path(doc.part.package.path)
+                os.chdir(doc_path.parents[0])
+                rel_path = ''
+
+                for path_part in reversed(target_ref.parts):
+                    rel_path = pathlib.Path(path_part, rel_path)
+                    try:
+                        with open(rel_path, 'rb') as img:
+                            img_type = target_ref.suffix.strip('.')
+                            parts.append(ImagePart(None, img_type, img.read()))
+                            break
+                    except FileNotFoundError:
+                        pass
             elif b.embed:
-                parts.extend(doc.part.related_parts[b.embed])
+                parts.append(doc.part.related_parts[b.embed])
+
         return parts
