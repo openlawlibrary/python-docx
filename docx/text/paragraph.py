@@ -177,7 +177,7 @@ class Paragraph(Parented):
                     rel_path = pathlib.Path(path_part, rel_path)
                     try:
                         with open(rel_path, 'rb') as img:
-                            img_type = target_ref.suffix.strip('.')
+                            img_type = f'image/{target_ref.suffix.strip(".")}'
                             parts.append(ImagePart(None, img_type, img.read()))
                             break
                     except FileNotFoundError:
