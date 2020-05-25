@@ -150,12 +150,17 @@ class Paragraph(Parented):
         Return all image parts related to this paragraph.
         """
         drawings = []
+        parts = []
         for r in self.runs:
             if r._element.drawing_lst:
                 drawings.extend(r._element.drawing_lst)
         blips = [drawing.xpath(".//*[local-name() = 'blip']")[0]
                  for drawing in drawings]
-        rIds = [b.embed for b in blips]
         doc = self.part.document
-        parts = [doc.part.related_parts[rId] for rId in rIds]
+        for b in blips:
+            if b.link:
+                rel = doc.part.rels[b.link]
+                import pdb; pdb.set_trace()
+            elif b.embed:
+                parts.extend(doc.part.related_parts[b.embed])
         return parts
