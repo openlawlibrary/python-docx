@@ -10,12 +10,15 @@ from __future__ import (
 
 import copy
 import math
+import os
+import pathlib
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented, Length, lazyproperty, Inches, cache, bust_cache
 from ..oxml.ns import nsmap
 from docx.bookmark import BookmarkParent
+from docx.parts.image import ImagePart
 
 
 # Decorator for all text changing functions used to invalidate text cache.
@@ -616,13 +619,36 @@ class Paragraph(Parented, BookmarkParent):
         """
         Return all image parts related to this paragraph.
         """
+        doc = self.part.document
         drawings = []
+        parts = []
+
         for r in self.runs:
             if r._element.drawing_lst:
                 drawings.extend(r._element.drawing_lst)
+
         blips = [drawing.xpath(".//*[local-name() = 'blip']")[0]
                  for drawing in drawings]
-        rIds = [b.embed for b in blips]
-        doc = self.part.document
-        parts = [doc.part.related_parts[rId] for rId in rIds]
+
+
+        for b in blips:
+            if b.link:
+                rel = doc.part.rels[b.link]
+                target_ref = pathlib.Path(rel.target_ref)
+                doc_path = pathlib.Path(doc.part.package.path)
+                os.chdir(doc_path.parents[0])
+                rel_path = ''
+
+                for path_part in reversed(target_ref.parts):
+                    rel_path = pathlib.Path(path_part, rel_path)
+                    try:
+                        with open(rel_path, 'rb') as img:
+                            img_type = f'image/{target_ref.suffix.strip(".")}'
+                            parts.append(ImagePart(None, img_type, img.read()))
+                            break
+                    except FileNotFoundError:
+                        pass
+            elif b.embed:
+                parts.append(doc.part.related_parts[b.embed])
+
         return parts

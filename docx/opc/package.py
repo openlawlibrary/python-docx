@@ -140,6 +140,7 @@ class OpcPackage(object):
             pkg_reader = PackageReader.from_str(pkg)
         package = cls()
         Unmarshaller.unmarshal(pkg_reader, package, PartFactory)
+        cls.path = pkg
         return package
 
     def part_related_by(self, reltype):
@@ -157,6 +158,17 @@ class OpcPackage(object):
         package.
         """
         return [part for part in self.iter_parts()]
+
+    @property
+    def path(self):
+        """
+        Returns filepath of the current package.
+        """
+        return self._path
+
+    @path.setter
+    def path(self, value):
+        self._path = value
 
     def relate_to(self, part, reltype):
         """
@@ -182,6 +194,7 @@ class OpcPackage(object):
         for part in self.parts:
             part.before_marshal()
         PackageWriter.write(pkg_file, self.rels, self.parts)
+        self.path = pkg_file
 
     @property
     def _core_properties_part(self):
