@@ -23,6 +23,11 @@ class SdtBase(ElementProxy):
         return SdtPr(self._element.sdtPr, self)
 
     @property
+    def is_empty(self):
+        return any((self.properties.active_placeholder,
+                    not self.content.text))
+
+    @property
     def name(self):
         return self.properties.name
 
@@ -37,6 +42,10 @@ class SdtPr(ElementProxy):
     @property
     def name(self):
         return self._element.name
+
+    @property
+    def active_placeholder(self):
+        return self._element.active_placeholder is not None
 
 class SdtContentBase(ElementProxy):
     """
