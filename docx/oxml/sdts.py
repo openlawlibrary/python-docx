@@ -33,6 +33,7 @@ class CT_SdtPr(BaseOxmlElement):
     """
     tag = ZeroOrOne('w:tag')
     date = ZeroOrOne('w:date')
+    active_placeholder = ZeroOrOne('w:showingPlcHdr')
 
     @property
     def name(self):
