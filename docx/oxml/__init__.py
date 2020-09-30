@@ -207,9 +207,14 @@ from .bookmark import (
 register_element_cls('w:bookmarkStart', CT_BookmarkStart)
 register_element_cls('w:bookmarkEnd', CT_BookmarkEnd)
 
-from .text.font import (
-    CT_Color, CT_Fonts, CT_Highlight, CT_HpsMeasure, CT_RPr, CT_Underline,
-    CT_VerticalAlignRun
+from .text.font import (  # noqa
+    CT_Color,
+    CT_Fonts,
+    CT_Highlight,
+    CT_HpsMeasure,
+    CT_RPr,
+    CT_Underline,
+    CT_VerticalAlignRun,
 )
 register_element_cls('w:b',          CT_OnOff)
 register_element_cls('w:bCs',        CT_OnOff)
