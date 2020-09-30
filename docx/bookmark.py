@@ -4,7 +4,11 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from collections import Sequence
+try:
+    from collections import Sequence
+except DeprecationWarning:
+    from collections.abc import Sequence
+
 from itertools import chain
 
 from docx.oxml.ns import qn
