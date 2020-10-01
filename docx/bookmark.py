@@ -5,9 +5,9 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 try:
-    from collections import Sequence
-except DeprecationWarning:
     from collections.abc import Sequence
+except ImportError:
+    from collections import Sequence
 
 from itertools import chain
 
