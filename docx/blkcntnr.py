@@ -15,7 +15,6 @@ from .text.paragraph import Paragraph
 from .sdt import SdtBase
 from docx.bookmark import BookmarkParent
 
-
 class BlockItemContainer(Parented, BookmarkParent):
     """
     Base class for proxy objects that can contain block items, such as _Body,

@@ -4,9 +4,7 @@
 |DocumentPart| and closely related objects
 """
 
-from __future__ import (
-    absolute_import, division, print_function, unicode_literals
-)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from itertools import chain
 from docx.document import Document
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
