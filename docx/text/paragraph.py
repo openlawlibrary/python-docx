@@ -12,7 +12,11 @@ import copy
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented, lazyproperty
+from ..shared import Parented, Length, lazyproperty, Inches, cache, bust_cache
+from ..oxml.ns import nsmap
+from docx.bookmark import BookmarkParent
+from docx.parts.image import ImagePart
+from docx.sdt import SdtType
 
 class Paragraph(Parented):
     """
@@ -38,6 +42,47 @@ class Paragraph(Parented):
         if style:
             run.style = style
         return run
+
+    def add_sdt(self, tag_name, text='', alias_name='', temporary='false', locked='unlocked',
+                placeholder_txt=None, type=SdtType.RICH_TEXT):
+        """
+        Adds new Structured Document Type ``w:sdt`` field to the Paragraph element.
+        """
+        sdt = self._p._new_sdt()
+
+        sdtPr = sdt._add_sdtPr()
+        alias_name = alias_name or tag_name
+
+        tag = sdtPr._add_tag_name()
+        tag.set('{%s}val' % nsmap['w'], tag_name)
+
+        alias = sdtPr._add_alias()
+        alias.set('{%s}val' % nsmap['w'], alias_name)
+
+        temp = sdtPr._add_temporary()
+        temp.set('{%s}val' % nsmap['w'], temporary)
+
+        sdtContent = sdt._add_sdtContent()
+
+        if not text:
+            r = sdtContent._add_r()
+            rPr = r._add_rPr()
+            rStyle = rPr._add_rStyle()
+            rStyle.set('{%s}val' % nsmap['w'], 'Placeholder Text')
+            # rStyle._add_b()
+            # rStyle._add_bCs()
+            t = r._add_t()
+            placeholder_txt = placeholder_txt or 'Click or tap here to enter text'
+            t.text = placeholder_txt
+            active_placeholder = sdtPr._add_active_placeholder()
+            active_placeholder.set('{%s}val' % nsmap['w'], 'true')
+        else:
+            r = sdtContent._add_r()
+            t = r._add_t()
+            t.text = text
+
+        self._p.append(sdt)
+        return sdt
 
     @property
     def alignment(self):
