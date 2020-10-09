@@ -15,10 +15,10 @@ class CT_SdtBase(BaseOxmlElement):
     ``<w:sdt>`` structured document tag element (content control)
     specifies content control elements on any level of document.
     """
-    _tag_seq = ('w:sdtPr', 'w:stEndPr', 'w:sdtContent')
+    _tag_seq = ('w:sdtPr', 'w:sdtEndPr', 'w:sdtContent')
 
     sdtPr = ZeroOrOne('w:sdtPr', successors=_tag_seq[1:])
-    stEndPr = ZeroOrOne('w:stEndPr', successors=_tag_seq[2:])
+    sdtEndPr = ZeroOrOne('w:sdtEndPr', successors=_tag_seq[2:])
     sdtContent = ZeroOrOne('w:sdtContent', successors=())
 
     del _tag_seq
@@ -31,14 +31,18 @@ class CT_SdtPr(BaseOxmlElement):
     """
     ``<w:sdtPr>`` represents property element of ``<w:sdt>`` (content control).
     """
-    tag = ZeroOrOne('w:tag')
-    date = ZeroOrOne('w:date')
+    alias = ZeroOrOne('w:alias')
+    lock = ZeroOrOne('w:lock')
+    placeholder = ZeroOrOne('w:placeholder')
+    temporary = ZeroOrOne('w:temporary')
+    tag_name = ZeroOrOne('w:tag')
     active_placeholder = ZeroOrOne('w:showingPlcHdr')
+    rPr = ZeroOrOne('w:rPr')
 
     @property
     def name(self):
         try:
-            return self.tag.get('{%s}val' % nsmap['w'])
+            return self.tag_name.get('{%s}val' % nsmap['w'])
         except AttributeError:
             return None
 
@@ -49,6 +53,7 @@ class CT_SdtContentBase(BaseOxmlElement):
     It contains all paragraphs within the content control.
     """
     p = ZeroOrMore('w:p')
+    r = ZeroOrMore('w:r')
 
     def iter_runs(self):
         def walk(el):
