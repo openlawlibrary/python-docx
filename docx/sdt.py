@@ -2,8 +2,21 @@
 |SdtBase| and closely related objects.
 """
 
+import docx.text.paragraph
+
 from .shared import ElementProxy
-from .text.paragraph import Paragraph
+
+from enum import Enum, auto
+
+class SdtType(Enum):
+    """
+    Initial list of available Structure Document Types
+    """
+    RICH_TEXT = auto(),
+    PLAIN_TEXT = auto(),
+    DATE = auto(),
+    DROP_DOWN = auto(),
+
 
 class SdtBase(ElementProxy):
     """
@@ -29,7 +42,7 @@ class SdtBase(ElementProxy):
 
     @property
     def name(self):
-        return self.properties.name
+        return self.properties.tag
 
 class SdtPr(ElementProxy):
     """
@@ -40,8 +53,8 @@ class SdtPr(ElementProxy):
         super(SdtPr, self).__init__(element, parent)
 
     @property
-    def name(self):
-        return self._element.name
+    def tag(self):
+        return self._element.tag
 
     @property
     def active_placeholder(self):
@@ -57,7 +70,7 @@ class SdtContentBase(ElementProxy):
 
     @property
     def paragraphs(self):
-        return [Paragraph(p, self) for p in self._element.p_lst]
+        return [docx.text.paragraph.Paragraph(p, self) for p in self._element.p_lst]
 
     @property
     def text(self):
