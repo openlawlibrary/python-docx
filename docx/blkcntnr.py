@@ -98,5 +98,12 @@ class BlockItemContainer(Parented):
 
     def _iter_sdts_all(self):
         nsmap = self._element.nsmap
+        sections = self._parent.sections
+        for s in sections:
+            hdr_ftrs = (s.header, s.first_page_header, s.even_page_header,
+                        s.footer, s.first_page_footer, s.even_page_footer)
+            for hdr_ftr in hdr_ftrs:
+                for sdt in hdr_ftr._element.iterdescendants('{%s}sdt' % nsmap['w']):
+                    yield sdt, sdt.name
         for sdt in self._element.iterdescendants('{%s}sdt' % nsmap['w']):
             yield sdt, sdt.name
