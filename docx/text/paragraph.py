@@ -19,7 +19,7 @@ from ..shared import Parented, Length, lazyproperty, Inches, cache, bust_cache
 from ..oxml.ns import nsmap
 from docx.bookmark import BookmarkParent
 from docx.parts.image import ImagePart
-from docx.sdt import SdtType
+from docx.sdt import SdtType, SdtBase
 
 
 # Decorator for all text changing functions used to invalidate text cache.
@@ -124,7 +124,7 @@ class Paragraph(Parented, BookmarkParent):
             t.text = text
 
         self._p.append(sdt)
-        return sdt
+        return SdtBase(sdt, self)
 
     @property
     def alignment(self):
