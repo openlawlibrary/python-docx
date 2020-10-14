@@ -14,7 +14,7 @@ from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented, lazyproperty
 from ..oxml.ns import nsmap
-from docx.sdt import SdtType
+from docx.sdt import SdtType, SdtBase
 
 class Paragraph(Parented):
     """
@@ -110,7 +110,7 @@ class Paragraph(Parented):
             t.text = text
 
         self._p.append(sdt)
-        return sdt
+        return SdtBase(sdt, self)
 
     @property
     def alignment(self):
