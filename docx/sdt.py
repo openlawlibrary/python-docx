@@ -54,7 +54,7 @@ class SdtPr(ElementProxy):
 
     @property
     def tag(self):
-        return self._element.tag
+        return self._element.name
 
     @property
     def active_placeholder(self):
