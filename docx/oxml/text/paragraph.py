@@ -108,6 +108,6 @@ class CT_P(BaseOxmlElement):
             for child in elem:
                 if child.tag == qn('w:r'):
                     yield child
-                elif child.tag in (qn('w:hyperlink'), qn('w:sdt'), qn('w:sdtContent')):
+                elif child.tag in (qn('w:hyperlink'), qn('w:sdt'), qn('w:sdtContent'), qn('w:smartTag'),):
                     yield from get_runs(child)
         yield from get_runs(self)
