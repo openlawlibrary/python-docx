@@ -37,13 +37,15 @@ class StrPkgReader(object):
         pkg_start_pos = self._xml_str.find(pkg_part_start_tag)
         if pkg_start_pos >= 0:
             pkg_xml_start_pos = self._xml_str.find(
-                pkg_xml_start_tag, pkg_start_pos
+                pkg_xml_start_tag[:-1], pkg_start_pos
             )
             if pkg_xml_start_pos >= 0:
-                pkg_xml_start_pos += len(pkg_xml_start_tag)
-                pkg_end_pos = self._xml_str.find(
-                    pkg_xml_end_tag, pkg_xml_start_pos
-                )
+                pkg_xml_start_pos += len(pkg_xml_start_tag) - 1
+                if self._xml_str[pkg_xml_start_pos] == '>':
+                    pkg_xml_start_pos += 1
+                else:
+                    pkg_xml_start_pos = self._xml_str.find('>', pkg_xml_start_pos) + 1
+                pkg_end_pos = self._xml_str.find( pkg_xml_end_tag, pkg_xml_start_pos)
                 if pkg_end_pos >= 0:
                     blob = self._xml_str[pkg_xml_start_pos:pkg_end_pos]
                     if image_part:
