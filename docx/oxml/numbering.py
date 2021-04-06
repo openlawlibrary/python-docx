@@ -4,6 +4,7 @@
 Custom element classes related to the numbering part
 """
 import re
+import math
 from roman import toRoman
 
 from .text.parfmt import CT_PPr
@@ -102,10 +103,13 @@ class CT_Numbering(BaseOxmlElement):
     num = ZeroOrMore('w:num', successors=('w:numIdMacAtCleanup',))
 
     fmt_map = {
-        'lowerLetter': lambda num: chr(num + 96),
+        'lowerLetter': lambda num: (chr(96 + (num % 26 if num % 26 != 0 else 26))
+                                    * math.ceil(num / 26)),
         'decimal': lambda num: num,
-        'upperLetter': lambda num: chr(num + 64),
+        'upperLetter': lambda num: (chr(64 + (num % 26 if num % 26 != 0 else 26))
+                                    * math.ceil(num / 26)),
         'lowerRoman': lambda num: toRoman(num).lower(),
+        'upperRoman': lambda num: toRoman(num),
         'none': lambda num: '',
     }
 
@@ -160,6 +164,8 @@ class CT_Numbering(BaseOxmlElement):
         if abstractNum_el is None:
             return None
         lvl_el = abstractNum_el.get_lvl(ilvl)
+        linked_styles = {s.xpath('w:pStyle/@w:val')[0]
+            for s in lvl_el.xpath('preceding-sibling::w:lvl[w:pStyle]')}
         p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
 
         for pp in p.itersiblings(preceding=True):
@@ -169,7 +175,7 @@ class CT_Numbering(BaseOxmlElement):
                 pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
                 if pp_numId == 0:
                     continue
-                if ilvl > pp_ilvl:
+                if ilvl > pp_ilvl and (numId == pp_numId or pp.pPr.pStyle.val in linked_styles):
                     break
                 if (pp_ilvl, pp_numId) == (ilvl, numId):
                     p_num += 1
