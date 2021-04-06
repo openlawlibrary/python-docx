@@ -606,7 +606,8 @@ class Paragraph(Parented, BookmarkParent):
                  or round(get_attr_with_style(self, 'first_line_indent').inches, 2)) + left_indent
 
             # Find out the number of tabs at the beginning of the paragraph.
-            tab_count = len(self.text) - len(self.text.lstrip('\t'))
+            # Ignore regular spaces.
+            tab_count = self.text[:len(self.text) - len(self.text.lstrip())].count('\t')
 
             if tab_count:
 
