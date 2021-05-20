@@ -41,16 +41,6 @@ class Paragraph(Parented):
             run.style = style
         return run
 
-    def add_field(self, instrText=None):
-        """
-        Adds new field `w:fldChar` to run. Pass `instrText` to specify
-        filed instruction.
-        """
-        self.add_run().add_fldChar()
-        if instrText:
-            self.add_run().add_instrText(instrText)
-        self.add_run().add_fldChar(fldCharType='end')
-
     def add_sdt(self, tag_name, text='', alias_name='', temporary='false', locked='unlocked',
                 placeholder_txt=None, style='Normal', bold=False, italic=False, type=SdtType.RICH_TEXT):
         """
@@ -67,6 +57,19 @@ class Paragraph(Parented):
             if italic:
                 rPr._add_i()
             # TODO: impl underline
+
+        def set_std_placeholder_text(r, text=None):
+            rPr = r._add_rPr()
+            rStyle = rPr._add_rStyle()
+            rStyle.set('{%s}val' % nsmap['w'], 'PlaceholderText')
+            rPr._add_b()
+            rPr._add_bCs()
+            t = r._add_t()
+            placeholder_txt = text or 'Click or tap here to enter text'
+            t.text = placeholder_txt
+            active_placeholder = sdtPr._add_active_placeholder()
+            active_placeholder.set('{%s}val' % nsmap['w'], 'true')
+
 
         sdt = self._p._new_sdt()
 
@@ -88,20 +91,10 @@ class Paragraph(Parented):
 
         sdtContent = sdt._add_sdtContent()
 
+        r = sdtContent._add_r()
         if not text:
-            r = sdtContent._add_r()
-            rPr = r._add_rPr()
-            rStyle = rPr._add_rStyle()
-            rStyle.set('{%s}val' % nsmap['w'], 'PlaceholderText')
-            rPr._add_b()
-            rPr._add_bCs()
-            t = r._add_t()
-            placeholder_txt = placeholder_txt or 'Click or tap here to enter text'
-            t.text = placeholder_txt
-            active_placeholder = sdtPr._add_active_placeholder()
-            active_placeholder.set('{%s}val' % nsmap['w'], 'true')
+            set_std_placeholder_text(r, placeholder_txt)
         else:
-            r = sdtContent._add_r()
             # set styling on content lvl
             rPr = r.get_or_add_rPr()
             apply_run_formatting(rPr, style, bold, italic)
