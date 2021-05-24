@@ -76,6 +76,8 @@ class CT_SdtContentBase(BaseOxmlElement):
     """
     p = ZeroOrMore('w:p')
     r = ZeroOrMore('w:r')
+    sdt = ZeroOrMore('w:sdt')
+    tbl = ZeroOrMore('w:tbl')
 
     def iter_runs(self):
         def walk(el):

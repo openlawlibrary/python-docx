@@ -45,6 +45,12 @@ class SdtBase(ElementProxy):
     def name(self):
         return self.properties.tag
 
+    def add_sdt(self, tag_name):
+        return self._content.add_sdt(tag_name)
+
+    @property
+    def sdts(self):
+        return self._content.sdts
 
     def add_paragraph(self, text):
         return self._content.add_paragraph(text)
@@ -52,6 +58,13 @@ class SdtBase(ElementProxy):
     @property
     def paragraphs(self):
         return self._content.paragraphs
+
+    def add_table(self, rows, cols, width):
+        return self._content.add_table(rows, cols, width)
+
+    @property
+    def tables(self):
+        return self._content.tables
 
     @property
     def text(self):
