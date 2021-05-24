@@ -11,8 +11,6 @@ from collections import OrderedDict
 
 from .oxml.table import CT_Tbl
 from .shared import Parented
-from .text.paragraph import Paragraph
-from .sdt import SdtBase
 from docx.bookmark import BookmarkParent
 
 class BlockItemContainer(Parented, BookmarkParent):
@@ -55,12 +53,26 @@ class BlockItemContainer(Parented, BookmarkParent):
         self._element._insert_tbl(tbl)
         return Table(tbl, self)
 
+    def add_sdt(self, tag_name):
+        """
+        Returns Rich Text Content Control with given *tag_name*.
+        Appends created content control to the content in this container.
+        """
+        from .sdt import SdtBase
+        sdt = self._element._new_sdt()
+        sdtPr = sdt._add_sdtPr()
+        sdtPr.name = tag_name
+        sdt._add_sdtContent()
+        self._element.append(sdt)
+        return SdtBase(sdt, self)
+
     @property
     def paragraphs(self):
         """
         A list containing the paragraphs in this container, in document
         order. Read-only.
         """
+        from .text.paragraph import Paragraph
         return [Paragraph(p, self) for p in self._element.p_lst]
 
     @property
@@ -69,6 +81,7 @@ class BlockItemContainer(Parented, BookmarkParent):
         A list of children sdts (content controls) in this container, in
         document order. Read-only.
         """
+        from .sdt import SdtBase
         return OrderedDict({k:SdtBase(s, self) for (s,k) in self._iter_sdts()})
 
     @property
@@ -77,6 +90,7 @@ class BlockItemContainer(Parented, BookmarkParent):
         A list of descendants sdts (content controls) in this container, in
         document order. Read-only.
         """
+        from .sdt import SdtBase
         return OrderedDict({k:SdtBase(s, self) for (s,k) in self._iter_sdts_all()})
 
     @property
@@ -93,6 +107,7 @@ class BlockItemContainer(Parented, BookmarkParent):
         Return a paragraph newly added to the end of the content in this
         container.
         """
+        from .text.paragraph import Paragraph
         return Paragraph(self._element.add_p(), self)
 
     def _iter_sdts(self):
