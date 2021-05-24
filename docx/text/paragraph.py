@@ -42,9 +42,9 @@ class Paragraph(Parented):
         return run
 
     def add_sdt(self, tag_name, text='', alias_name='', temporary='false', locked='unlocked',
-                placeholder_txt=None, style='Normal', bold=False, italic=False, type=SdtType.RICH_TEXT):
+                placeholder_txt=None, style='Normal', bold=False, italic=False, type=SdtType.PLAIN_TEXT):
         """
-        Adds new Structured Document Type ``w:sdt`` field to the Paragraph element.
+        Adds new Structured Document Type ``w:sdt`` (Plain Text Content Control) field to the Paragraph element.
         """
 
         def apply_run_formatting(rPr, style='Normal', bold=False, italic=False, underline=False):
@@ -80,14 +80,9 @@ class Paragraph(Parented):
         rPr = sdtPr.get_or_add_rPr()
         apply_run_formatting(rPr, style, bold, italic)
 
-        tag = sdtPr._add_tag_name()
-        tag.set('{%s}val' % nsmap['w'], tag_name)
-
-        alias = sdtPr._add_alias()
-        alias.set('{%s}val' % nsmap['w'], alias_name)
-
-        temp = sdtPr._add_temporary()
-        temp.set('{%s}val' % nsmap['w'], temporary)
+        sdtPr.name = tag_name
+        sdtPr.alias = alias_name
+        sdtPr.temp = temporary
 
         sdtContent = sdt._add_sdtContent()
 

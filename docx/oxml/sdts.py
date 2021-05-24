@@ -31,10 +31,10 @@ class CT_SdtPr(BaseOxmlElement):
     """
     ``<w:sdtPr>`` represents property element of ``<w:sdt>`` (content control).
     """
-    alias = ZeroOrOne('w:alias')
+    _alias = ZeroOrOne('w:alias')
     lock = ZeroOrOne('w:lock')
     placeholder = ZeroOrOne('w:placeholder')
-    temporary = ZeroOrOne('w:temporary')
+    _temporary = ZeroOrOne('w:temporary')
     tag_name = ZeroOrOne('w:tag')
     active_placeholder = ZeroOrOne('w:showingPlcHdr')
     rPr = ZeroOrOne('w:rPr')
@@ -46,6 +46,28 @@ class CT_SdtPr(BaseOxmlElement):
         except AttributeError:
             return None
 
+    @name.setter
+    def name(self, tag_name):
+        tag = self._add_tag_name()
+        tag.set('{%s}val' % nsmap['w'], tag_name)
+
+    @property
+    def alias(self):
+        return self._alias.get('{%s}val' % nsmap['w'])
+
+    @alias.setter
+    def alias(self, alias_name):
+        alias = self._add__alias()
+        alias.set('{%s}val' % nsmap['w'], alias_name)
+
+    @property
+    def temporary(self):
+        return self._temporary.get('{%s}val' % nsmap['w'])
+
+    @temporary.setter
+    def temporary(self, tmp):
+        temp = self._add__temporary()
+        temp.set(nsmap['w'], tmp)
 
 class CT_SdtContentBase(BaseOxmlElement):
     """
