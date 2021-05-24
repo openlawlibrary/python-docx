@@ -154,6 +154,9 @@ class Document(ElementProxy):
         """
         return self._part.styles
 
+    def add_sdt(self, tag_name):
+        return self._body.add_sdt(tag_name)
+
     @property
     def sdts(self):
         """
