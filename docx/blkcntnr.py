@@ -51,15 +51,19 @@ class BlockItemContainer(Parented):
         self._element._insert_tbl(tbl)
         return Table(tbl, self)
 
-    def add_sdt(self, tag_name):
+    def add_sdt(self, tag_name, alias_name=''):
         """
         Returns Rich Text Content Control with given *tag_name*.
         Appends created content control to the content in this container.
         """
         from .sdt import SdtBase
         sdt = self._element._new_sdt()
+
         sdtPr = sdt._add_sdtPr()
         sdtPr.name = tag_name
+        alias_name = alias_name or tag_name
+        sdtPr.alias_val = alias_name
+
         sdt._add_sdtContent()
         self._element.append(sdt)
         return SdtBase(sdt, self)
