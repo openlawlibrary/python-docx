@@ -81,8 +81,8 @@ class Paragraph(Parented):
         apply_run_formatting(rPr, style, bold, italic)
 
         sdtPr.name = tag_name
-        sdtPr.alias = alias_name
-        sdtPr.temp = temporary
+        sdtPr.alias_val = alias_name
+        sdtPr.temp_val = temporary
 
         sdtContent = sdt._add_sdtContent()
 

@@ -31,10 +31,10 @@ class CT_SdtPr(BaseOxmlElement):
     """
     ``<w:sdtPr>`` represents property element of ``<w:sdt>`` (content control).
     """
-    _alias = ZeroOrOne('w:alias')
+    alias = ZeroOrOne('w:alias')
     lock = ZeroOrOne('w:lock')
     placeholder = ZeroOrOne('w:placeholder')
-    _temporary = ZeroOrOne('w:temporary')
+    temporary = ZeroOrOne('w:temporary')
     tag_name = ZeroOrOne('w:tag')
     active_placeholder = ZeroOrOne('w:showingPlcHdr')
     rPr = ZeroOrOne('w:rPr')
@@ -52,21 +52,21 @@ class CT_SdtPr(BaseOxmlElement):
         tag.set('{%s}val' % nsmap['w'], tag_name)
 
     @property
-    def alias(self):
-        return self._alias.get('{%s}val' % nsmap['w'])
+    def alias_val(self):
+        return self.alias.get('{%s}val' % nsmap['w'])
 
-    @alias.setter
-    def alias(self, alias_name):
-        alias = self._add__alias()
+    @alias_val.setter
+    def alias_val(self, alias_name):
+        alias = self._add_alias()
         alias.set('{%s}val' % nsmap['w'], alias_name)
 
     @property
-    def temporary(self):
-        return self._temporary.get('{%s}val' % nsmap['w'])
+    def temporary_val(self):
+        return self.temporary.get('{%s}val' % nsmap['w'])
 
-    @temporary.setter
-    def temporary(self, tmp):
-        temp = self._add__temporary()
+    @temporary_val.setter
+    def temporary_val(self, tmp):
+        temp = self._add_temporary()
         temp.set(nsmap['w'], tmp)
 
 class CT_SdtContentBase(BaseOxmlElement):
