@@ -14,7 +14,6 @@ from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented, lazyproperty
 from ..oxml.ns import nsmap
-from docx.sdt import SdtType, SdtBase
 
 class Paragraph(Parented):
     """
@@ -42,10 +41,11 @@ class Paragraph(Parented):
         return run
 
     def add_sdt(self, tag_name, text='', alias_name='', temporary='false', locked='unlocked',
-                placeholder_txt=None, style='Normal', bold=False, italic=False, type=SdtType.PLAIN_TEXT):
+                placeholder_txt=None, style='Normal', bold=False, italic=False):
         """
         Adds new Structured Document Type ``w:sdt`` (Plain Text Content Control) field to the Paragraph element.
         """
+        from docx.sdt import SdtBase
 
         def apply_run_formatting(rPr, style='Normal', bold=False, italic=False, underline=False):
             if style != 'Normal':

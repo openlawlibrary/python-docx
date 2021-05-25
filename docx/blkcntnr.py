@@ -11,6 +11,7 @@ from collections import OrderedDict
 
 from .oxml.table import CT_Tbl
 from .shared import Parented
+from .text.paragraph import Paragraph
 
 
 class BlockItemContainer(Parented):
@@ -69,7 +70,6 @@ class BlockItemContainer(Parented):
         A list containing the paragraphs in this container, in document
         order. Read-only.
         """
-        from .text.paragraph import Paragraph
         return [Paragraph(p, self) for p in self._element.p_lst]
 
     @property
@@ -104,7 +104,6 @@ class BlockItemContainer(Parented):
         Return a paragraph newly added to the end of the content in this
         container.
         """
-        from .text.paragraph import Paragraph
         return Paragraph(self._element.add_p(), self)
 
     def _iter_sdts(self):
