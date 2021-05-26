@@ -40,11 +40,12 @@ class Paragraph(Parented):
             run.style = style
         return run
 
-    def add_sdt(self, tag_name, text='', alias_name='', temporary='false', locked='unlocked',
+    def add_sdt(self, tag_name, text='', alias_name='', temporary='false',
                 placeholder_txt=None, style='Normal', bold=False, italic=False):
         """
         Adds new Structured Document Type ``w:sdt`` (Plain Text Content Control) field to the Paragraph element.
         """
+        # TODO: Add support for SdtType and locked property
         from docx.sdt import SdtBase
 
         def apply_run_formatting(rPr, style='Normal', bold=False, italic=False, underline=False):
