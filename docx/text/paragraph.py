@@ -19,7 +19,6 @@ from ..shared import Parented, Length, lazyproperty, Inches, cache, bust_cache
 from ..oxml.ns import nsmap
 from docx.bookmark import BookmarkParent
 from docx.parts.image import ImagePart
-from docx.sdt import SdtType, SdtBase
 
 
 # Decorator for all text changing functions used to invalidate text cache.
@@ -66,10 +65,11 @@ class Paragraph(Parented, BookmarkParent):
         self.add_run().add_fldChar(fldCharType='end')
 
     def add_sdt(self, tag_name, text='', alias_name='', temporary='false', locked='unlocked',
-                placeholder_txt=None, style='Normal', bold=False, italic=False, type=SdtType.PLAIN_TEXT):
+                placeholder_txt=None, style='Normal', bold=False, italic=False):
         """
         Adds new Structured Document Type ``w:sdt`` (Plain Text Content Control) field to the Paragraph element.
         """
+        from docx.sdt import SdtBase
 
         def apply_run_formatting(rPr, style='Normal', bold=False, italic=False, underline=False):
             if style != 'Normal':
@@ -105,8 +105,8 @@ class Paragraph(Parented, BookmarkParent):
         apply_run_formatting(rPr, style, bold, italic)
 
         sdtPr.name = tag_name
-        sdtPr.alias = alias_name
-        sdtPr.temp = temporary
+        sdtPr.alias_val = alias_name
+        sdtPr.temp_val = temporary
 
         sdtContent = sdt._add_sdtContent()
 
