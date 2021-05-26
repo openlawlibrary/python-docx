@@ -84,8 +84,6 @@ class CT_SdtContentBase(BaseOxmlElement):
             for child in el:
                 if child.tag == qn('w:r'):
                     yield child
-                elif child.tag in (qn('w:smartTag'),):
-                    yield from get_runs(child)
                 else:
                     yield from walk(child)
         yield from walk(self)
