@@ -14,7 +14,6 @@ from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented, lazyproperty
 from ..oxml.ns import nsmap
-from docx.sdt import SdtType, SdtBase
 
 class Paragraph(Parented):
     """
@@ -41,11 +40,13 @@ class Paragraph(Parented):
             run.style = style
         return run
 
-    def add_sdt(self, tag_name, text='', alias_name='', temporary='false', locked='unlocked',
-                placeholder_txt=None, style='Normal', bold=False, italic=False, type=SdtType.RICH_TEXT):
+    def add_sdt(self, tag_name, text='', alias_name='', temporary='false',
+                placeholder_txt=None, style='Normal', bold=False, italic=False):
         """
-        Adds new Structured Document Type ``w:sdt`` field to the Paragraph element.
+        Adds new Structured Document Type ``w:sdt`` (Plain Text Content Control) field to the Paragraph element.
         """
+        # TODO: Add support for SdtType and locked property
+        from docx.sdt import SdtBase
 
         def apply_run_formatting(rPr, style='Normal', bold=False, italic=False, underline=False):
             if style != 'Normal':
@@ -80,14 +81,9 @@ class Paragraph(Parented):
         rPr = sdtPr.get_or_add_rPr()
         apply_run_formatting(rPr, style, bold, italic)
 
-        tag = sdtPr._add_tag_name()
-        tag.set('{%s}val' % nsmap['w'], tag_name)
-
-        alias = sdtPr._add_alias()
-        alias.set('{%s}val' % nsmap['w'], alias_name)
-
-        temp = sdtPr._add_temporary()
-        temp.set('{%s}val' % nsmap['w'], temporary)
+        sdtPr.name = tag_name
+        sdtPr.alias_val = alias_name
+        sdtPr.temp_val = temporary
 
         sdtContent = sdt._add_sdtContent()
 

@@ -12,7 +12,6 @@ from collections import OrderedDict
 from .oxml.table import CT_Tbl
 from .shared import Parented
 from .text.paragraph import Paragraph
-from .sdt import SdtBase
 
 
 class BlockItemContainer(Parented):
@@ -52,6 +51,23 @@ class BlockItemContainer(Parented):
         self._element._insert_tbl(tbl)
         return Table(tbl, self)
 
+    def add_sdt(self, tag_name, alias_name=''):
+        """
+        Returns Rich Text Content Control with given *tag_name*.
+        Appends created content control to the content in this container.
+        """
+        from .sdt import SdtBase
+        sdt = self._element._new_sdt()
+
+        sdtPr = sdt._add_sdtPr()
+        sdtPr.name = tag_name
+        alias_name = alias_name or tag_name
+        sdtPr.alias_val = alias_name
+
+        sdt._add_sdtContent()
+        self._element.append(sdt)
+        return SdtBase(sdt, self)
+
     @property
     def paragraphs(self):
         """
@@ -66,6 +82,7 @@ class BlockItemContainer(Parented):
         A list of children sdts (content controls) in this container, in
         document order. Read-only.
         """
+        from .sdt import SdtBase
         return OrderedDict({k:SdtBase(s, self) for (s,k) in self._iter_sdts()})
 
     @property
@@ -74,6 +91,7 @@ class BlockItemContainer(Parented):
         A list of descendants sdts (content controls) in this container, in
         document order. Read-only.
         """
+        from .sdt import SdtBase
         return OrderedDict({k:SdtBase(s, self) for (s,k) in self._iter_sdts_all()})
 
     @property

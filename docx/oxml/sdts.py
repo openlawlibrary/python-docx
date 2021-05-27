@@ -46,6 +46,28 @@ class CT_SdtPr(BaseOxmlElement):
         except AttributeError:
             return None
 
+    @name.setter
+    def name(self, tag_name):
+        tag = self._add_tag_name()
+        tag.set('{%s}val' % nsmap['w'], tag_name)
+
+    @property
+    def alias_val(self):
+        return self.alias.get('{%s}val' % nsmap['w'])
+
+    @alias_val.setter
+    def alias_val(self, alias_name):
+        alias = self._add_alias()
+        alias.set('{%s}val' % nsmap['w'], alias_name)
+
+    @property
+    def temporary_val(self):
+        return self.temporary.get('{%s}val' % nsmap['w'])
+
+    @temporary_val.setter
+    def temporary_val(self, tmp):
+        temp = self._add_temporary()
+        temp.set(nsmap['w'], tmp)
 
 class CT_SdtContentBase(BaseOxmlElement):
     """
@@ -54,6 +76,8 @@ class CT_SdtContentBase(BaseOxmlElement):
     """
     p = ZeroOrMore('w:p')
     r = ZeroOrMore('w:r')
+    sdt = ZeroOrMore('w:sdt')
+    tbl = ZeroOrMore('w:tbl')
 
     def iter_runs(self):
         def walk(el):
