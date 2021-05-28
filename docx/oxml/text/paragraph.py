@@ -79,3 +79,11 @@ class CT_P(BaseOxmlElement):
     def style(self, style):
         pPr = self.get_or_add_pPr()
         pPr.style = style
+
+    @property
+    def text(self):
+        text = ''
+        for child in self.iterchildren():
+            if child.tag in (qn('w:r'), qn('w:ins')):
+                text += child.text
+        return text
