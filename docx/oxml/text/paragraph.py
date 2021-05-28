@@ -10,10 +10,13 @@ from ..xmlchemy import BaseOxmlElement, OxmlElement, ZeroOrMore, ZeroOrOne
 
 class CT_P(BaseOxmlElement):
     """
-    ``<w:p>`` element, containing the properties and text for a paragraph.
+    ``<w:p>`` element, containing the properties and text for a paragraph
+    along with insertions and deletions that represent changes in a paragraph.
     """
     pPr = ZeroOrOne('w:pPr')
     r = ZeroOrMore('w:r')
+    ins_ = ZeroOrMore('w:ins')
+    del_ = ZeroOrMore('w:del')
 
     def _insert_pPr(self, pPr):
         self.insert(0, pPr)
