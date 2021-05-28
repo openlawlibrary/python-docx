@@ -246,3 +246,7 @@ from .text.run import CT_Br, CT_R, CT_Text  # noqa
 register_element_cls('w:br', CT_Br)
 register_element_cls('w:r',  CT_R)
 register_element_cls('w:t',  CT_Text)
+
+from .text.changes import CT_TrackChange
+register_element_cls('w:ins', CT_TrackChange)
+register_element_cls('w:del', CT_TrackChange)
