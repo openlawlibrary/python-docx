@@ -161,6 +161,18 @@ class CT_Numbering(BaseOxmlElement):
         abstractNum_el = self.get_abstractNum(numId)
         return abstractNum_el.get_lvl(ilvl)
 
+    def get_lvl_from_style_properties(self, p, styles_cache):
+        """
+        Gets the formatting based on current paragraph indentation level.
+        """
+        numPr = p.pPr.get_style_numPr(styles_cache)
+        if numPr is None:
+            return numPr
+        ilvl, numId = numPr.ilvl, numPr.numId.val
+        ilvl = ilvl.val if ilvl is not None else 0
+        abstractNum_el = self.get_abstractNum(numId)
+        return abstractNum_el.get_lvl(ilvl)
+
     def get_num_for_p(self, p, styles_cache):
         """
         Returns list item for the given paragraph.
