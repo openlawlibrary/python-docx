@@ -223,6 +223,13 @@ class Paragraph(Parented):
             return self._lvl
 
     @property
+    def lvl_from_props(self):
+        """
+        Gets the `lvl` element based on the indentation index.
+        """
+        return self._p.lvl_from_props(self.part.numbering_part._element)
+
+    @property
     def numbering_format(self):
         """
         Returns |ParagraphFormat| object based on the formatting for the given
@@ -230,6 +237,13 @@ class Paragraph(Parented):
         """
         return ParagraphFormat(self.lvl) if self.lvl is not None else None
 
+    @property
+    def numbering_format_props(self):
+        """
+        Returns |ParagraphFormat| object based on the formatting for the given
+        level of the numbered list.
+        """
+        return ParagraphFormat(self.lvl_from_props) if self.lvl_from_props is not None else None
     @property
     def paragraph_format(self):
         """

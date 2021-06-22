@@ -104,6 +104,12 @@ class CT_PPr(BaseOxmlElement):
             except (KeyError, AttributeError):
                 return None
 
+    def get_style_numPr(self, styles_cache):
+        try:
+            return styles_cache[self.pStyle.val].pPr.numPr
+        except (KeyError, AttributeError):
+            return None
+
     @property
     def ind_left(self):
         """

@@ -61,6 +61,12 @@ class CT_P(BaseOxmlElement):
         """
         return numbering_el.get_lvl_for_p(self, styles_cache)
 
+    def lvl_from_props(self, numbering_el):
+        """
+        Returns ``<w:lvl>`` element formatting for the current paragraph.
+        """
+        return numbering_el.get_lvl_from_properties(self)
+
     def number(self, numbering_el, styles_cache):
         """
         Returns numbering part of the paragraph if any, else returns None.
