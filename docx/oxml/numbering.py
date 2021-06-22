@@ -153,7 +153,10 @@ class CT_Numbering(BaseOxmlElement):
         """
         Gets the formatting based on current paragraph indentation level.
         """
-        numPr = p.pPr.numPr
+        try:
+            numPr = p.pPr.numPr
+        except AttributeError:
+            return None
         if numPr is None:
             return numPr
         ilvl, numId = numPr.ilvl, numPr.numId.val
@@ -165,7 +168,10 @@ class CT_Numbering(BaseOxmlElement):
         """
         Gets the formatting based on current paragraph indentation level.
         """
-        numPr = p.pPr.get_style_numPr(styles_cache)
+        try:
+            numPr = p.pPr.get_style_numPr(styles_cache)
+        except AttributeError:
+            return None
         if numPr is None:
             return numPr
         ilvl, numId = numPr.ilvl, numPr.numId.val

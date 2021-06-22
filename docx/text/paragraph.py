@@ -483,19 +483,28 @@ class Paragraph(Parented):
             _inner_get_tabstops(para)
             return tabstops
 
+        def apply_formatting(source, first_line_indent=None, left_indent=None):
+            if source:
+                first_line_indent = source.first_line_indent if source.first_line_indent is not None \
+                    else first_line_indent
+                left_indent = source.left_indent if source.left_indent is not None \
+                    else left_indent
+            return first_line_indent, left_indent
+
+        first_line_indent, left_indent = apply_formatting(self.numbering_format_style)
+        first_line_indent, left_indent = apply_formatting(self.style.paragraph_format, first_line_indent, left_indent)
+        first_line_indent, left_indent = apply_formatting(self.numbering_format_props, first_line_indent, left_indent)
+        first_line_indent, left_indent = apply_formatting(self.paragraph_format, first_line_indent, left_indent)
+
         # Get explicitly set indentation
-        first_line_indent = self.paragraph_format.first_line_indent
         if first_line_indent is not None:
             first_line_indent = round(first_line_indent.inches, 2)
-        left_indent = self.paragraph_format.left_indent
         if left_indent is not None:
             left_indent = round(left_indent.inches, 2)
 
         if self.numbering_format:
-            indent = first_line_indent if first_line_indent is not None \
-                 else self.numbering_format.first_line_indent.inches
-            indent += left_indent if left_indent is not None \
-                else self.numbering_format.left_indent.inches
+            indent = first_line_indent or 0
+            indent += left_indent or 0
         else:
             # If para is not numbered we shall calculate using tabs and tab stops
             DEFAULT_TAB_STOP = 0.5
