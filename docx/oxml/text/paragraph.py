@@ -55,23 +55,17 @@ class CT_P(BaseOxmlElement):
                 continue
             self.remove(child)
 
-    def lvl(self, numbering_el, styles_cache):
+    def lvl_from_para_props(self, numbering_el):
         """
         Returns ``<w:lvl>`` element formatting for the current paragraph.
         """
-        return numbering_el.get_lvl_for_p(self, styles_cache)
-
-    def lvl_from_props(self, numbering_el):
-        """
-        Returns ``<w:lvl>`` element formatting for the current paragraph.
-        """
-        return numbering_el.get_lvl_from_properties(self)
+        return numbering_el.get_lvl_from_props(self)
 
     def lvl_from_style_props(self, numbering_el, styles_cache):
         """
-        Returns ``<w:lvl>`` element formatting for the current paragraph.
+        Returns ``<w:lvl>`` element formatting for the current paragraph style formatting.
         """
-        return numbering_el.get_lvl_from_style_properties(self, styles_cache)
+        return numbering_el.get_lvl_from_props(self, styles_cache)
 
     def number(self, numbering_el, styles_cache):
         """

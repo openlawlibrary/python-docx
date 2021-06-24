@@ -139,41 +139,21 @@ class CT_Numbering(BaseOxmlElement):
             if el.abstractNumId == abstractNum_id:
                 return el
 
-    def get_lvl_for_p(self, p, styles_cache):
+    def get_lvl_from_props(self, p, styles_cache=None):
         """
-        Gets the formatting based on current paragraph indentation level.
-        """
-        numPr = p.pPr.get_numPr(styles_cache)
-        ilvl, numId = numPr.ilvl, numPr.numId.val
-        ilvl = ilvl.val if ilvl is not None else 0
-        abstractNum_el = self.get_abstractNum(numId)
-        return abstractNum_el.get_lvl(ilvl)
-
-    def get_lvl_from_properties(self, p):
-        """
-        Gets the formatting based on current paragraph indentation level.
+        Gets the formatting based on current paragraph indentation level defined in paragraph styles.
+        If ``styles_cache`` is not None then level from style formating is fetched otherwise
+        level from direct paragraph formating is used.
         """
         try:
-            numPr = p.pPr.numPr
+            if styles_cache:
+                numPr = p.pPr.get_style_numPr(styles_cache)
+            else:
+                numPr = p.pPr.numPr
+            if numPr is None:
+                raise AttributeError
         except AttributeError:
             return None
-        if numPr is None:
-            return numPr
-        ilvl, numId = numPr.ilvl, numPr.numId.val
-        ilvl = ilvl.val if ilvl is not None else 0
-        abstractNum_el = self.get_abstractNum(numId)
-        return abstractNum_el.get_lvl(ilvl)
-
-    def get_lvl_from_style_properties(self, p, styles_cache):
-        """
-        Gets the formatting based on current paragraph indentation level.
-        """
-        try:
-            numPr = p.pPr.get_style_numPr(styles_cache)
-        except AttributeError:
-            return None
-        if numPr is None:
-            return numPr
         ilvl, numId = numPr.ilvl, numPr.numId.val
         ilvl = ilvl.val if ilvl is not None else 0
         abstractNum_el = self.get_abstractNum(numId)
