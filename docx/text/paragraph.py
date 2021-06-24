@@ -469,10 +469,10 @@ class Paragraph(Parented):
 
         def apply_formatting(source, first_line_indent=None, left_indent=None):
             if source:
-                if source.first_line_indent is not None:
-                    first_line_indent = source.first_line_indent
-                if source.left_indent is not None:
-                    left_indent = source.left_indent
+                if getattr(source, 'first_line_indent', None) is not None:
+                    first_line_indent = getattr(source, 'first_line_indent')
+                if getattr(source, 'left_indent', None) is not None:
+                    left_indent = getattr(source, 'left_indent')
             return first_line_indent, left_indent
 
         # apply paragraph styles by priority (from lowest to highest)
