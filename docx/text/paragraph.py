@@ -34,8 +34,9 @@ class Paragraph(Parented, BookmarkParent):
         super(Paragraph, self).__init__(parent)
         self._p = self._element = p
         self._number = None
-        self._lvl = None
         self._cache = {}
+        self._lvl_from_para_props = None
+        self._lvl_from_style_props = None
 
     def add_run(self, text=None, style=None):
         """
@@ -291,26 +292,48 @@ class Paragraph(Parented, BookmarkParent):
         self._number = new_number
 
     @property
-    def lvl(self):
+    def lvl_from_para_props(self):
         """
-        Gets the `lvl` element based on the indentation index.
+        Returns ``<w:lvl>`` numbering level paragraph formatting for the current paragraph using
+        numbering linked via the direct paragraph formatting.
         """
-        if self._lvl is None:
+        if self._lvl_from_para_props is None:
             try:
-                self._lvl = self._p.lvl(self.part.numbering_part._element, self.part.cached_styles)
-                return self._lvl
+                self._lvl_from_para_props = self._p.lvl_from_para_props(self.part.numbering_part._element)
             except (AttributeError, NotImplementedError):
                 return None
-        else:
-            return self._lvl
+        return self._lvl_from_para_props
 
     @property
-    def numbering_format(self):
+    def lvl_from_style_props(self):
+        """
+        Returns ``<w:lvl>`` numbering level paragraph formatting for the current paragraph using
+        numbering linked via the paragraph style formatting.
+        """
+        if self._lvl_from_style_props is None:
+            try:
+                self._lvl_from_style_props = self._p.lvl_from_style_props(self.part.numbering_part._element,
+                                                                          self.part.cached_styles)
+            except (AttributeError, NotImplementedError):
+                return None
+        return self._lvl_from_style_props
+
+    @property
+    def para_numbering_format(self):
         """
         Returns |ParagraphFormat| object based on the formatting for the given
-        level of the numbered list.
+        level of the numbered list from direct formatting. Has a greater priority than style
+        numbering format (see ``style_numbering_format``).
         """
-        return ParagraphFormat(self.lvl) if self.lvl is not None else None
+        return ParagraphFormat(self.lvl_from_para_props) if self.lvl_from_para_props is not None else None
+
+    @property
+    def style_numbering_format(self):
+        """
+        Returns |ParagraphFormat| object based on the formatting for the given
+        level of the numbered list from paragraph styles.
+        """
+        return ParagraphFormat(self.lvl_from_style_props) if self.lvl_from_style_props is not None else None
 
     @property
     def paragraph_format(self):
@@ -532,25 +555,13 @@ class Paragraph(Parented, BookmarkParent):
         where ``*`` is param name. Default tab stop ``DEFAULT_TAB_STOP`` has (.5 Inches) val.
         """
 
-        def get_attr_with_style(obj, attr_name):
-            """
-            Return the first non-None attribute following the style hierarchy.
-            """
-            attr = getattr(obj.paragraph_format, attr_name, None)
-            if attr is not None:
-                return attr
-
-            new_obj = getattr(obj, 'style', None)
-            if new_obj is not None:
-                return get_attr_with_style(new_obj, attr_name)
-
-            new_obj = getattr(obj, 'base_style', None)
-            if new_obj is not None:
-                return get_attr_with_style(new_obj, attr_name)
-
-            # If the attribute is not defined we end-up here and return
-            # zero
-            return Length(0)
+        def get_base_style_attr(obj, attr_name):
+            if getattr(obj, 'base_style', None) is None:
+                return Length(0)
+            elif getattr(obj.base_style, 'paragraph_format', None) is not None:
+                if getattr(obj.base_style.paragraph_format, attr_name, None) is not None:
+                    return getattr(obj.base_style.paragraph_format, attr_name)
+            return get_base_style_attr(obj.base_style, attr_name)
 
         def get_tabstops(para):
             """
@@ -580,70 +591,81 @@ class Paragraph(Parented, BookmarkParent):
             _inner_get_tabstops(para)
             return tabstops
 
+        def apply_formatting(source, first_line_indent=None, left_indent=None):
+            if source:
+                if getattr(source, 'first_line_indent', None) is not None:
+                    first_line_indent = getattr(source, 'first_line_indent')
+                if getattr(source, 'left_indent', None) is not None:
+                    left_indent = getattr(source, 'left_indent')
+            return first_line_indent, left_indent
+
+        # Apply paragraph styles by priority (from lowest to highest).
+        # Formatting from the base style has the lowest priority.
+        first_line_indent = get_base_style_attr(self.style, 'first_line_indent')
+        left_indent = get_base_style_attr(self.style, 'left_indent')
+        # Next, we apply formatting from numbering properties defined in paragraph style.
+        first_line_indent, left_indent = apply_formatting(self.style_numbering_format, first_line_indent, left_indent)
+        # Then formatting from paragraph style.
+        first_line_indent, left_indent = apply_formatting(self.style.paragraph_format, first_line_indent, left_indent)
+        # Next, formatting from numbering properties defined in direct paragraph properties is applied.
+        first_line_indent, left_indent = apply_formatting(self.para_numbering_format, first_line_indent, left_indent)
+        # Finally, we apply formatting from direct paragraph formatting.
+        first_line_indent, left_indent = apply_formatting(self.paragraph_format, first_line_indent, left_indent)
+
         # Get explicitly set indentation
-        first_line_indent = self.paragraph_format.first_line_indent
         if first_line_indent is not None:
             first_line_indent = round(first_line_indent.inches, 2)
-        left_indent = self.paragraph_format.left_indent
         if left_indent is not None:
             left_indent = round(left_indent.inches, 2)
 
-        if self.numbering_format:
-            indent = first_line_indent if first_line_indent is not None \
-                 else self.numbering_format.first_line_indent.inches
-            indent += left_indent if left_indent is not None \
-                else self.numbering_format.left_indent.inches
-        else:
-            # If para is not numbered we shall calculate using tabs and tab stops
-            DEFAULT_TAB_STOP = 0.5
-            tab_count = 0
+        # If para is not numbered we shall calculate using tabs and tab stops
+        DEFAULT_TAB_STOP = 0.5
+        tab_count = 0
 
-            # Calculate the base first line indent and para left indent.
-            left_indent = left_indent or round(get_attr_with_style(self, 'left_indent').inches, 2)
-            indent = first_line_indent = \
-                (first_line_indent
-                 or round(get_attr_with_style(self, 'first_line_indent').inches, 2)) + left_indent
+        # Calculate the base first line indent and para left indent.
+        left_indent = left_indent or 0
+        indent = first_line_indent = (first_line_indent or 0) + left_indent
 
-            # Find out the number of tabs at the beginning of the paragraph.
-            # Ignore regular spaces.
-            tab_count = self.text[:len(self.text) - len(self.text.lstrip())].count('\t')
+        # Find out the number of tabs at the beginning of the paragraph.
+        # Ignore regular spaces.
+        tab_count = self.text[:len(self.text) - len(self.text.lstrip())].count('\t')
 
-            if tab_count:
+        if tab_count:
 
-                # Get tab stops but only those to the right of first line indent as the previous
-                # don't affect the indentation.
-                tab_stops = [ts for ts in get_tabstops(self) if ts > first_line_indent]
+            # Get tab stops but only those to the right of first line indent as the previous
+            # don't affect the indentation.
+            tab_stops = [ts for ts in get_tabstops(self) if ts > first_line_indent]
 
-                # If the first line indent is left of the paragraph indent, first tab will tab to
-                # the paragraph indent.
-                if first_line_indent < left_indent:
-                    tab_stops.append(left_indent)
+            # If the first line indent is left of the paragraph indent, first tab will tab to
+            # the paragraph indent.
+            if first_line_indent < left_indent:
+                tab_stops.append(left_indent)
 
-                # Eliminate duplicates and sort.
-                tab_stops = list(sorted(set(tab_stops)))
+            # Eliminate duplicates and sort.
+            tab_stops = list(sorted(set(tab_stops)))
 
-                if len(tab_stops) >= tab_count:
-                    # We have enough tab stops to cover all tab chars.
-                    if tab_stops:
-                        indent = tab_stops[tab_count - 1]
+            if len(tab_stops) >= tab_count:
+                # We have enough tab stops to cover all tab chars.
+                if tab_stops:
+                    indent = tab_stops[tab_count - 1]
 
-                else:
-                    if tab_stops:
-                        indent = tab_stops[-1]
-                        tab_count -= len(tab_stops)
+            else:
+                if tab_stops:
+                    indent = tab_stops[-1]
+                    tab_count -= len(tab_stops)
 
-                    # It's easier to calculate in whole tab stop indents instead of inches
-                    indent *= (1 / DEFAULT_TAB_STOP)
+                # It's easier to calculate in whole tab stop indents instead of inches
+                indent *= (1 / DEFAULT_TAB_STOP)
 
-                    # Let's round up to the first tab char indent. If already rounded add one.
-                    tab_count -= 1
-                    indent = math.ceil(indent) if not indent.is_integer() else indent + 1
+                # Let's round up to the first tab char indent. If already rounded add one.
+                tab_count -= 1
+                indent = math.ceil(indent) if not indent.is_integer() else indent + 1
 
-                    # The remaining tab chars just adds whole indents.
-                    indent += tab_count
+                # The remaining tab chars just adds whole indents.
+                indent += tab_count
 
-                    # Scale back to inches
-                    indent /= (1 / DEFAULT_TAB_STOP)
+                # Scale back to inches
+                indent /= (1 / DEFAULT_TAB_STOP)
 
         return Inches(indent)
 
