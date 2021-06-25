@@ -212,7 +212,8 @@ class Paragraph(Parented):
     @property
     def lvl_from_para_props(self):
         """
-        Gets the ``<w:lvl>`` element from paragraph properties based on the indentation index.
+        Returns ``<w:lvl>`` numbering level paragraph formatting for the current paragraph using
+        numbering linked via the direct paragraph formatting.
         """
         if self._lvl_from_para_props is None:
             try:
@@ -224,7 +225,8 @@ class Paragraph(Parented):
     @property
     def lvl_from_style_props(self):
         """
-        Gets the ``<w:lvl>`` element from style's paragraph properties based on the indentation index.
+        Returns ``<w:lvl>`` numbering level paragraph formatting for the current paragraph using
+        numbering linked via the paragraph style formatting.
         """
         if self._lvl_from_style_props is None:
             try:
@@ -475,12 +477,17 @@ class Paragraph(Parented):
                     left_indent = getattr(source, 'left_indent')
             return first_line_indent, left_indent
 
-        # apply paragraph styles by priority (from lowest to highest)
+        # Apply paragraph styles by priority (from lowest to highest).
+        # Formatting from the base style has the lowest priority.
         first_line_indent = get_base_style_attr(self.style, 'first_line_indent')
         left_indent = get_base_style_attr(self.style, 'left_indent')
+        # Next, we apply formatting from numbering properties defined in paragraph style.
         first_line_indent, left_indent = apply_formatting(self.style_numbering_format, first_line_indent, left_indent)
+        # Then formatting from paragraph style.
         first_line_indent, left_indent = apply_formatting(self.style.paragraph_format, first_line_indent, left_indent)
+        # Next, formatting from numbering properties defined in direct paragraph properties is applied.
         first_line_indent, left_indent = apply_formatting(self.para_numbering_format, first_line_indent, left_indent)
+        # Finally, we apply formatting from direct paragraph formatting.
         first_line_indent, left_indent = apply_formatting(self.paragraph_format, first_line_indent, left_indent)
 
         # Get explicitly set indentation
