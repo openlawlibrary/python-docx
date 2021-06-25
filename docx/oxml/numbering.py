@@ -146,18 +146,17 @@ class CT_Numbering(BaseOxmlElement):
         level from direct paragraph formating is used.
         """
         try:
-            if styles_cache:
-                numPr = p.pPr.get_style_numPr(styles_cache)
-            else:
-                numPr = p.pPr.numPr
+            numPr  = p.pPr.get_style_numPr(styles_cache) if styles_cache else p.pPr.numPr
+
             if numPr is None:
                 raise AttributeError
+
+            ilvl, numId = numPr.ilvl, numPr.numId.val
+            ilvl = ilvl.val if ilvl is not None else 0
+            abstractNum_el = self.get_abstractNum(numId)
+            return abstractNum_el.get_lvl(ilvl)
         except AttributeError:
             return None
-        ilvl, numId = numPr.ilvl, numPr.numId.val
-        ilvl = ilvl.val if ilvl is not None else 0
-        abstractNum_el = self.get_abstractNum(numId)
-        return abstractNum_el.get_lvl(ilvl)
 
     def get_num_for_p(self, p, styles_cache):
         """
