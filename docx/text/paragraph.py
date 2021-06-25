@@ -489,58 +489,54 @@ class Paragraph(Parented):
         if left_indent is not None:
             left_indent = round(left_indent.inches, 2)
 
-        if self.para_numbering_format or self.style_numbering_format:
-            indent = first_line_indent or 0
-            indent += left_indent or 0
-        else:
-            # If para is not numbered we shall calculate using tabs and tab stops
-            DEFAULT_TAB_STOP = 0.5
-            tab_count = 0
+        # If para is not numbered we shall calculate using tabs and tab stops
+        DEFAULT_TAB_STOP = 0.5
+        tab_count = 0
 
-            # Calculate the base first line indent and para left indent.
-            left_indent = left_indent or 0
-            indent = first_line_indent = (first_line_indent or 0) + left_indent
+        # Calculate the base first line indent and para left indent.
+        left_indent = left_indent or 0
+        indent = first_line_indent = (first_line_indent or 0) + left_indent
 
-            # Find out the number of tabs at the beginning of the paragraph.
-            # Ignore regular spaces.
-            tab_count = self.text[:len(self.text) - len(self.text.lstrip())].count('\t')
+        # Find out the number of tabs at the beginning of the paragraph.
+        # Ignore regular spaces.
+        tab_count = self.text[:len(self.text) - len(self.text.lstrip())].count('\t')
 
-            if tab_count:
+        if tab_count:
 
-                # Get tab stops but only those to the right of first line indent as the previous
-                # don't affect the indentation.
-                tab_stops = [ts for ts in get_tabstops(self) if ts > first_line_indent]
+            # Get tab stops but only those to the right of first line indent as the previous
+            # don't affect the indentation.
+            tab_stops = [ts for ts in get_tabstops(self) if ts > first_line_indent]
 
-                # If the first line indent is left of the paragraph indent, first tab will tab to
-                # the paragraph indent.
-                if first_line_indent < left_indent:
-                    tab_stops.append(left_indent)
+            # If the first line indent is left of the paragraph indent, first tab will tab to
+            # the paragraph indent.
+            if first_line_indent < left_indent:
+                tab_stops.append(left_indent)
 
-                # Eliminate duplicates and sort.
-                tab_stops = list(sorted(set(tab_stops)))
+            # Eliminate duplicates and sort.
+            tab_stops = list(sorted(set(tab_stops)))
 
-                if len(tab_stops) >= tab_count:
-                    # We have enough tab stops to cover all tab chars.
-                    if tab_stops:
-                        indent = tab_stops[tab_count - 1]
+            if len(tab_stops) >= tab_count:
+                # We have enough tab stops to cover all tab chars.
+                if tab_stops:
+                    indent = tab_stops[tab_count - 1]
 
-                else:
-                    if tab_stops:
-                        indent = tab_stops[-1]
-                        tab_count -= len(tab_stops)
+            else:
+                if tab_stops:
+                    indent = tab_stops[-1]
+                    tab_count -= len(tab_stops)
 
-                    # It's easier to calculate in whole tab stop indents instead of inches
-                    indent *= (1 / DEFAULT_TAB_STOP)
+                # It's easier to calculate in whole tab stop indents instead of inches
+                indent *= (1 / DEFAULT_TAB_STOP)
 
-                    # Let's round up to the first tab char indent. If already rounded add one.
-                    tab_count -= 1
-                    indent = math.ceil(indent) if not indent.is_integer() else indent + 1
+                # Let's round up to the first tab char indent. If already rounded add one.
+                tab_count -= 1
+                indent = math.ceil(indent) if not indent.is_integer() else indent + 1
 
-                    # The remaining tab chars just adds whole indents.
-                    indent += tab_count
+                # The remaining tab chars just adds whole indents.
+                indent += tab_count
 
-                    # Scale back to inches
-                    indent /= (1 / DEFAULT_TAB_STOP)
+                # Scale back to inches
+                indent /= (1 / DEFAULT_TAB_STOP)
 
         return Inches(indent)
 
