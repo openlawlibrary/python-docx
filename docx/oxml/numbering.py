@@ -148,9 +148,6 @@ class CT_Numbering(BaseOxmlElement):
         try:
             numPr  = p.pPr.get_style_numPr(styles_cache) if styles_cache else p.pPr.numPr
 
-            if numPr is None:
-                raise AttributeError
-
             ilvl, numId = numPr.ilvl, numPr.numId.val
             ilvl = ilvl.val if ilvl is not None else 0
             abstractNum_el = self.get_abstractNum(numId)
