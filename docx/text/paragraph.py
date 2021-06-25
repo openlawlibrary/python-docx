@@ -10,14 +10,22 @@ from __future__ import (
 
 import copy
 import math
+import os
+import pathlib
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented, Length, lazyproperty, Inches
+from ..shared import Parented, Length, lazyproperty, Inches, cache, bust_cache
 from ..oxml.ns import nsmap
+from docx.bookmark import BookmarkParent
+from docx.parts.image import ImagePart
 
 
-class Paragraph(Parented):
+# Decorator for all text changing functions used to invalidate text cache.
+text_changing = bust_cache(('text', 'run_text'))
+
+
+class Paragraph(Parented, BookmarkParent):
     """
     Proxy object wrapping ``<w:p>`` element.
     """
@@ -26,6 +34,7 @@ class Paragraph(Parented):
         super(Paragraph, self).__init__(parent)
         self._p = self._element = p
         self._number = None
+        self._cache = {}
         self._lvl_from_para_props = None
         self._lvl_from_style_props = None
 
@@ -45,6 +54,77 @@ class Paragraph(Parented):
         if style:
             run.style = style
         return run
+
+    def add_field(self, instrText=None):
+        """
+        Adds new field `w:fldChar` to run. Pass `instrText` to specify
+        filed instruction.
+        """
+        self.add_run().add_fldChar()
+        if instrText:
+            self.add_run().add_instrText(instrText)
+        self.add_run().add_fldChar(fldCharType='end')
+
+    def add_sdt(self, tag_name, text='', alias_name='', temporary='false',
+                placeholder_txt=None, style='Normal', bold=False, italic=False):
+        """
+        Adds new Structured Document Type ``w:sdt`` (Plain Text Content Control) field to the Paragraph element.
+        """
+        # TODO: Add support for SdtType and locked property
+        from docx.sdt import SdtBase
+
+        def apply_run_formatting(rPr, style='Normal', bold=False, italic=False, underline=False):
+            if style != 'Normal':
+                rStyle = rPr._add_rStyle()
+                rStyle.set('{%s}val' % nsmap['w'], style)
+            if bold:
+                rPr._add_b()
+                rPr._add_bCs()
+            if italic:
+                rPr._add_i()
+            # TODO: impl underline
+
+        def set_std_placeholder_text(r, text=None):
+            rPr = r._add_rPr()
+            rStyle = rPr._add_rStyle()
+            rStyle.set('{%s}val' % nsmap['w'], 'PlaceholderText')
+            rPr._add_b()
+            rPr._add_bCs()
+            t = r._add_t()
+            placeholder_txt = text or 'Click or tap here to enter text'
+            t.text = placeholder_txt
+            active_placeholder = sdtPr._add_active_placeholder()
+            active_placeholder.set('{%s}val' % nsmap['w'], 'true')
+
+
+        sdt = self._p._new_sdt()
+
+        sdtPr = sdt._add_sdtPr()
+        alias_name = alias_name or tag_name
+
+        # set styling on sdt lvl
+        rPr = sdtPr.get_or_add_rPr()
+        apply_run_formatting(rPr, style, bold, italic)
+
+        sdtPr.name = tag_name
+        sdtPr.alias_val = alias_name
+        sdtPr.temp_val = temporary
+
+        sdtContent = sdt._add_sdtContent()
+
+        r = sdtContent._add_r()
+        if not text:
+            set_std_placeholder_text(r, placeholder_txt)
+        else:
+            # set styling on content lvl
+            rPr = r.get_or_add_rPr()
+            apply_run_formatting(rPr, style, bold, italic)
+
+            t = r._add_t()
+            t.text = text
+
+        self._p.append(sdt)
+        return SdtBase(sdt, self)
 
     @property
     def alignment(self):
@@ -104,6 +184,7 @@ class Paragraph(Parented):
         curpos = 0
         runidx = 0
         curpara = self
+        self._cache = {}
         prevtextlen = 0
         while runidx < len(curpara.runs):
             run = curpara.runs[runidx]
@@ -139,6 +220,7 @@ class Paragraph(Parented):
         """Removes this paragraph from its container."""
         self._p.getparent().remove(self._p)
 
+    @text_changing
     def remove_text(self, start=0, end=-1):
         """Removes part of text retaining runs and styling."""
 
@@ -278,6 +360,7 @@ class Paragraph(Parented):
         return self._element.bookmarkEnd_lst
 
     @property
+    @cache
     def style(self):
         """
         Read/Write. |_ParagraphStyle| object representing the style assigned
@@ -296,6 +379,26 @@ class Paragraph(Parented):
             style_or_name, WD_STYLE_TYPE.PARAGRAPH
         )
         self._p.style = style_id
+        self._cache = {}
+
+    def set_li_lvl(self, styles, prev, ilvl):
+        """
+        Sets list indentation level for this paragraph. If ``prev`` is not specified
+        it starts a new list. ``ilvl`` specifies indentation level. Default
+        indentation level is 0.
+        """
+        prev_el = prev._element if prev else None
+        _ilvl = 0 if ilvl is None else ilvl
+        self._p.set_li_lvl(self.part.numbering_part._element,
+                           self.part.cached_styles, prev_el, _ilvl)
+
+    @property
+    @cache
+    def run_text(self):
+        if self.runs:
+            return ''.join(r.text for r in self.runs)
+        else:
+            return ''
 
     def set_li_lvl(self, styles, prev, ilvl):
         """
@@ -309,6 +412,7 @@ class Paragraph(Parented):
                               self.part.cached_styles, prev_el, _ilvl)
 
     @property
+    @cache
     def text(self):
         """
         String formed by concatenating the text of each run in the paragraph.
@@ -323,16 +427,15 @@ class Paragraph(Parented):
         run-level formatting, such as bold or italic, is removed.
         """
         para_num = self.number
-        text = para_num if para_num is not None else ''
-        for run in self.runs:
-            text += run.text
-        return text
+        return (para_num if para_num is not None else '') + self.run_text
 
     @text.setter
+    @text_changing
     def text(self, text):
         self.clear()
         self.add_run(text)
 
+    @text_changing
     def replace_char(self, oldch, newch):
         """
         Replaces all occurences of oldch character with newch.
@@ -341,6 +444,21 @@ class Paragraph(Parented):
             run.text = run.text.replace(oldch, newch)
         return self
 
+    @text_changing
+    def replace_chars(self, *replacement_pairs):
+        """
+        *replacement_pairs is tuples of (oldch, newch)
+
+        Replaces all occurances of each replacement pair's oldch with the newch.
+        """
+        for run in self.runs:
+            new_text = run.text
+            for oldch, newch in replacement_pairs:
+                new_text = new_text.replace(oldch, newch)
+            run.text = new_text
+        return self
+
+    @text_changing
     def insert_text(self, position, new_text):
         """
         Inserts text at a given position.
@@ -356,6 +474,7 @@ class Paragraph(Parented):
                 break
         return self
 
+    @text_changing
     def replace_text(self, old_text, new_text):
         """
         Replace all occurences of old_text with new_text. Keep runs formatting.
@@ -376,6 +495,7 @@ class Paragraph(Parented):
                 .insert_text(old_start, new_text)
         return self
 
+    @text_changing
     def lstrip(self, chars=None):
         """
         Left strip paragraph text.
@@ -389,6 +509,7 @@ class Paragraph(Parented):
                 break
         return self
 
+    @text_changing
     def rstrip(self, chars=None):
         """
         Right strip paragraph text.
@@ -402,6 +523,7 @@ class Paragraph(Parented):
                 break
         return self
 
+    @text_changing
     def strip(self, chars=None):
         """
         Strips paragraph text.
@@ -565,6 +687,7 @@ class Paragraph(Parented):
         """
         c = copy.deepcopy(self)
         c._parent = self._parent
+        c._cache = {}
         return c
 
     def __getstate__(self):
@@ -580,13 +703,36 @@ class Paragraph(Parented):
         """
         Return all image parts related to this paragraph.
         """
+        doc = self.part.document
         drawings = []
+        parts = []
+
         for r in self.runs:
             if r._element.drawing_lst:
                 drawings.extend(r._element.drawing_lst)
+
         blips = [drawing.xpath(".//*[local-name() = 'blip']")[0]
                  for drawing in drawings]
-        rIds = [b.embed for b in blips]
-        doc = self.part.document
-        parts = [doc.part.related_parts[rId] for rId in rIds]
+
+
+        for b in blips:
+            if b.link:
+                rel = doc.part.rels[b.link]
+                target_ref = pathlib.Path(rel.target_ref)
+                doc_path = pathlib.Path(doc.part.package.path)
+                os.chdir(doc_path.parents[0])
+                rel_path = ''
+
+                for path_part in reversed(target_ref.parts):
+                    rel_path = pathlib.Path(path_part, rel_path)
+                    try:
+                        with open(rel_path, 'rb') as img:
+                            img_type = f'image/{target_ref.suffix.strip(".")}'
+                            parts.append(ImagePart(None, img_type, img.read()))
+                            break
+                    except FileNotFoundError:
+                        pass
+            elif b.embed:
+                parts.append(doc.part.related_parts[b.embed])
+
         return parts

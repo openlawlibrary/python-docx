@@ -1,52 +1,46 @@
 # encoding: utf-8
 
-"""
-|Document| and closely related objects
-"""
+"""|Document| and closely related objects"""
 
-from __future__ import (
-    absolute_import, division, print_function, unicode_literals
-)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from .blkcntnr import BlockItemContainer
+from docx.bookmark import Bookmarks
 from .enum.section import WD_SECTION
 from .enum.text import WD_BREAK
 from .section import Section, Sections
-from .shared import ElementProxy, Emu
+from .shared import ElementProxy, Emu, lazyproperty
 
 
 class Document(ElementProxy):
-    """
-    WordprocessingML (WML) document. Not intended to be constructed directly.
-    Use :func:`docx.Document` to open or create a document.
+    """WordprocessingML (WML) document.
+
+    Not intended to be constructed directly. Use :func:`docx.Document` to open or create
+    a document.
     """
 
-    #__slots__ = ('_part', '__body')
+    # __slots__ = ('_part', '__body', '_bookmarks')
 
     def __init__(self, element, part):
         super(Document, self).__init__(element)
         self._part = part
         self.__body = None
 
-    def add_heading(self, text='', level=1):
-        """
-        Return a heading paragraph newly added to the end of the document,
-        containing *text* and having its paragraph style determined by
-        *level*. If *level* is 0, the style is set to `Title`. If *level* is
-        1 (or omitted), `Heading 1` is used. Otherwise the style is set to
-        `Heading {level}`. Raises |ValueError| if *level* is outside the
-        range 0-9.
+    def add_heading(self, text="", level=1):
+        """Return a heading paragraph newly added to the end of the document.
+
+        The heading paragraph will contain *text* and have its paragraph style
+        determined by *level*. If *level* is 0, the style is set to `Title`. If *level*
+        is 1 (or omitted), `Heading 1` is used. Otherwise the style is set to `Heading
+        {level}`. Raises |ValueError| if *level* is outside the range 0-9.
         """
         if not 0 <= level <= 9:
             raise ValueError("level must be in range 0-9, got %d" % level)
-        style = 'Title' if level == 0 else 'Heading %d' % level
+        style = "Title" if level == 0 else "Heading %d" % level
         return self.add_paragraph(text, style)
 
     def add_page_break(self):
-        """
-        Return a paragraph newly added to the end of the document and
-        containing only a page break.
-        """
+        """Return newly |Paragraph| object containing only a page break."""
         paragraph = self.add_paragraph()
         paragraph.add_run().add_break(WD_BREAK.PAGE)
         return paragraph
@@ -88,7 +82,7 @@ class Document(ElementProxy):
         """
         new_sectPr = self._element.body.add_section_break()
         new_sectPr.start_type = start_type
-        return Section(new_sectPr)
+        return Section(new_sectPr, self._part)
 
     def add_table(self, rows, cols, style=None):
         """
@@ -101,6 +95,31 @@ class Document(ElementProxy):
         table.style = style
         return table
 
+    def end_bookmark(self, bookmark):
+        """
+        The :func:`end_bookmark` method is used to end a bookmark. It takes a
+        :any:`Bookmark<docx.text.bookmarks.Bookmark>` as input.
+        :param obj bookmark: Bookmark object that needs an end.
+        """
+        return self._body.end_bookmark(bookmark)
+
+    def start_bookmark(self, name):
+        """
+        The :func:`start_bookmark` method is used to place the start of  a
+        bookmark. It requires a name as input.
+        :param str name: Bookmark name
+        """
+        return self._body.start_bookmark(name=name)
+
+    @lazyproperty
+    def bookmarks(self):
+        """|Bookmarks| object providing access to |Bookmark| objects.
+        A bookmark may exist in the main document story, but also in headers,
+        footers, footnotes or endnotes. This collection contains all
+        bookmarks defined in any of these parts.
+        """
+        return Bookmarks(self._part)
+
     @property
     def core_properties(self):
         """
@@ -108,6 +127,14 @@ class Document(ElementProxy):
         properties of this document.
         """
         return self._part.core_properties
+
+    @property
+    def custom_properties(self):
+        """
+        A |CustomProperties| object providing read/write access to the custom
+        properties of this document.
+        """
+        return self._part.custom_properties
 
     @property
     def inline_shapes(self):
@@ -144,11 +171,8 @@ class Document(ElementProxy):
 
     @property
     def sections(self):
-        """
-        A |Sections| object providing access to each section in this
-        document.
-        """
-        return Sections(self._element)
+        """|Sections| object providing access to each section in this document."""
+        return Sections(self._element, self._part)
 
     @property
     def settings(self):
@@ -164,6 +188,9 @@ class Document(ElementProxy):
         A |Styles| object providing access to the styles in this document.
         """
         return self._part.styles
+
+    def add_sdt(self, tag_name):
+        return self._body.add_sdt(tag_name)
 
     @property
     def sdts(self):

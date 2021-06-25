@@ -12,10 +12,10 @@ class CT_P(BaseOxmlElement):
     """
     ``<w:p>`` element, containing the properties, text for a paragraph and content controls.
     """
-    pPr = ZeroOrOne('w:pPr')
-    r = ZeroOrMore('w:r')
     sdt = ZeroOrMore('w:sdt', CT_SdtBase)
-    bookmarkStart = ZeroOrMore('w:bookmarkStart')
+    bookmarkStart = ZeroOrMore('w:bookmarkStart', successors=('w:pPr', 'w:r',))
+    pPr = ZeroOrOne('w:pPr', successors=('w:bookmarkEnd',))
+    r = ZeroOrMore('w:r', successors=('w:bookmarkEnd',))
     bookmarkEnd = ZeroOrMore('w:bookmarkEnd')
 
     def _insert_pPr(self, pPr):
@@ -116,6 +116,6 @@ class CT_P(BaseOxmlElement):
             for child in elem:
                 if child.tag == qn('w:r'):
                     yield child
-                elif child.tag in (qn('w:hyperlink'), qn('w:sdt'), qn('w:sdtContent')):
+                elif child.tag in (qn('w:hyperlink'), qn('w:sdt'), qn('w:sdtContent'), qn('w:smartTag'),):
                     yield from get_runs(child)
         yield from get_runs(self)

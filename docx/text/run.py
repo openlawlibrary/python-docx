@@ -12,9 +12,10 @@ from ..enum.text import WD_BREAK
 from .font import Font
 from ..shape import InlineShape
 from ..shared import Parented
+from docx.bookmark import BookmarkParent
 
 
-class Run(Parented):
+class Run(Parented, BookmarkParent):
     """
     Proxy object wrapping ``<w:r>`` element. Several of the properties on Run
     take a tri-state value, |True|, |False|, or |None|. |True| and |False|
@@ -96,6 +97,22 @@ class Run(Parented):
         self.text = self.text[:pos]
         self._r.addnext(next_run._r)
         return self, next_run
+
+    def add_fldChar(self, fldCharType="begin"):
+        """
+        Adds new ``<w:fldChar>`` element with specified ``w:fldCharType`` attr.
+        Available options for ``w:fldCharType`` attr are `('begin', 'separate', 'end')`.
+        """
+        fldChar = self._r.add_fldChar()
+        fldChar.set('{%s}fldCharType' % fldChar.nsmap['w'], fldCharType)
+
+    def add_instrText(self, instruction_text):
+        """
+        Adds new ``<w:instrText>`` element with specified instruction text
+        `instrText`. It represents instruction for related ``<w:fldChar>``.
+        """
+        instrText = self._r.add_instrText()
+        instrText.text = instruction_text
 
     @property
     def bold(self):
