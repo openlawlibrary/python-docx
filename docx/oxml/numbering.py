@@ -175,7 +175,7 @@ class CT_Numbering(BaseOxmlElement):
                 try:
                     para_ilvl, para_numId = get_ilvl_and_numId(para)
                     # skip unnumbered paragraphs within numbering list
-                    if (para_ilvl, para_numId) == (0, 0):
+                    if para_numId == 0:
                         continue
                     paStyle = para.pPr.pStyle
                     if para_ilvl < p_ilvl and (para_numId == p_numId or pStyle.val == paStyle.val or
