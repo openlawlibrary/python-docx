@@ -185,6 +185,8 @@ class CT_Numbering(BaseOxmlElement):
                         yield para_numId
                 except AttributeError:
                     continue
+                except StopIteration:
+                    break
 
         def count_same_numIds(preceding_paragraphs_numIds, numId, num):
             """
