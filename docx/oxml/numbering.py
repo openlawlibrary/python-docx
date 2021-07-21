@@ -197,28 +197,38 @@ class CT_Numbering(BaseOxmlElement):
                     if numId == p_numId:
                         num += 1
                     else:
-                        prev_numId = next(preceding_paragraphs_numIds)
-                        if prev_numId == numId:
-                            num += 1
+                        startOverride = get_start_override(p_numId)
+                        if startOverride > 1:
+                            num += startOverride
+                        else:
+                            prev_numId = next(preceding_paragraphs_numIds)
+                            if prev_numId == numId:
+                                num += 1
                         break
                 except AttributeError:
                     continue
                 except StopIteration:
-                    w_num = self.num_having_numId(p_numId)
-                    for lvlOverride in w_num.lvlOverride_lst:
-                        if lvlOverride.ilvl == ilvl:
-                            num += lvlOverride.startOverride.val - 1
                     break
             return num
 
+        def get_start_override(for_numId):
+            w_num = self.num_having_numId(for_numId)
+            for lvlOverride in w_num.lvlOverride_lst:
+                if lvlOverride.ilvl == ilvl:
+                    return lvlOverride.startOverride.val
+            return 0
+
         ilvl, numId = get_ilvl_and_numId(p)
+
         abstractNum_el = self.get_abstractNum(numId)
         if abstractNum_el is None:
             return None
         lvl_el = abstractNum_el.get_lvl(ilvl)
         linked_styles = {s.xpath('w:pStyle/@w:val')[0]
             for s in lvl_el.xpath('preceding-sibling::w:lvl[w:pStyle]')}
-        p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
+
+        startOverride = get_start_override(numId)
+        p_num = startOverride if startOverride else int(lvl_el.start.get('{%s}val' % nsmap['w']))
 
         preceding_paragraphs_numIds = get_preceding_paragraphs_numIds(p, ilvl, numId)
         p_num = count_same_numIds(preceding_paragraphs_numIds, numId, p_num)
