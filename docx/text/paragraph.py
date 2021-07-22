@@ -188,6 +188,7 @@ class Paragraph(Parented):
                 parts.append(doc.part.related_parts[b.embed])
 
         for idx, part in enumerate(parts):
-            part.descr = docPrs[idx].descr
+            if not part.descr:
+                part.descr = docPrs[idx].descr
 
         return parts
