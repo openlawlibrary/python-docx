@@ -103,9 +103,9 @@ class InlineShape(object):
         self._inline.graphic.graphicData.pic.spPr.cx = cx
 
     @property
-    def alt_text(self):
+    def descr(self):
         return self._inline.docPr.descr
 
-    @alt_text.setter
-    def alt_text(self, text):
+    @descr.setter
+    def descr(self, text):
         self._inline.docPr.descr = text
