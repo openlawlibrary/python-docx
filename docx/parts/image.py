@@ -23,7 +23,6 @@ class ImagePart(Part):
     def __init__(self, partname, content_type, blob, image=None):
         super(ImagePart, self).__init__(partname, content_type, blob)
         self._image = image
-        self._docPr = None
 
     @property
     def default_cx(self):
