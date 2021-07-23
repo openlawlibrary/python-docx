@@ -87,3 +87,11 @@ class ImagePart(Part):
         SHA1 hash digest of the blob of this image part.
         """
         return hashlib.sha1(self._blob).hexdigest()
+
+    @property
+    def descr(self):
+        return self._docPr.descr
+
+    @descr.setter
+    def descr(self, text):
+        self._docPr.descr = text
