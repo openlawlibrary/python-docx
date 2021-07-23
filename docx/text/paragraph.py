@@ -164,6 +164,9 @@ class Paragraph(Parented):
         blips = [drawing.xpath(".//*[local-name() = 'blip']")[0]
                  for drawing in drawings]
 
+        inlines = []
+        for drawing in drawings:
+            inlines.extend(drawing.iterchildren())
 
         for b in blips:
             if b.link:
@@ -184,5 +187,8 @@ class Paragraph(Parented):
                         pass
             elif b.embed:
                 parts.append(doc.part.related_parts[b.embed])
+
+        for idx, part in enumerate(parts):
+            part._docPr = inlines[idx].docPr
 
         return parts

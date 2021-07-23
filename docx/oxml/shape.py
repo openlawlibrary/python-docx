@@ -109,6 +109,7 @@ class CT_NonVisualDrawingProps(BaseOxmlElement):
     """
     id = RequiredAttribute('id', ST_DrawingElementId)
     name = RequiredAttribute('name', XsdString)
+    descr = OptionalAttribute('descr', XsdString)
 
 
 class CT_NonVisualPictureProperties(BaseOxmlElement):
