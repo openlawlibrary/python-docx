@@ -39,6 +39,14 @@ def register_element_cls(tag, cls):
     namespace = element_class_lookup.get_namespace(nsmap[nspfx])
     namespace[tagroot] = cls
 
+def register_element_cls_ns(tag, ns, cls):
+    """
+    Register *cls* to be constructed when the oxml parser encounters an
+    element with matching *tag*. *tag* is a string of the form
+    ``nspfx:tagroot``, e.g. ``'w:document'``.
+    """
+    namespace = element_class_lookup.get_namespace(ns)
+    namespace[tag] = cls
 
 def OxmlElement(nsptag_str, attrs=None, nsdecls=None):
     """
@@ -76,8 +84,13 @@ from .document import CT_Body, CT_Document  # noqa
 register_element_cls('w:body',     CT_Body)
 register_element_cls('w:document', CT_Document)
 
-from .numbering import CT_Num, CT_Numbering, CT_NumLvl, CT_NumPr  # noqa
+from .numbering import (
+    CT_Num, CT_Numbering, CT_NumLvl, CT_NumPr,
+    CT_AbstractNum, CT_Lvl
+)
+register_element_cls('w:abstractNum',   CT_AbstractNum)
 register_element_cls('w:abstractNumId', CT_DecimalNumber)
+register_element_cls('w:lvl',           CT_Lvl)
 register_element_cls('w:ilvl',          CT_DecimalNumber)
 register_element_cls('w:lvlOverride',   CT_NumLvl)
 register_element_cls('w:num',           CT_Num)
@@ -181,6 +194,19 @@ register_element_cls('w:trPr',       CT_TrPr)
 register_element_cls('w:vAlign',     CT_VerticalJc)
 register_element_cls('w:vMerge',     CT_VMerge)
 
+from .sdts import (
+    CT_SdtBase, CT_SdtPr, CT_SdtContentBase
+)
+register_element_cls('w:sdt',        CT_SdtBase)
+register_element_cls('w:sdtPr',      CT_SdtPr)
+register_element_cls('w:sdtContent', CT_SdtContentBase)
+
+from .bookmark import (
+    CT_BookmarkStart, CT_BookmarkEnd
+)
+register_element_cls('w:bookmarkStart', CT_BookmarkStart)
+register_element_cls('w:bookmarkEnd', CT_BookmarkEnd)
+
 from .text.font import (  # noqa
     CT_Color,
     CT_Fonts,
@@ -242,7 +268,9 @@ register_element_cls('w:tab',             CT_TabStop)
 register_element_cls('w:tabs',            CT_TabStops)
 register_element_cls('w:widowControl',    CT_OnOff)
 
-from .text.run import CT_Br, CT_R, CT_Text  # noqa
+from .text.run import CT_Br, CT_Cr, CT_R, CT_Text, CT_FldChar
 register_element_cls('w:br', CT_Br)
+register_element_cls('w:cr', CT_Cr)
 register_element_cls('w:r',  CT_R)
 register_element_cls('w:t',  CT_Text)
+register_element_cls('w:fldChr', CT_FldChar)

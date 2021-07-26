@@ -5,6 +5,7 @@ Objects shared by docx modules.
 """
 
 from __future__ import absolute_import, print_function, unicode_literals
+from functools import wraps
 
 
 class Length(int):
@@ -248,3 +249,29 @@ class Parented(object):
         The package part containing this object
         """
         return self._parent.part
+
+
+def cache(fn):
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        fn_name = fn.__name__
+        key = (tuple(args), tuple((k, v) for k, v in kwargs.items()))
+        try:
+            return self._cache[fn_name][key]
+        except KeyError:
+            out = fn(self, *args, **kwargs)
+            self._cache.setdefault(fn_name, {})[key] = out
+            return out
+    return wrapper
+
+
+def bust_cache(fn_names):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(self, *args, **kwargs):
+            out = fn(self, *args, **kwargs)
+            for fn_name in fn_names:
+                self._cache[fn_name] = {}
+            return out
+        return wrapper
+    return decorator

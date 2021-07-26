@@ -26,6 +26,7 @@ def serialize_for_reading(element):
     xml = etree.tostring(element, encoding='unicode', pretty_print=True)
     return XmlString(xml)
 
+xpath_cache = {}
 
 class XmlString(Unicode):
     """
@@ -740,14 +741,17 @@ class _OxmlElementBase(etree.ElementBase):
         """
         return serialize_for_reading(self)
 
-    def xpath(self, xpath_str):
+    def xpath(self, xpath_str, **kwargs):
         """
         Override of ``lxml`` _Element.xpath() method to provide standard Open
         XML namespace mapping (``nsmap``) in centralized location.
         """
-        return super(BaseOxmlElement, self).xpath(
-            xpath_str, namespaces=nsmap
-        )
+        if xpath_str not in xpath_cache:
+            xpath_cache[xpath_str] = etree.XPath(
+                xpath_str, namespaces=nsmap)
+
+        xpath = xpath_cache[xpath_str]
+        return xpath(self, **kwargs)
 
     @property
     def _nsptag(self):
