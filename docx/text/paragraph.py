@@ -189,6 +189,7 @@ class Paragraph(Parented):
                 parts.append(doc.part.related_parts[b.embed])
 
         for idx, part in enumerate(parts):
-            part._docPr = inlines[idx].docPr
+            if hasattr(part, '_docPr'):
+                part._docPr = inlines[idx].docPr
 
         return parts
