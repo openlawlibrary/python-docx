@@ -739,7 +739,7 @@ class Paragraph(Parented, BookmarkParent):
                 parts.append(doc.part.related_parts[b.embed])
 
         for idx, part in enumerate(parts):
-            if hasattr(part, '_docPr'):
+            if hasattr(inlines[idx], 'docPr'):
                 part._docPr = inlines[idx].docPr
 
         return parts
