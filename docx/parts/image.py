@@ -90,7 +90,8 @@ class ImagePart(Part):
 
     @property
     def descr(self):
-        return self._docPr.descr
+        if hasattr(self, '_docPr'):
+            return self._docPr.descr
 
     @descr.setter
     def descr(self, text):
