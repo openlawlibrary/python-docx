@@ -4,11 +4,12 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from docx.blkcntnr import BlockItemContainer
-from docx.enum.section import WD_SECTION
-from docx.enum.text import WD_BREAK
-from docx.section import Section, Sections
-from docx.shared import ElementProxy, Emu
+from .blkcntnr import BlockItemContainer
+from docx.bookmark import Bookmarks
+from .enum.section import WD_SECTION
+from .enum.text import WD_BREAK
+from .section import Section, Sections
+from .shared import ElementProxy, Emu, lazyproperty
 
 
 class Document(ElementProxy):
@@ -18,7 +19,7 @@ class Document(ElementProxy):
     a document.
     """
 
-    __slots__ = ('_part', '__body')
+    # __slots__ = ('_part', '__body', '_bookmarks')
 
     def __init__(self, element, part):
         super(Document, self).__init__(element)
@@ -44,16 +45,17 @@ class Document(ElementProxy):
         paragraph.add_run().add_break(WD_BREAK.PAGE)
         return paragraph
 
-    def add_paragraph(self, text='', style=None):
+    def add_paragraph(self, text='', style=None, prev_p=None, ilvl=None):
         """
         Return a paragraph newly added to the end of the document, populated
         with *text* and having paragraph style *style*. *text* can contain
         tab (``\\t``) characters, which are converted to the appropriate XML
         form for a tab. *text* can also include newline (``\\n``) or carriage
         return (``\\r``) characters, each of which is converted to a line
-        break.
+        break. If paragraph is part of numbered list then ``prev_p`` (previous para)
+        and ``ilvl``(indentation level) should be specified.
         """
-        return self._body.add_paragraph(text, style)
+        return self._body.add_paragraph(text, style, prev_p, ilvl)
 
     def add_picture(self, image_path_or_stream, width=None, height=None):
         """
@@ -93,6 +95,31 @@ class Document(ElementProxy):
         table.style = style
         return table
 
+    def end_bookmark(self, bookmark):
+        """
+        The :func:`end_bookmark` method is used to end a bookmark. It takes a
+        :any:`Bookmark<docx.text.bookmarks.Bookmark>` as input.
+        :param obj bookmark: Bookmark object that needs an end.
+        """
+        return self._body.end_bookmark(bookmark)
+
+    def start_bookmark(self, name):
+        """
+        The :func:`start_bookmark` method is used to place the start of  a
+        bookmark. It requires a name as input.
+        :param str name: Bookmark name
+        """
+        return self._body.start_bookmark(name=name)
+
+    @lazyproperty
+    def bookmarks(self):
+        """|Bookmarks| object providing access to |Bookmark| objects.
+        A bookmark may exist in the main document story, but also in headers,
+        footers, footnotes or endnotes. This collection contains all
+        bookmarks defined in any of these parts.
+        """
+        return Bookmarks(self._part)
+
     @property
     def core_properties(self):
         """
@@ -100,6 +127,14 @@ class Document(ElementProxy):
         properties of this document.
         """
         return self._part.core_properties
+
+    @property
+    def custom_properties(self):
+        """
+        A |CustomProperties| object providing read/write access to the custom
+        properties of this document.
+        """
+        return self._part.custom_properties
 
     @property
     def inline_shapes(self):
@@ -153,6 +188,23 @@ class Document(ElementProxy):
         A |Styles| object providing access to the styles in this document.
         """
         return self._part.styles
+
+    def add_sdt(self, tag_name):
+        return self._body.add_sdt(tag_name)
+
+    @property
+    def sdts(self):
+        """
+        A list of |SdtBase| children instances in this document.
+        """
+        return self._body.sdts
+
+    @property
+    def sdts_all(self):
+        """
+        A list of |SdtBase| descendants instances in this document.
+        """
+        return self._body.sdts_all
 
     @property
     def tables(self):
