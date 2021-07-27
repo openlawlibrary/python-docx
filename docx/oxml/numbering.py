@@ -228,7 +228,13 @@ class CT_Numbering(BaseOxmlElement):
             for s in lvl_el.xpath('preceding-sibling::w:lvl[w:pStyle]')}
 
         startOverride = get_start_override(numId)
-        p_num = startOverride if startOverride else int(lvl_el.start.get('{%s}val' % nsmap['w']))
+        try:
+            start = int(lvl_el.start.get('{%s}val' % nsmap['w']))
+        except AttributeError:
+            # default start value
+            start = 0
+
+        p_num = startOverride if startOverride else start
 
         preceding_paragraphs_numIds = get_preceding_paragraphs_numIds(p, ilvl, numId)
         p_num = count_same_numIds(preceding_paragraphs_numIds, numId, p_num)
