@@ -19,16 +19,28 @@ class CT_Br(BaseOxmlElement):
     clear = OptionalAttribute('w:clear', ST_BrClear)
 
 
+class CT_Cr(BaseOxmlElement):
+    """
+    ``<w:cr>`` element, indicating carriage return in a run.
+    """
+    type = OptionalAttribute('w:type', ST_BrType)
+    clear = OptionalAttribute('w:clear', ST_BrClear)
+
+
 class CT_R(BaseOxmlElement):
     """
     ``<w:r>`` element, containing the properties and text for a run.
     """
+    bookmarkStart = ZeroOrMore("w:bookmarkStart", successors=('w:t', 'w:rPr', 'w:br', 'w:cr', 'w:tab', 'w:drawing'))
     rPr = ZeroOrOne('w:rPr')
     t = ZeroOrMore('w:t')
     br = ZeroOrMore('w:br')
     cr = ZeroOrMore('w:cr')
     tab = ZeroOrMore('w:tab')
     drawing = ZeroOrMore('w:drawing')
+    bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
+    fldChar = ZeroOrMore('w:fldChar')
+    instrText = ZeroOrMore('w:instrText')
 
     def _insert_rPr(self, rPr):
         self.insert(0, rPr)
@@ -94,8 +106,12 @@ class CT_R(BaseOxmlElement):
                 text += t_text if t_text is not None else ''
             elif child.tag == qn('w:tab'):
                 text += '\t'
-            elif child.tag in (qn('w:br'), qn('w:cr')):
+            elif child.tag == qn('w:br'):
                 text += '\n'
+            elif child.tag == qn('w:cr'):
+                text += '\r'
+            elif child.tag == qn('w:noBreakHyphen'):
+                text += '-'
         return text
 
     @text.setter
@@ -109,6 +125,13 @@ class CT_Text(BaseOxmlElement):
     ``<w:t>`` element, containing a sequence of characters within a run.
     """
 
+class CT_FldChar(BaseOxmlElement):
+    """
+    ``<w:fldChr>`` element, containing properties related to field.
+    """
+    fldData = ZeroOrOne('w:fldData')
+    ffData = ZeroOrOne('w:ffData')
+    numberingChange = ZeroOrOne('w:numberingChange')
 
 class _RunContentAppender(object):
     """
@@ -153,9 +176,12 @@ class _RunContentAppender(object):
         if char == '\t':
             self.flush()
             self._r.add_tab()
-        elif char in '\r\n':
+        elif char == '\n':
             self.flush()
             self._r.add_br()
+        elif char == '\r':
+            self.flush()
+            self._r.add_cr()
         else:
             self._bfr.append(char)
 
