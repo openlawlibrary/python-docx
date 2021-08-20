@@ -171,18 +171,18 @@ class CT_Numbering(BaseOxmlElement):
             Stops on the paragraph that is on the lower level.
             """
             pStyle = p.pPr.pStyle
-            for para in p.itersiblings(preceding=True):
+            for prev_p in p.itersiblings(preceding=True):
                 try:
-                    para_ilvl, para_numId = get_ilvl_and_numId(para)
+                    prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
                     # skip unnumbered paragraphs within numbering list
-                    if para_numId == 0:
+                    if prev_p_numId == 0:
                         continue
-                    paStyle = para.pPr.pStyle
-                    if para_ilvl < p_ilvl and (para_numId == p_numId or pStyle.val == paStyle.val or
-                                         (paStyle is not None and paStyle.val in linked_styles)):
+                    prev_p_pStyle = prev_p.pPr.pStyle
+                    if prev_p_ilvl < p_ilvl and (prev_p_numId == p_numId or pStyle.val == prev_p_pStyle.val or
+                                         (prev_p_pStyle is not None and prev_p_pStyle.val in linked_styles)):
                         break
-                    if para_ilvl == p_ilvl and (para_numId == p_numId or pStyle.val == paStyle.val or paStyle.val in linked_styles):
-                        yield para_numId
+                    if prev_p_ilvl == p_ilvl and (prev_p_numId == p_numId or pStyle.val == prev_p_pStyle.val or prev_p_pStyle.val in linked_styles):
+                        yield prev_p_numId
                 except AttributeError:
                     continue
                 except StopIteration:
