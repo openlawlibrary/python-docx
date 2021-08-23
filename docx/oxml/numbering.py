@@ -163,30 +163,93 @@ class CT_Numbering(BaseOxmlElement):
         """
         Returns list item for the given paragraph.
         """
-        numPr = p.pPr.get_numPr(styles_cache)
-        ilvl, numId = numPr.ilvl, numPr.numId.val
-        ilvl = ilvl.val if ilvl is not None else 0
+
+        def get_ilvl_and_numId(paragraph):
+            """
+            Return ``ilvl`` and ``numId`` for the given ``paragraph``.
+            """
+            para_numPr = paragraph.pPr.get_numPr(styles_cache)
+            para_ilvl, para_numId = para_numPr.ilvl, para_numPr.numId.val
+            para_ilvl = para_ilvl.val if para_ilvl is not None else 0
+            return para_ilvl, para_numId
+
+        def get_preceding_paragraphs_numIds(p, p_ilvl, p_numId):
+            """
+            Return preceding siblings ``numId`` that are in the same numbered list as the paragraph ``p``.
+            Paragraphs are in the same list if they are on the same level (``p_ilvl``), and either
+            have the same ``p_numId`` or have the same ``pStyle.val``.
+            Skips unnumbered paragraphs within the numbering list.
+            Stops on the paragraph that is on the lower level.
+            """
+            pStyle = p.pPr.pStyle
+            for prev_p in p.itersiblings(preceding=True):
+                try:
+                    prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
+                    # skip unnumbered paragraphs within numbering list
+                    if prev_p_numId == 0:
+                        continue
+                    prev_p_pStyle = prev_p.pPr.pStyle
+                    if prev_p_ilvl < p_ilvl and (prev_p_numId == p_numId or pStyle.val == prev_p_pStyle.val or
+                                         (prev_p_pStyle is not None and prev_p_pStyle.val in linked_styles)):
+                        break
+                    if prev_p_ilvl == p_ilvl and (prev_p_numId == p_numId or pStyle.val == prev_p_pStyle.val or prev_p_pStyle.val in linked_styles):
+                        yield prev_p_numId
+                except AttributeError:
+                    continue
+                except StopIteration:
+                    break
+
+        def count_same_numIds(preceding_paragraphs_numIds, numId, num):
+            """
+            Returns count of the preceding paragraphs having the same ``w:numId``.
+            """
+            for p_numId in preceding_paragraphs_numIds:
+                try:
+                    if numId == p_numId:
+                        num += 1
+                    else:
+                        startOverride = get_start_override(p_numId)
+                        if startOverride > 1:
+                            num += startOverride
+                        else:
+                            prev_numId = next(preceding_paragraphs_numIds)
+                            if prev_numId == numId:
+                                num += 1
+                        break
+                except AttributeError:
+                    continue
+                except StopIteration:
+                    break
+            return num
+
+        def get_start_override(for_numId):
+            w_num = self.num_having_numId(for_numId)
+            for lvlOverride in w_num.lvlOverride_lst:
+                if lvlOverride.ilvl == ilvl:
+                    return lvlOverride.startOverride.val
+            return 0
+
+        ilvl, numId = get_ilvl_and_numId(p)
+
         abstractNum_el = self.get_abstractNum(numId)
         if abstractNum_el is None:
             return None
         lvl_el = abstractNum_el.get_lvl(ilvl)
         linked_styles = {s.xpath('w:pStyle/@w:val')[0]
             for s in lvl_el.xpath('preceding-sibling::w:lvl[w:pStyle]')}
-        p_num = int(lvl_el.start.get('{%s}val' % nsmap['w']))
 
-        for pp in p.itersiblings(preceding=True):
-            try:
-                pp_numPr = pp.pPr.get_numPr(styles_cache)
-                pp_ilvl, pp_numId = pp_numPr.ilvl, pp_numPr.numId.val
-                pp_ilvl = pp_ilvl.val if pp_ilvl is not None else 0
-                if pp_numId == 0:
-                    continue
-                if ilvl > pp_ilvl and (numId == pp_numId or pp.pPr.pStyle.val in linked_styles):
-                    break
-                if (pp_ilvl, pp_numId) == (ilvl, numId):
-                    p_num += 1
-            except (KeyError, AttributeError):
-                continue
+        startOverride = get_start_override(numId)
+        try:
+            start = int(lvl_el.start.get('{%s}val' % nsmap['w']))
+        except AttributeError:
+            # default start value
+            start = 0
+
+        p_num = startOverride if startOverride else start
+
+        preceding_paragraphs_numIds = get_preceding_paragraphs_numIds(p, ilvl, numId)
+        p_num = count_same_numIds(preceding_paragraphs_numIds, numId, p_num)
+
         try:
             p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
         except KeyError:
