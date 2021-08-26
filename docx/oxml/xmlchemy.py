@@ -11,11 +11,11 @@ from lxml import etree
 
 import re
 
-from . import OxmlElement
-from ..compat import Unicode
-from .exceptions import InvalidXmlError
-from .ns import NamespacePrefixedTag, nsmap, qn
-from ..shared import lazyproperty
+from docx.compat import Unicode
+from docx.oxml import OxmlElement
+from docx.oxml.exceptions import InvalidXmlError
+from docx.oxml.ns import NamespacePrefixedTag, nsmap, qn
+from docx.shared import lazyproperty
 
 
 def serialize_for_reading(element):
@@ -26,6 +26,7 @@ def serialize_for_reading(element):
     xml = etree.tostring(element, encoding='unicode', pretty_print=True)
     return XmlString(xml)
 
+xpath_cache = {}
 
 class XmlString(Unicode):
     """
@@ -39,9 +40,7 @@ class XmlString(Unicode):
     #  front      attrs                                     | text
     #                                                     close
 
-    _xml_elm_line_patt = re.compile(
-        '( *</?[\w:]+)(.*?)(/?>)([^<]*</[\w:]+>)?$'
-    )
+    _xml_elm_line_patt = re.compile(r'( *</?[\w:]+)(.*?)(/?>)([^<]*</[\w:]+>)?$')
 
     def __eq__(self, other):
         lines = self.splitlines()
@@ -473,7 +472,7 @@ class Choice(_BaseChildElement):
         Calculate property name from tag name, e.g. a:schemeClr -> schemeClr.
         """
         if ':' in self._nsptagname:
-            start = self._nsptagname.index(':')+1
+            start = self._nsptagname.index(':') + 1
         else:
             start = 0
         return self._nsptagname[start:]
@@ -742,14 +741,17 @@ class _OxmlElementBase(etree.ElementBase):
         """
         return serialize_for_reading(self)
 
-    def xpath(self, xpath_str):
+    def xpath(self, xpath_str, **kwargs):
         """
         Override of ``lxml`` _Element.xpath() method to provide standard Open
         XML namespace mapping (``nsmap``) in centralized location.
         """
-        return super(BaseOxmlElement, self).xpath(
-            xpath_str, namespaces=nsmap
-        )
+        if xpath_str not in xpath_cache:
+            xpath_cache[xpath_str] = etree.XPath(
+                xpath_str, namespaces=nsmap)
+
+        xpath = xpath_cache[xpath_str]
+        return xpath(self, **kwargs)
 
     @property
     def _nsptag(self):

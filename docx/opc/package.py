@@ -1,28 +1,27 @@
 # encoding: utf-8
 
-"""
-The :mod:`pptx.packaging` module coheres around the concerns of reading and
-writing presentations to and from a .pptx file.
-"""
+"""Objects that implement reading and writing OPC packages."""
 
-from __future__ import absolute_import, print_function, unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-from .constants import RELATIONSHIP_TYPE as RT
-from .packuri import PACKAGE_URI
-from .part import PartFactory
-from .parts.coreprops import CorePropertiesPart
-from .pkgreader import PackageReader
-from .pkgwriter import PackageWriter
-from .rel import Relationships
-from .shared import lazyproperty
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
+from docx.opc.packuri import PACKAGE_URI, PackURI
+from docx.opc.part import PartFactory
+from docx.opc.parts.coreprops import CorePropertiesPart
+from docx.opc.parts.customprops import CustomPropertiesPart
+from docx.opc.pkgreader import PackageReader
+from docx.opc.pkgwriter import PackageWriter
+from docx.opc.rel import Relationships
+from docx.opc.shared import lazyproperty
 
 
 class OpcPackage(object):
+    """Main API class for |python-opc|.
+
+    A new instance is constructed by calling the :meth:`open` class method with a path
+    to a package file or file-like object containing one.
     """
-    Main API class for |python-opc|. A new instance is constructed by calling
-    the :meth:`open` class method with a path to a package file or file-like
-    object containing one.
-    """
+
     def __init__(self):
         super(OpcPackage, self).__init__()
 
@@ -42,6 +41,14 @@ class OpcPackage(object):
         Core properties for this document.
         """
         return self._core_properties_part.core_properties
+
+    @property
+    def custom_properties(self):
+        """
+        |CustomProperties| object providing read/write access to the Dublin
+        Core properties for this document.
+        """
+        return self._custom_properties_part.custom_properties
 
     def iter_rels(self):
         """
@@ -107,15 +114,33 @@ class OpcPackage(object):
         """
         return self.part_related_by(RT.OFFICE_DOCUMENT)
 
+    def next_partname(self, template):
+        """Return a |PackURI| instance representing partname matching *template*.
+
+        The returned part-name has the next available numeric suffix to distinguish it
+        from other parts of its type. *template* is a printf (%)-style template string
+        containing a single replacement item, a '%d' to be used to insert the integer
+        portion of the partname. Example: "/word/header%d.xml"
+        """
+        partnames = {part.partname for part in self.iter_parts()}
+        for n in range(1, len(partnames) + 2):
+            candidate_partname = template % n
+            if candidate_partname not in partnames:
+                return PackURI(candidate_partname)
+
     @classmethod
-    def open(cls, pkg_file):
+    def open(cls, pkg, is_from_file=True):
         """
         Return an |OpcPackage| instance loaded with the contents of
         *pkg_file*.
         """
-        pkg_reader = PackageReader.from_file(pkg_file)
+        if is_from_file:
+            pkg_reader = PackageReader.from_file(pkg)
+        else:
+            pkg_reader = PackageReader.from_str(pkg)
         package = cls()
         Unmarshaller.unmarshal(pkg_reader, package, PartFactory)
+        cls.path = pkg
         return package
 
     def part_related_by(self, reltype):
@@ -133,6 +158,17 @@ class OpcPackage(object):
         package.
         """
         return [part for part in self.iter_parts()]
+
+    @property
+    def path(self):
+        """
+        Returns filepath of the current package.
+        """
+        return self._path
+
+    @path.setter
+    def path(self, value):
+        self._path = value
 
     def relate_to(self, part, reltype):
         """
@@ -158,6 +194,7 @@ class OpcPackage(object):
         for part in self.parts:
             part.before_marshal()
         PackageWriter.write(pkg_file, self.rels, self.parts)
+        self.path = pkg_file
 
     @property
     def _core_properties_part(self):
@@ -172,12 +209,22 @@ class OpcPackage(object):
             self.relate_to(core_properties_part, RT.CORE_PROPERTIES)
             return core_properties_part
 
+    @property
+    def _custom_properties_part(self):
+        """
+        |CustomPropertiesPart| object related to this package. Creates
+        a default custom properties part if one is not present (not common).
+        """
+        try:
+            return self.part_related_by(RT.CUSTOM_PROPERTIES)
+        except KeyError:
+            custom_properties_part = CustomPropertiesPart.default(self)
+            self.relate_to(custom_properties_part, RT.CUSTOM_PROPERTIES)
+            return custom_properties_part
 
 class Unmarshaller(object):
-    """
-    Hosts static methods for unmarshalling a package from a |PackageReader|
-    instance.
-    """
+    """Hosts static methods for unmarshalling a package from a |PackageReader|."""
+
     @staticmethod
     def unmarshal(pkg_reader, package, part_factory):
         """
