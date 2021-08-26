@@ -178,15 +178,23 @@ class CT_Numbering(BaseOxmlElement):
                     if prev_p_numId == 0:
                         continue
                     prev_p_pStyle = prev_p.pPr.pStyle
-                    if prev_p_ilvl < p_ilvl and (prev_p_numId == p_numId or pStyle.val == prev_p_pStyle.val or
+                    if prev_p_ilvl < p_ilvl and (prev_p_numId == p_numId or
                                          (prev_p_pStyle is not None and prev_p_pStyle.val in linked_styles)):
                         break
-                    if prev_p_ilvl == p_ilvl and (prev_p_numId == p_numId or pStyle.val == prev_p_pStyle.val or prev_p_pStyle.val in linked_styles):
+                    if prev_p_ilvl == p_ilvl and (prev_p_numId == p_numId or prev_p_pStyle.val in linked_styles):
                         yield prev_p_numId
+                    # para `p` that has only style defined which is same as the `prev_p` style
+                    # should be counted even though they have different `numId`s.
+                    if prev_p_ilvl == p_ilvl and prev_p_numId != p_numId:
+                        if p.pPr.numPr is None and prev_p.pPr.pStyle.val == pStyle.val:
+                            startOverride = get_start_override(prev_p_numId)
+                            if startOverride > 1:
+                                yield prev_p_numId
+                            else:
+                                yield p_numId
+                            break
                 except AttributeError:
                     continue
-                except StopIteration:
-                    break
 
         def count_same_numIds(preceding_paragraphs_numIds, numId, num):
             """
