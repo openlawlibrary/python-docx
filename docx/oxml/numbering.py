@@ -181,7 +181,7 @@ class CT_Numbering(BaseOxmlElement):
                     if prev_p_ilvl < p_ilvl and (prev_p_numId == p_numId or
                                          (prev_p_pStyle is not None and prev_p_pStyle.val in linked_styles)):
                         break
-                    if prev_p_ilvl == p_ilvl and (prev_p_numId == p_numId or prev_p_pStyle.val in linked_styles):
+                    if prev_p_ilvl == p_ilvl and (prev_p_numId == p_numId or pStyle.val == prev_p_pStyle.val or prev_p_pStyle.val in linked_styles):
                         yield prev_p_numId
                     # para `p` that has only style defined which is same as the `prev_p` style
                     # should be counted even though they have different `numId`s.
