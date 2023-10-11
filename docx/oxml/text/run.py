@@ -41,6 +41,7 @@ class CT_R(BaseOxmlElement):
     bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
     fldChar = ZeroOrMore('w:fldChar')
     instrText = ZeroOrMore('w:instrText')
+    sym = ZeroOrMore('w:sym')
 
     def _insert_rPr(self, rPr):
         self.insert(0, rPr)
@@ -112,6 +113,8 @@ class CT_R(BaseOxmlElement):
                 text += '\r'
             elif child.tag == qn('w:noBreakHyphen'):
                 text += '-'
+            elif child.tag == qn('w:sym'):
+                text += child.readSymbol
         return text
 
     @text.setter
