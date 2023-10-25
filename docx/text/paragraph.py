@@ -62,6 +62,21 @@ class Paragraph(Parented):
         self._p.clear_content()
         return self
 
+    @property
+    def footnote_reference_ids(self) -> (list[int]|None):
+        """
+        Return all footnote reference ids (``<w:footnoteReference>``) form the paragraph,
+        or |None| if not present.
+        """
+        footnote_ids = []
+        for run in self.runs:
+            new_footnote_ids = run.footnote_reference_ids
+            if new_footnote_ids:
+                footnote_ids.extend(new_footnote_ids)
+        if footnote_ids == []:
+            footnote_ids = None
+        return footnote_ids
+
     def insert_paragraph_before(self, text=None, style=None):
         """
         Return a newly created paragraph, inserted directly before this

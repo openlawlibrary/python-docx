@@ -29,6 +29,7 @@ class CT_R(BaseOxmlElement):
     cr = ZeroOrMore('w:cr')
     tab = ZeroOrMore('w:tab')
     drawing = ZeroOrMore('w:drawing')
+    footnoteReference = ZeroOrMore('w:footnoteReference')
 
     def _insert_rPr(self, rPr):
         self.insert(0, rPr)
@@ -59,6 +60,19 @@ class CT_R(BaseOxmlElement):
         content_child_elms = self[1:] if self.rPr is not None else self[:]
         for child in content_child_elms:
             self.remove(child)
+
+    @property
+    def footnote_reference_ids(self) -> (list[int]|None):
+        """
+        Return all footnote reference ids (``<w:footnoteReference>``), or |None| if not present.
+        """
+        references = []
+        for child in self:
+            if child.tag == qn('w:footnoteReference'):
+               references.append(child.id)
+        if references == []:
+            references = None
+        return references
 
     @property
     def style(self):
