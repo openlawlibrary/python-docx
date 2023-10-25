@@ -102,6 +102,13 @@ class Document(ElementProxy):
         return self._part.core_properties
 
     @property
+    def footnotes(self):
+        """
+        A |Footnotes| object providing access to footnote elements in this document.
+        """
+        return self._part.footnotes
+
+    @property
     def inline_shapes(self):
         """
         An |InlineShapes| object providing access to the inline shapes in

@@ -247,5 +247,11 @@ register_element_cls('w:br', CT_Br)
 register_element_cls('w:r',  CT_R)
 register_element_cls('w:t',  CT_Text)
 
+from .footnote import (
+    CT_FtnEnd,
+    CT_Footnotes
+)
 from .text.footnote_reference import CT_FtnEdnRef
 register_element_cls('w:footnoteReference',  CT_FtnEdnRef)
+register_element_cls('w:footnote',           CT_FtnEnd)
+register_element_cls('w:footnotes',          CT_Footnotes)

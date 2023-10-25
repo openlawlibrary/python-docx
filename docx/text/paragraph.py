@@ -63,6 +63,21 @@ class Paragraph(Parented):
         return self
 
     @property
+    def footnotes(self):
+        """
+        Returns a list of |Footnote| instances that refers to the footnotes in this paragraph,
+        or |None| if none footnote is defined.
+        """
+        reference_ids = self.footnote_reference_ids
+        if reference_ids == None:
+            return None
+        footnotes = self._parent._parent.footnotes
+        footnote_list = []
+        for ref_id in reference_ids:
+            footnote_list.append(footnotes[ref_id])
+        return footnote_list
+
+    @property
     def footnote_reference_ids(self) -> (list[int]|None):
         """
         Return all footnote reference ids (``<w:footnoteReference>``) form the paragraph,
