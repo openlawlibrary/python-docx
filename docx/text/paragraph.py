@@ -12,7 +12,6 @@ from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
 from ..shared import Parented
-from ..oxml.exceptions import HiddenTextTC
 
 
 class Paragraph(Parented):
@@ -138,11 +137,8 @@ class Paragraph(Parented):
         run-level formatting, such as bold or italic, is removed.
         """
         text = ''
-        try:
-            for run in self.runs:
-                text += run.text
-        except HiddenTextTC as tc:
-            text += str(tc)
+        for run in self.runs:
+            text += run.text
         return text
 
     @text.setter
