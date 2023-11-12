@@ -4,7 +4,6 @@
 Custom element classes related to text runs (CT_R).
 """
 
-from docx.oxml.exceptions import HiddenTextTC
 from ..ns import qn
 from ..simpletypes import ST_BrClear, ST_BrType
 from ..xmlchemy import (
@@ -110,14 +109,18 @@ class CT_R(BaseOxmlElement):
                 text += '\t'
             elif child.tag == qn('w:br'):
                 text += '\n'
-            elif child.tag == qn('w:instrText'):
-                if child.text.lower().startswith(('tc \\l1 "', 'tc \\l2 "', 'tc \\l3 "', 'tc \\l4 "')):
-                    #paragraph form this run continues with `hidden text` for Table content
-                    raise HiddenTextTC(text)
             elif child.tag == qn('w:cr'):
                 text += '\r'
             elif child.tag == qn('w:noBreakHyphen'):
-                text += '-'
+                # if noBreakHyphen is in the same run as instrText then
+                # it is part of fldChar and should be ingored since
+                # it represents part of hidden text
+                has_instr_text = False
+                for _ in self.iterchildren(tag=qn('w:instrText')):
+                    has_instr_text = True
+                    break
+                if not has_instr_text:
+                    text += '-'
             elif child.tag == qn('w:sym'):
                 text += child.readSymbol
         return text
