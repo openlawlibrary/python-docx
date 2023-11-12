@@ -112,6 +112,11 @@ class CT_R(BaseOxmlElement):
             elif child.tag == qn('w:cr'):
                 text += '\r'
             elif child.tag == qn('w:noBreakHyphen'):
+                # if noBreakHyphen is in the same run as instrText then
+                # it is part of fldChar and should be ingored since
+                # it represents part of hidden text
+                if qn('w:instrText') in [ch.tag for ch in self]:
+                    continue
                 text += '-'
             elif child.tag == qn('w:sym'):
                 text += child.readSymbol
