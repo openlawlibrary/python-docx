@@ -22,6 +22,47 @@ class Paragraph(Parented):
         super(Paragraph, self).__init__(parent)
         self._p = self._element = p
 
+    def add_footnote(self):
+        """
+        Append a run that contains a ``<w:footnoteReferenceId>`` element.
+        The footnotes are kept in order by `footnote_reference_id`, so
+        the appropriate id is calculated based on the current state.
+        """
+        # When adding a footnote it can be inserted 
+        # in front of some other footnotes, so
+        # we need to sort footnotes by `footnote_reference_id`
+        # in |Footnotes| and in |Paragraph|
+        #
+        # resolve reference ids in |Paragraph|
+        new_fr_id = 1
+        # If paragraph already contains footnotes
+        # and it's the last paragraph with footnotes, then
+        # append the new footnote and the end with the next reference id.
+        if self._p.footnote_reference_ids is not None:
+            new_fr_id = self._p.footnote_reference_ids[-1] + 1
+
+        # If the document has footnotes after this paragraph,
+        # the increment all footnotes pass this paragraph, 
+        # and insert a new footnote at the proper position.
+        document = self._parent._parent
+        paragraphs = document.paragraphs
+        has_passed_self = False # break the loop when we get to the footnote before the one we are inserting.
+        for p_i in reversed(range(len(paragraphs))):
+            if self._p is not paragraphs[p_i]._p:
+                if paragraphs[p_i]._p.footnote_reference_ids is not None:
+                    if not has_passed_self:
+                        for r in paragraphs[p_i].runs:
+                            r._r.increment_footnote_reference_id()
+                    else:
+                        new_fr_id = max(paragraphs[p_i]._p.footnote_reference_ids)+1
+                        break
+            else:
+                has_passed_self = True
+        r = self._p.add_r()
+        r.add_footnoteReference(new_fr_id)
+        footnote = document._add_footnote(new_fr_id)
+        return footnote
+
     def add_run(self, text=None, style=None):
         """
         Append a run to this paragraph containing *text* and having character
@@ -68,7 +109,7 @@ class Paragraph(Parented):
         Returns a list of |Footnote| instances that refers to the footnotes in this paragraph,
         or |None| if none footnote is defined.
         """
-        reference_ids = self.footnote_reference_ids
+        reference_ids = self._p.footnote_reference_ids
         if reference_ids == None:
             return None
         footnotes = self._parent._parent.footnotes
@@ -76,21 +117,6 @@ class Paragraph(Parented):
         for ref_id in reference_ids:
             footnote_list.append(footnotes[ref_id])
         return footnote_list
-
-    @property
-    def footnote_reference_ids(self) -> (list[int]|None):
-        """
-        Return all footnote reference ids (``<w:footnoteReference>``) form the paragraph,
-        or |None| if not present.
-        """
-        footnote_ids = []
-        for run in self.runs:
-            new_footnote_ids = run.footnote_reference_ids
-            if new_footnote_ids:
-                footnote_ids.extend(new_footnote_ids)
-        if footnote_ids == []:
-            footnote_ids = None
-        return footnote_ids
 
     def insert_paragraph_before(self, text=None, style=None):
         """

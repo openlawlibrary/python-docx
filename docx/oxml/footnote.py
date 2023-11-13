@@ -6,7 +6,7 @@ Custom element classes related to footnote (CT_FtnEnd, CT_Footnotes).
 
 from .ns import qn
 from .xmlchemy import (
-    BaseOxmlElement, RequiredAttribute, ZeroOrMore, OneOrMore
+    BaseOxmlElement, OxmlElement, RequiredAttribute, ZeroOrMore, OneOrMore
 )
 from .simpletypes import (
     ST_DecimalNumber
@@ -17,6 +17,14 @@ class CT_Footnotes(BaseOxmlElement):
     ``<w:footnotes>`` element, containing a sequence of footnote (w:footnote) elements
     """
     footnote_sequence = OneOrMore('w:footnote')
+
+    def add_footnote(self, footnote_reference_id):
+        """
+        Create a ``<w:footnote>`` element with `footnote_reference_id`.
+        """
+        new_f = self.add_footnote_sequence()
+        new_f.id = footnote_reference_id
+        return new_f
 
     def get_by_id(self, id):
         found = self.xpath('w:footnote[@w:id="%s"]' % id)
@@ -31,6 +39,16 @@ class CT_FtnEnd(BaseOxmlElement):
     """
     id = RequiredAttribute('w:id', ST_DecimalNumber)
     p = ZeroOrMore('w:p')
+
+    def add_footnote_before(self, footnote_reference_id):
+        """
+        Create a ``<w:footnote>`` element with `footnote_reference_id`
+        and insert it before the current element.
+        """
+        new_footnote = OxmlElement('w:footnote')
+        new_footnote.id = footnote_reference_id
+        self.addprevious(new_footnote)
+        return new_footnote
 
     @property
     def paragraphs(self):

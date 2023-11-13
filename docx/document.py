@@ -172,6 +172,12 @@ class Document(ElementProxy):
         """
         return self._body.tables
 
+    def _add_footnote(self, footnote_reference_ids):
+        """
+        Inserts a newly created footnote to |Footnotes|.
+        """
+        return self._part.footnotes.add_footnote(footnote_reference_ids)
+
     @property
     def _block_width(self):
         """

@@ -35,6 +35,15 @@ class CT_R(BaseOxmlElement):
         self.insert(0, rPr)
         return rPr
 
+    def add_footnoteReference(self, id):
+        """
+        Return a newly added ``<w:footnoteReference>`` element containing
+        the footnote reference id.
+        """
+        new_fr = self._add_footnoteReference()
+        new_fr.id = id
+        return new_fr
+
     def add_t(self, text):
         """
         Return a newly added ``<w:t>`` element containing *text*.
@@ -73,6 +82,17 @@ class CT_R(BaseOxmlElement):
         if references == []:
             references = None
         return references
+
+    def increment_footnote_reference_id(self):
+        """
+        Increment all footnote reference ids by one if they exist.
+        Return all footnote reference ids (``<w:footnoteReference>``), or |None| if not present.
+        """
+        if self.footnoteReference_lst is not None:
+            for i in range(len(self.footnoteReference_lst)):
+                self.footnoteReference_lst[i].id += 1
+            return self.footnoteReference_lst
+        return None
 
     @property
     def style(self):
