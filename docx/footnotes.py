@@ -4,14 +4,17 @@
 Footnotes-related proxy types.
 """
 
-from .shared import ( ElementProxy)
+from .shared import Parented
 from .blkcntnr import BlockItemContainer
 
 
-class Footnotes(ElementProxy):
+class Footnotes(Parented):
     """
     Proxy object wrapping ``<w:footnotes>`` element.
     """
+    def __init__(self, footnotes, parent):
+        super(Footnotes, self).__init__(parent)
+        self._element = self._footnotes = footnotes
 
     def __getitem__(self, reference_id):
         """

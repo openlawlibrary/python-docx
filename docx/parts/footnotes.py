@@ -8,12 +8,12 @@ import os
 
 from ..opc.constants import CONTENT_TYPE as CT
 from ..opc.packuri import PackURI
-from docx.opc.part import XmlPart
 from ..oxml import parse_xml
 from ..footnotes import Footnotes
+from docx.parts.story import BaseStoryPart
 
 
-class FootnotesPart(XmlPart):
+class FootnotesPart(BaseStoryPart):
     """
     Proxy for the footnotes.xml part containing footnotes definitions for a document.
     """
@@ -33,7 +33,7 @@ class FootnotesPart(XmlPart):
         The |Footnotes| instance containing the footnotes (<w:footnotes> element
         proxies) for this footnotes part.
         """
-        return Footnotes(self.element)
+        return Footnotes(self.element, self)
 
     @classmethod
     def _default_footnote_xml(cls):

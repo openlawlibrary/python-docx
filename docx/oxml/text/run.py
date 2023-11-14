@@ -40,6 +40,8 @@ class CT_R(BaseOxmlElement):
         Return a newly added ``<w:footnoteReference>`` element containing
         the footnote reference id.
         """
+        rPr = self._add_rPr()
+        rPr.style = 'FootnoteReference'
         new_fr = self._add_footnoteReference()
         new_fr.id = id
         return new_fr
