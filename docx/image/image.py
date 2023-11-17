@@ -20,11 +20,12 @@ class Image(object):
     Graphical image stream such as JPEG, PNG, or GIF with properties and
     methods required by ImagePart.
     """
-    def __init__(self, blob, filename, image_header):
+    def __init__(self, blob, filename, image_header, content_type='unknown'):
         super(Image, self).__init__()
         self._blob = blob
         self._filename = filename
         self._image_header = image_header
+        self._content_type = content_type
 
     @classmethod
     def from_blob(cls, blob):
@@ -67,7 +68,7 @@ class Image(object):
         MIME content type for this image, e.g. ``'image/jpeg'`` for a JPEG
         image
         """
-        return self._image_header.content_type
+        return self._content_type
 
     @lazyproperty
     def ext(self):
@@ -176,7 +177,7 @@ class Image(object):
         image_header = _ImageHeaderFactory(stream)
         if filename is None:
             filename = 'image.%s' % image_header.default_ext
-        return cls(blob, filename, image_header)
+        return cls(blob, filename, image_header, 'image/%s' % image_header.default_ext)
 
 
 def _ImageHeaderFactory(stream):
@@ -186,11 +187,11 @@ def _ImageHeaderFactory(stream):
     """
     from docx.image import SIGNATURES
 
-    def read_32(stream):
+    def read_64(stream):
         stream.seek(0)
-        return stream.read(32)
+        return stream.read(64)
 
-    header = read_32(stream)
+    header = read_64(stream)
     for cls, offset, signature_bytes in SIGNATURES:
         end = offset + len(signature_bytes)
         found_bytes = header[offset:end]

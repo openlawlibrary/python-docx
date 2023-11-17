@@ -1,9 +1,11 @@
 # encoding: utf-8
 
-"""|DocumentPart| and closely related objects"""
+"""
+|DocumentPart| and closely related objects
+"""
 
 from __future__ import absolute_import, division, print_function, unicode_literals
-
+from itertools import chain
 from docx.document import Document
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.parts.footnotes import FootnotesPart
@@ -14,6 +16,11 @@ from docx.parts.story import BaseStoryPart
 from docx.parts.styles import StylesPart
 from docx.shape import InlineShapes
 from docx.shared import lazyproperty
+from docx.parts.hdrftr import FooterPart, HeaderPart
+from docx.parts.story import BaseStoryPart
+from docx.parts.numbering import NumberingPart
+from docx.parts.settings import SettingsPart
+from docx.parts.styles import StylesPart
 
 
 class DocumentPart(BaseStoryPart):
@@ -38,12 +45,31 @@ class DocumentPart(BaseStoryPart):
         return header_part, rId
 
     @property
+    def cached_styles(self):
+        """
+        Caching collection of styles on document loading, since method `styles`
+        is generating new styles per call, and can be time consuming
+        """
+        if not hasattr(self, '_cached_styles'):
+            cached_styles = {s.style_id: s._element for s in self.styles}
+            setattr(self, '_cached_styles', cached_styles)
+        return self._cached_styles
+
+    @property
     def core_properties(self):
         """
         A |CoreProperties| object providing read/write access to the core
         properties of this document.
         """
         return self.package.core_properties
+
+    @property
+    def custom_properties(self):
+        """
+        A |CustomProperties| object providing read/write access to the custom
+        properties of this document.
+        """
+        return self.package.custom_properties
 
     @property
     def document(self):
@@ -85,6 +111,19 @@ class DocumentPart(BaseStoryPart):
         present in the document.
         """
         return self.styles.get_style_id(style_or_name, style_type)
+
+    def iter_story_parts(self):
+        """Generate all parts in document that contain a story.
+        A story is a sequence of block-level items (paragraphs and tables).
+        Story parts include this main document part, headers, footers,
+        footnotes, and endnotes.
+        """
+        return chain(
+            (self,),
+            self.iter_parts_related_by(
+                {RT.COMMENTS, RT.ENDNOTES, RT.FOOTER, RT.FOOTNOTES, RT.HEADER}
+            )
+        )
 
     def header_part(self, rId):
         """Return |HeaderPart| related by *rId*."""

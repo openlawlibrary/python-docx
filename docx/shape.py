@@ -101,3 +101,11 @@ class InlineShape(object):
     def width(self, cx):
         self._inline.extent.cx = cx
         self._inline.graphic.graphicData.pic.spPr.cx = cx
+
+    @property
+    def descr(self):
+        return self._inline.docPr.descr
+
+    @descr.setter
+    def descr(self, text):
+        self._inline.docPr.descr = text
