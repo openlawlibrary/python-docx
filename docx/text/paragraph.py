@@ -44,36 +44,8 @@ class Paragraph(Parented, BookmarkParent):
         The footnotes are kept in order by `footnote_reference_id`, so
         the appropriate id is calculated based on the current state.
         """
-        # When adding a footnote it can be inserted 
-        # in front of some other footnotes, so
-        # we need to sort footnotes by `footnote_reference_id`
-        # in |Footnotes| and in |Paragraph|
-        #
-        # resolve reference ids in |Paragraph|
-        new_fr_id = 1
-        # If paragraph already contains footnotes
-        # and it's the last paragraph with footnotes, then
-        # append the new footnote and the end with the next reference id.
-        if self._p.footnote_reference_ids is not None:
-            new_fr_id = self._p.footnote_reference_ids[-1] + 1
-
-        # If the document has footnotes after this paragraph,
-        # the increment all footnotes pass this paragraph, 
-        # and insert a new footnote at the proper position.
         document = self._parent._parent
-        paragraphs = document.paragraphs
-        has_passed_self = False # break the loop when we get to the footnote before the one we are inserting.
-        for p_i in reversed(range(len(paragraphs))):
-            if self._p is not paragraphs[p_i]._p:
-                if paragraphs[p_i]._p.footnote_reference_ids is not None:
-                    if not has_passed_self:
-                        for r in paragraphs[p_i].runs:
-                            r._r.increment_footnote_reference_id()
-                    else:
-                        new_fr_id = max(paragraphs[p_i]._p.footnote_reference_ids)+1
-                        break
-            else:
-                has_passed_self = True
+        new_fr_id = document._calculate_next_footnote_reference_id(self._p)
         r = self._p.add_r()
         r.add_footnoteReference(new_fr_id)
         footnote = document._add_footnote(new_fr_id)
