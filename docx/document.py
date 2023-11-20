@@ -198,6 +198,39 @@ class Document(ElementProxy):
             self.__body = _Body(self._element.body, self)
         return self.__body
 
+    def _calculate_next_footnote_reference_id(self, p):
+        """
+        Return the appropriate footnote reference id number for
+        a new footnote added at the end of paragraph `p`.
+        """
+        # When adding a footnote it can be inserted 
+        # in front of some other footnotes, so
+        # we need to sort footnotes by `footnote_reference_id`
+        # in |Footnotes| and in |Paragraph|
+        new_fr_id = 1
+        # If paragraph already contains footnotes
+        # and it's the last paragraph with footnotes, then
+        # append the new footnote and the end with the next reference id.
+        if p.footnote_reference_ids is not None:
+            new_fr_id = p.footnote_reference_ids[-1] + 1
+        # If the document has footnotes after this paragraph,
+        # the increment all footnotes pass this paragraph, 
+        # and insert a new footnote at the proper position.
+        # break the loop when we get to the footnote before the one we are inserting.
+        has_passed_self = False
+        for p_i in reversed(range(len(self.paragraphs))):
+            if p is not self.paragraphs[p_i]._p:
+                if self.paragraphs[p_i]._p.footnote_reference_ids is not None:
+                    if not has_passed_self:
+                        for r in self.paragraphs[p_i].runs:
+                            r._r.increment_footnote_reference_id()
+                    else:
+                        new_fr_id = max(self.paragraphs[p_i]._p.footnote_reference_ids)+1
+                        break
+            else:
+                has_passed_self = True
+        return new_fr_id
+
 
 class _Body(BlockItemContainer):
     """
