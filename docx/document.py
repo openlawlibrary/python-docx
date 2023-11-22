@@ -269,18 +269,25 @@ class Document(ElementProxy):
         # the increment all footnotes pass this paragraph, 
         # and insert a new footnote at the proper position.
         # break the loop when we get to the footnote before the one we are inserting.
-        has_passed_self = False
+        has_passed_containing_para = False
         for p_i in reversed(range(len(self.paragraphs))):
-            if p is not self.paragraphs[p_i]._p:
-                if self.paragraphs[p_i]._p.footnote_reference_ids is not None:
-                    if not has_passed_self:
-                        for r in self.paragraphs[p_i].runs:
-                            r._r.increment_footnote_reference_id()
-                    else:
-                        new_fr_id = max(self.paragraphs[p_i]._p.footnote_reference_ids)+1
-                        break
+            # mark when we pass the paragraph containing the footnote
+            if p is self.paragraphs[p_i]._p:
+                has_passed_containing_para = True
+                continue
+            # skip paragraphs without footnotes (they don't impact new id)
+            if self.paragraphs[p_i]._p.footnote_reference_ids is None:
+                continue
+            # update footnote id of paragraph that is after the 
+            # paragraph that is inserting new footnote.
+            if not has_passed_containing_para:
+                self.paragraphs[p_i].increment_containing_footnote_reference_ids()
             else:
-                has_passed_self = True
+                # this is the first paragraph containing footnotes before the
+                # paragraph that is inserting new footnote, so we get the largest
+                # reference id and add one
+                new_fr_id = max(self.paragraphs[p_i]._p.footnote_reference_ids)+1
+                break
         return new_fr_id
 
 

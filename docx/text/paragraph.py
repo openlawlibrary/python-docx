@@ -193,6 +193,10 @@ class Paragraph(Parented, BookmarkParent):
             paragraph.set_li_lvl(self.part.styles, self, ilvl)
         return paragraph
 
+    def increment_containing_footnote_reference_ids(self):
+        for r in self.runs:
+            r._r.increment_containing_footnote_reference_ids()
+
     def split(self, *positions):
         """Splits paragraph at given positions keeping formatting.
 
