@@ -104,6 +104,10 @@ class Paragraph(Parented):
             paragraph.style = style
         return paragraph
 
+    def increment_containing_footnote_reference_ids(self):
+        for r in self.runs:
+            r._r.increment_containing_footnote_reference_ids()
+
     @property
     def paragraph_format(self):
         """

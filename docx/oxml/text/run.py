@@ -85,7 +85,7 @@ class CT_R(BaseOxmlElement):
             references = None
         return references
 
-    def increment_footnote_reference_id(self):
+    def increment_containing_footnote_reference_ids(self):
         """
         Increment all footnote reference ids by one if they exist.
         Return all footnote reference ids (``<w:footnoteReference>``), or |None| if not present.
