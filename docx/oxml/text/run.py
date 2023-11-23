@@ -96,6 +96,9 @@ class CT_R(BaseOxmlElement):
                     if child.fldCharType == 'begin':
                         CT_FldChar.numOfNestedFldChar += 1
                     else:
+                        # `w:fldChar` stores instruction text from `w:fldCharType='begin'`
+                        # to `w:fldCharType='separate'` if 'separate' exists, if not then
+                        # until `w:fldCharType='end'`.
                         CT_FldChar.numOfNestedFldChar -= 1
         else:
             for child in self:
