@@ -209,31 +209,31 @@ class Document(ElementProxy):
         # in |Footnotes| and in |Paragraph|
         new_fr_id = 1
         # If paragraph already contains footnotes
-        # and it's the last paragraph with footnotes, then
         # append the new footnote and the end with the next reference id.
         if p.footnote_reference_ids is not None:
             new_fr_id = p.footnote_reference_ids[-1] + 1
-        # If the document has footnotes after this paragraph,
-        # the increment all footnotes pass this paragraph, 
-        # and insert a new footnote at the proper position.
-        # break the loop when we get to the footnote before the one we are inserting.
+        # Read the paragraphs containing footnotes and find where the
+        # new footnote will be. Keeping in mind that the footnotes are
+        # sorted by id.
+        # The value of the new footnote id is the value of the first paragraph
+        # containing the footnote id that is before the new footnote, incremented by one.
+        # If a paragraph with footnotes is after the new footnote
+        # then increment thous footnote ids.
         has_passed_containing_para = False
         for p_i in reversed(range(len(self.paragraphs))):
             # mark when we pass the paragraph containing the footnote
             if p is self.paragraphs[p_i]._p:
                 has_passed_containing_para = True
                 continue
-            # skip paragraphs without footnotes (they don't impact new id)
+            # Skip paragraphs without footnotes (they don't impact new id).
             if self.paragraphs[p_i]._p.footnote_reference_ids is None:
                 continue
-            # update footnote id of paragraph that is after the 
-            # paragraph that is inserting new footnote.
+            # These footnotes are after the new footnote, so we increment them.
             if not has_passed_containing_para:
                 self.paragraphs[p_i].increment_containing_footnote_reference_ids()
             else:
-                # this is the first paragraph containing footnotes before the
-                # paragraph that is inserting new footnote, so we get the largest
-                # reference id and add one
+                # This is the last footnote before the new footnote, so we use its
+                # value to determent the value of the new footnote.
                 new_fr_id = max(self.paragraphs[p_i]._p.footnote_reference_ids)+1
                 break
         return new_fr_id
