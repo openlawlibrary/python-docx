@@ -15,6 +15,7 @@ import pathlib
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
+from ..oxml.exceptions import HiddenTextTC
 from ..shared import Parented, Length, lazyproperty, Inches, cache, bust_cache
 from ..oxml.ns import nsmap
 from docx.bookmark import BookmarkParent
@@ -395,10 +396,14 @@ class Paragraph(Parented, BookmarkParent):
     @property
     @cache
     def run_text(self):
+        text = ''
         if self.runs:
-            return ''.join(r.text for r in self.runs)
-        else:
-            return ''
+            try:
+                for run in self.runs:
+                    text += run.text
+            except HiddenTextTC as tc:
+                text += str(tc)
+        return text
 
     def set_li_lvl(self, styles, prev, ilvl):
         """
