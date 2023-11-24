@@ -4,7 +4,6 @@
 Custom element classes related to text runs (CT_R).
 """
 
-from docx.oxml.exceptions import HiddenTextTC
 from ..ns import qn
 from ..simpletypes import ST_BrClear, ST_BrType, ST_String
 from ..xmlchemy import (
