@@ -10,9 +10,10 @@ from .blkcntnr import BlockItemContainer
 from .enum.style import WD_STYLE_TYPE
 from .oxml.simpletypes import ST_Merge
 from .shared import Inches, lazyproperty, Parented
+from docx.bookmark import BookmarkParent
 
 
-class Table(Parented):
+class Table(Parented, BookmarkParent):
     """
     Proxy class for a WordprocessingML ``<w:tbl>`` element.
     """
@@ -71,6 +72,14 @@ class Table(Parented):
     @autofit.setter
     def autofit(self, value):
         self._tblPr.autofit = value
+
+    @property
+    def bookmark_starts(self):
+        return self._element.bookmarkStart_lst
+
+    @property
+    def bookmark_ends(self):
+        return self._element.bookmarkEnd_lst
 
     def cell(self, row_idx, col_idx):
         """
@@ -398,7 +407,7 @@ class _Row(Parented):
         """
         Sequence of |_Cell| instances corresponding to cells in this row.
         """
-        return tuple(self.table.row_cells(self._index))
+        return [_Cell(tc, self) for tc in self._tr.tc_lst]
 
     @property
     def height(self):

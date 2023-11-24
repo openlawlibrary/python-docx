@@ -108,9 +108,11 @@ class CT_Tbl(BaseOxmlElement):
     """
     ``<w:tbl>`` element
     """
+    bookmarkStart = ZeroOrMore('w:bookmarkStart', successors=('w:tblPr', 'w:tblGrid', 'w:tr',))
     tblPr = OneAndOnlyOne('w:tblPr')
     tblGrid = OneAndOnlyOne('w:tblGrid')
     tr = ZeroOrMore('w:tr')
+    bookmarkEnd = ZeroOrMore('w:bookmarkEnd')
 
     @property
     def bidiVisual_val(self):
@@ -759,6 +761,7 @@ class CT_TcPr(BaseOxmlElement):
         'w:cellDel', 'w:cellMerge', 'w:tcPrChange'
     )
     tcW = ZeroOrOne('w:tcW', successors=_tag_seq[2:])
+    tcBorders = ZeroOrOne('w:tcBorders', successors=_tag_seq[6:])
     gridSpan = ZeroOrOne('w:gridSpan', successors=_tag_seq[3:])
     vMerge = ZeroOrOne('w:vMerge', successors=_tag_seq[5:])
     vAlign = ZeroOrOne('w:vAlign', successors=_tag_seq[12:])
