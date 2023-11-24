@@ -5,9 +5,9 @@ Custom element classes related to text runs (CT_R).
 """
 
 from ..ns import qn
-from ..simpletypes import ST_BrClear, ST_BrType
+from ..simpletypes import ST_BrClear, ST_BrType, ST_String
 from ..xmlchemy import (
-    BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne
+    BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne, RequiredAttribute
 )
 
 
@@ -90,14 +90,28 @@ class CT_R(BaseOxmlElement):
         equivalent.
         """
         text = ''
-        for child in self:
-            if child.tag == qn('w:t'):
-                t_text = child.text
-                text += t_text if t_text is not None else ''
-            elif child.tag == qn('w:tab'):
-                text += '\t'
-            elif child.tag in (qn('w:br'), qn('w:cr')):
-                text += '\n'
+        if CT_FldChar.numOfNestedFldChar > 0:
+            for child in self:
+                if child.tag == qn('w:fldChar'):
+                    if child.fldCharType == 'begin':
+                        CT_FldChar.numOfNestedFldChar += 1
+                    else:
+                        # `w:fldChar` stores instruction text from `w:fldCharType='begin'`
+                        # to `w:fldCharType='separate'` if 'separate' exists, if not then
+                        # until `w:fldCharType='end'`.
+                        CT_FldChar.numOfNestedFldChar -= 1
+        else:
+            for child in self:
+                if child.tag == qn('w:t'):
+                    t_text = child.text
+                    text += t_text if t_text is not None else ''
+                elif child.tag == qn('w:tab'):
+                    text += '\t'
+                elif child.tag in (qn('w:br'), qn('w:cr')):
+                    text += '\n'
+                elif child.tag == qn('w:fldChar'):
+                    if child.fldCharType == 'begin':
+                        CT_FldChar.numOfNestedFldChar += 1
         return text
 
     @text.setter
@@ -115,9 +129,12 @@ class CT_FldChar(BaseOxmlElement):
     """
     ``<w:fldChr>`` element, containing properties related to field.
     """
+    fldCharType = RequiredAttribute('w:fldCharType', ST_String)
     fldData = ZeroOrOne('w:fldData')
     ffData = ZeroOrOne('w:ffData')
     numberingChange = ZeroOrOne('w:numberingChange')
+    # used to count/determent nested complex field characters tag `w:fldChar`
+    numOfNestedFldChar = 0
 
 class _RunContentAppender(object):
     """
