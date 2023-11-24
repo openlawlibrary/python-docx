@@ -38,6 +38,19 @@ class Paragraph(Parented, BookmarkParent):
         self._lvl_from_para_props = None
         self._lvl_from_style_props = None
 
+    def add_footnote(self):
+        """
+        Append a run that contains a ``<w:footnoteReferenceId>`` element.
+        The footnotes are kept in order by `footnote_reference_id`, so
+        the appropriate id is calculated based on the current state.
+        """
+        document = self._parent._parent
+        new_fr_id = document._calculate_next_footnote_reference_id(self._p)
+        r = self._p.add_r()
+        r.add_footnoteReference(new_fr_id)
+        footnote = document._add_footnote(new_fr_id)
+        return footnote
+
     def add_run(self, text=None, style=None):
         """
         Append a run to this paragraph containing *text* and having character
@@ -149,6 +162,21 @@ class Paragraph(Parented, BookmarkParent):
         self._p.clear_content()
         return self
 
+    @property
+    def footnotes(self):
+        """
+        Returns a list of |Footnote| instances that refers to the footnotes in this paragraph,
+        or |None| if none footnote is defined.
+        """
+        reference_ids = self._p.footnote_reference_ids
+        if reference_ids == None:
+            return None
+        footnotes = self._parent._parent.footnotes
+        footnote_list = []
+        for ref_id in reference_ids:
+            footnote_list.append(footnotes[ref_id])
+        return footnote_list
+
     def insert_paragraph_before(self, text=None, style=None, ilvl=None):
         """
         Return a newly created paragraph, inserted directly before this
@@ -164,6 +192,10 @@ class Paragraph(Parented, BookmarkParent):
         if ilvl is not None:
             paragraph.set_li_lvl(self.part.styles, self, ilvl)
         return paragraph
+
+    def increment_containing_footnote_reference_ids(self):
+        for r in self.runs:
+            r._r.increment_containing_footnote_reference_ids()
 
     def split(self, *positions):
         """Splits paragraph at given positions keeping formatting.

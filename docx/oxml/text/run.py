@@ -38,6 +38,7 @@ class CT_R(BaseOxmlElement):
     cr = ZeroOrMore('w:cr')
     tab = ZeroOrMore('w:tab')
     drawing = ZeroOrMore('w:drawing')
+    footnoteReference = ZeroOrMore('w:footnoteReference')
     bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
     fldChar = ZeroOrMore('w:fldChar')
     instrText = ZeroOrMore('w:instrText')
@@ -46,6 +47,17 @@ class CT_R(BaseOxmlElement):
     def _insert_rPr(self, rPr):
         self.insert(0, rPr)
         return rPr
+
+    def add_footnoteReference(self, id):
+        """
+        Return a newly added ``<w:footnoteReference>`` element containing
+        the footnote reference id.
+        """
+        rPr = self._add_rPr()
+        rPr.style = 'FootnoteReference'
+        new_fr = self._add_footnoteReference()
+        new_fr.id = id
+        return new_fr
 
     def add_t(self, text):
         """
@@ -72,6 +84,30 @@ class CT_R(BaseOxmlElement):
         content_child_elms = self[1:] if self.rPr is not None else self[:]
         for child in content_child_elms:
             self.remove(child)
+
+    @property
+    def footnote_reference_ids(self) -> (list[int]|None):
+        """
+        Return all footnote reference ids (``<w:footnoteReference>``), or |None| if not present.
+        """
+        references = []
+        for child in self:
+            if child.tag == qn('w:footnoteReference'):
+               references.append(child.id)
+        if references == []:
+            references = None
+        return references
+
+    def increment_containing_footnote_reference_ids(self):
+        """
+        Increment all footnote reference ids by one if they exist.
+        Return all footnote reference ids (``<w:footnoteReference>``), or |None| if not present.
+        """
+        if self.footnoteReference_lst is not None:
+            for i in range(len(self.footnoteReference_lst)):
+                self.footnoteReference_lst[i].id += 1
+            return self.footnoteReference_lst
+        return None
 
     @property
     def style(self):

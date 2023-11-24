@@ -13,6 +13,7 @@ from docx.opc.parts.coreprops import CorePropertiesPart
 from docx.opc.parts.customprops import CustomPropertiesPart
 
 from docx.parts.document import DocumentPart
+from docx.parts.footnotes import FootnotesPart
 from docx.parts.hdrftr import FooterPart, HeaderPart
 from docx.parts.image import ImagePart
 from docx.parts.numbering import NumberingPart
@@ -31,6 +32,7 @@ PartFactory.part_type_for[CT.OPC_CORE_PROPERTIES] = CorePropertiesPart
 PartFactory.part_type_for[CT.OPC_CUSTOM_PROPERTIES] = CustomPropertiesPart
 PartFactory.part_type_for[CT.WML_DOCUMENT_MAIN] = DocumentPart
 PartFactory.part_type_for[CT.WML_FOOTER] = FooterPart
+PartFactory.part_type_for[CT.WML_FOOTNOTES] = FootnotesPart
 PartFactory.part_type_for[CT.WML_HEADER] = HeaderPart
 PartFactory.part_type_for[CT.WML_NUMBERING] = NumberingPart
 PartFactory.part_type_for[CT.WML_SETTINGS] = SettingsPart
@@ -41,6 +43,7 @@ del (
     CorePropertiesPart,
     DocumentPart,
     FooterPart,
+    FootnotesPart,
     HeaderPart,
     NumberingPart,
     PartFactory,

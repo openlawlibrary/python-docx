@@ -55,6 +55,21 @@ class CT_P(BaseOxmlElement):
                 continue
             self.remove(child)
 
+    @property
+    def footnote_reference_ids(self):
+        """
+        Return all footnote reference ids (``<w:footnoteReference>``) form the paragraph,
+        or |None| if not present.
+        """
+        footnote_ids = []
+        for run in self.r_lst:
+            new_footnote_ids = run.footnote_reference_ids
+            if new_footnote_ids:
+                footnote_ids.extend(new_footnote_ids)
+        if footnote_ids == []:
+            footnote_ids = None
+        return footnote_ids
+
     def lvl_from_para_props(self, numbering_el):
         """
         Returns ``<w:lvl>`` numbering level paragraph formatting for the current paragraph using

@@ -129,6 +129,13 @@ class Document(ElementProxy):
         return self._part.core_properties
 
     @property
+    def footnotes(self):
+        """
+        A |Footnotes| object providing access to footnote elements in this document.
+        """
+        return self._part.footnotes
+
+    @property
     def custom_properties(self):
         """
         A |CustomProperties| object providing read/write access to the custom
@@ -217,6 +224,12 @@ class Document(ElementProxy):
         """
         return self._body.tables
 
+    def _add_footnote(self, footnote_reference_ids):
+        """
+        Inserts a newly created footnote to |Footnotes|.
+        """
+        return self._part.footnotes.add_footnote(footnote_reference_ids)
+
     @property
     def _block_width(self):
         """
@@ -236,6 +249,46 @@ class Document(ElementProxy):
         if self.__body is None:
             self.__body = _Body(self._element.body, self)
         return self.__body
+
+    def _calculate_next_footnote_reference_id(self, p):
+        """
+        Return the appropriate footnote reference id number for
+        a new footnote added at the end of paragraph `p`.
+        """
+        # When adding a footnote it can be inserted 
+        # in front of some other footnotes, so
+        # we need to sort footnotes by `footnote_reference_id`
+        # in |Footnotes| and in |Paragraph|
+        new_fr_id = 1
+        # If paragraph already contains footnotes
+        # and it's the last paragraph with footnotes, then
+        # append the new footnote and the end with the next reference id.
+        if p.footnote_reference_ids is not None:
+            new_fr_id = p.footnote_reference_ids[-1] + 1
+        # If the document has footnotes after this paragraph,
+        # the increment all footnotes pass this paragraph, 
+        # and insert a new footnote at the proper position.
+        # break the loop when we get to the footnote before the one we are inserting.
+        has_passed_containing_para = False
+        for p_i in reversed(range(len(self.paragraphs))):
+            # mark when we pass the paragraph containing the footnote
+            if p is self.paragraphs[p_i]._p:
+                has_passed_containing_para = True
+                continue
+            # skip paragraphs without footnotes (they don't impact new id)
+            if self.paragraphs[p_i]._p.footnote_reference_ids is None:
+                continue
+            # update footnote id of paragraph that is after the 
+            # paragraph that is inserting new footnote.
+            if not has_passed_containing_para:
+                self.paragraphs[p_i].increment_containing_footnote_reference_ids()
+            else:
+                # this is the first paragraph containing footnotes before the
+                # paragraph that is inserting new footnote, so we get the largest
+                # reference id and add one
+                new_fr_id = max(self.paragraphs[p_i]._p.footnote_reference_ids)+1
+                break
+        return new_fr_id
 
 
 class _Body(BlockItemContainer):

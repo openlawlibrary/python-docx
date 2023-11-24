@@ -8,7 +8,12 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from itertools import chain
 from docx.document import Document
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
-from docx.oxml.shape import CT_Inline
+from docx.parts.footnotes import FootnotesPart
+from docx.parts.hdrftr import FooterPart, HeaderPart
+from docx.parts.numbering import NumberingPart
+from docx.parts.settings import SettingsPart
+from docx.parts.story import BaseStoryPart
+from docx.parts.styles import StylesPart
 from docx.shape import InlineShapes
 from docx.shared import lazyproperty
 from docx.parts.hdrftr import FooterPart, HeaderPart
@@ -80,6 +85,14 @@ class DocumentPart(BaseStoryPart):
     def footer_part(self, rId):
         """Return |FooterPart| related by *rId*."""
         return self.related_parts[rId]
+
+    @property
+    def footnotes(self):
+        """
+        A |Footnotes| object providing access to the footnotes in the footnotes part
+        of this document.
+        """
+        return self._footnotes_part.footnotes
 
     def get_style(self, style_id, style_type):
         """
@@ -160,6 +173,19 @@ class DocumentPart(BaseStoryPart):
         of this document.
         """
         return self._styles_part.styles
+
+    @property
+    def _footnotes_part(self):
+        """
+        Instance of |FootnotesPart| for this document. Creates an empty footnotes
+        part if one is not present.
+        """
+        try:
+            return self.part_related_by(RT.FOOTNOTES)
+        except KeyError:
+            footnotes_part = FootnotesPart.default(self.package)
+            self.relate_to(footnotes_part, RT.FOOTNOTES)
+            return footnotes_part
 
     @property
     def _settings_part(self):
