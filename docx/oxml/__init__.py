@@ -274,7 +274,7 @@ register_element_cls('w:br', CT_Br)
 register_element_cls('w:cr', CT_Cr)
 register_element_cls('w:r',  CT_R)
 register_element_cls('w:t',  CT_Text)
-register_element_cls('w:fldChr', CT_FldChar)
+register_element_cls('w:fldChar', CT_FldChar)
 
 from .text.symbol import CT_Sym
 register_element_cls('w:sym', CT_Sym)

@@ -5,9 +5,9 @@ Custom element classes related to text runs (CT_R).
 """
 
 from ..ns import qn
-from ..simpletypes import ST_BrClear, ST_BrType
+from ..simpletypes import ST_BrClear, ST_BrType, ST_String
 from ..xmlchemy import (
-    BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne
+    BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne, RequiredAttribute
 )
 
 
@@ -101,28 +101,34 @@ class CT_R(BaseOxmlElement):
         equivalent.
         """
         text = ''
-        for child in self:
-            if child.tag == qn('w:t'):
-                t_text = child.text
-                text += t_text if t_text is not None else ''
-            elif child.tag == qn('w:tab'):
-                text += '\t'
-            elif child.tag == qn('w:br'):
-                text += '\n'
-            elif child.tag == qn('w:cr'):
-                text += '\r'
-            elif child.tag == qn('w:noBreakHyphen'):
-                # if noBreakHyphen is in the same run as instrText then
-                # it is part of fldChar and should be ingored since
-                # it represents part of hidden text
-                has_instr_text = False
-                for _ in self.iterchildren(tag=qn('w:instrText')):
-                    has_instr_text = True
-                    break
-                if not has_instr_text:
+        if CT_FldChar.numOfNestedFldChar > 0:
+            for child in self:
+                if child.tag == qn('w:fldChar'):
+                    if child.fldCharType == 'begin':
+                        CT_FldChar.numOfNestedFldChar += 1
+                    else:
+                        # `w:fldChar` stores instruction text from `w:fldCharType='begin'`
+                        # to `w:fldCharType='separate'` if 'separate' exists, if not then
+                        # until `w:fldCharType='end'`.
+                        CT_FldChar.numOfNestedFldChar -= 1
+        else:
+            for child in self:
+                if child.tag == qn('w:t'):
+                    t_text = child.text
+                    text += t_text if t_text is not None else ''
+                elif child.tag == qn('w:tab'):
+                    text += '\t'
+                elif child.tag == qn('w:br'):
+                    text += '\n'
+                elif child.tag == qn('w:cr'):
+                    text += '\r'
+                elif child.tag == qn('w:noBreakHyphen'):
                     text += '-'
-            elif child.tag == qn('w:sym'):
-                text += child.readSymbol
+                elif child.tag == qn('w:sym'):
+                    text += child.readSymbol
+                elif child.tag == qn('w:fldChar'):
+                    if child.fldCharType == 'begin':
+                        CT_FldChar.numOfNestedFldChar += 1
         return text
 
     @text.setter
@@ -140,9 +146,12 @@ class CT_FldChar(BaseOxmlElement):
     """
     ``<w:fldChr>`` element, containing properties related to field.
     """
+    fldCharType = RequiredAttribute('w:fldCharType', ST_String)
     fldData = ZeroOrOne('w:fldData')
     ffData = ZeroOrOne('w:ffData')
     numberingChange = ZeroOrOne('w:numberingChange')
+    # used to count/determent nested complex field characters tag `w:fldChar`
+    numOfNestedFldChar = 0
 
 class _RunContentAppender(object):
     """
