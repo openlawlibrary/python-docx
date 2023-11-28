@@ -89,30 +89,34 @@ class CT_R(BaseOxmlElement):
         child elements like ``<w:tab/>`` translated to their Python
         equivalent.
         """
-        text = ''
-        if CT_FldChar.numOfNestedFldChar > 0:
-            for child in self:
-                if child.tag == qn('w:fldChar'):
-                    if child.fldCharType == 'begin':
-                        CT_FldChar.numOfNestedFldChar += 1
-                    else:
-                        # `w:fldChar` stores instruction text from `w:fldCharType='begin'`
-                        # to `w:fldCharType='separate'` if 'separate' exists, if not then
-                        # until `w:fldCharType='end'`.
-                        CT_FldChar.numOfNestedFldChar -= 1
-        else:
-            for child in self:
-                if child.tag == qn('w:t'):
-                    t_text = child.text
-                    text += t_text if t_text is not None else ''
-                elif child.tag == qn('w:tab'):
-                    text += '\t'
-                elif child.tag in (qn('w:br'), qn('w:cr')):
-                    text += '\n'
-                elif child.tag == qn('w:fldChar'):
-                    if child.fldCharType == 'begin':
-                        CT_FldChar.numOfNestedFldChar += 1
-        return text
+        text = {'val':''}
+        def appendText(newText):
+            # ignore text if it's in complex field char
+            if CT_FldChar.numOfNestedFldChar == 0:
+                text['val'] += newText
+        for child in self:
+            if child.tag == qn('w:t'):
+                t_text = child.text
+                appendText(t_text if t_text is not None else '')
+            elif child.tag == qn('w:tab'):
+                appendText('\t')
+            elif child.tag in (qn('w:br'), qn('w:cr')):
+                appendText('\n')
+            elif child.tag == qn('w:fldChar'):
+                # `fldChar` should ignore text form types form
+                # `begin` to `end` or from `begin` to `separate`
+                if child.fldCharType == 'begin':
+                    CT_FldChar.numOfNestedFldChar += 1
+                elif child.fldCharType == 'separate':
+                    CT_FldChar.numOfNestedFldChar -= 1
+                    # should ignore the next `end`, because text
+                    # is shown from `separate` to `end`
+                    CT_FldChar.hasSeparate = True
+                elif CT_FldChar.hasSeparate == False:
+                    CT_FldChar.numOfNestedFldChar -= 1
+                else:
+                    CT_FldChar.hasSeparate = False
+        return text['val']
 
     @text.setter
     def text(self, text):
@@ -135,6 +139,8 @@ class CT_FldChar(BaseOxmlElement):
     numberingChange = ZeroOrOne('w:numberingChange')
     # used to count/determent nested complex field characters tag `w:fldChar`
     numOfNestedFldChar = 0
+    # used to parse text form type `separate` to `end`
+    hasSeparate = False
 
 class _RunContentAppender(object):
     """
