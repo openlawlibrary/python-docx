@@ -90,8 +90,8 @@ class CT_R(BaseOxmlElement):
         equivalent.
         """
         text = ''
-        child_text = ''
         for child in self:
+            child_text = ''
             if child.tag == qn('w:t'):
                 t_text = child.text
                 child_text += t_text if t_text is not None else ''
@@ -102,7 +102,6 @@ class CT_R(BaseOxmlElement):
             # check if `child_text` is visible
             if CT_FldChar.numOfNestedFldChar == 0:
                 text += child_text
-                child_text = ''
             # with complex field char, check if the next
             # text runs are hidden or shown
             if child.tag == qn('w:fldChar'):
