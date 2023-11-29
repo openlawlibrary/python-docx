@@ -89,20 +89,23 @@ class CT_R(BaseOxmlElement):
         child elements like ``<w:tab/>`` translated to their Python
         equivalent.
         """
-        text = {'val':''}
-        def appendText(newText):
-            # ignore text if it's in complex field char
-            if CT_FldChar.numOfNestedFldChar == 0:
-                text['val'] += newText
+        text = ''
+        child_text = ''
         for child in self:
             if child.tag == qn('w:t'):
                 t_text = child.text
-                appendText(t_text if t_text is not None else '')
+                child_text += t_text if t_text is not None else ''
             elif child.tag == qn('w:tab'):
-                appendText('\t')
+                child_text += '\t'
             elif child.tag in (qn('w:br'), qn('w:cr')):
-                appendText('\n')
-            elif child.tag == qn('w:fldChar'):
+                child_text += '\n'
+            # check if `child_text` is visible
+            if CT_FldChar.numOfNestedFldChar == 0:
+                text += child_text
+                child_text = ''
+            # with complex field char, check if the next
+            # text runs are hidden or shown
+            if child.tag == qn('w:fldChar'):
                 # `fldChar` should ignore text form types form
                 # `begin` to `end` or from `begin` to `separate`
                 if child.fldCharType == 'begin':
@@ -112,11 +115,13 @@ class CT_R(BaseOxmlElement):
                     # should ignore the next `end`, because text
                     # is shown from `separate` to `end`
                     CT_FldChar.hasSeparate = True
+                # We know this `fldCharType == 'end'`, so we check
+                # if this `fldChar` has 'separate' in it.
                 elif CT_FldChar.hasSeparate == False:
                     CT_FldChar.numOfNestedFldChar -= 1
                 else:
                     CT_FldChar.hasSeparate = False
-        return text['val']
+        return text
 
     @text.setter
     def text(self, text):
