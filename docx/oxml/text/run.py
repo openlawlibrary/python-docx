@@ -141,11 +141,17 @@ class CT_R(BaseOxmlElement):
             child_text = ''
             if child.tag == qn('w:t'):
                 t_text = child.text
-                child_text += t_text if t_text is not None else ''
+                child_text = t_text if t_text is not None else ''
             elif child.tag == qn('w:tab'):
-                child_text += '\t'
-            elif child.tag in (qn('w:br'), qn('w:cr')):
-                child_text += '\n'
+                child_text = '\t'
+            elif child.tag == qn('w:br'):
+                child_text = '\n'
+            elif child.tag == qn('w:cr'):
+                child_text = '\r'
+            elif child.tag == qn('w:noBreakHyphen'):
+                child_text = '-'
+            elif child.tag == qn('w:sym'):
+                child_text = child.readSymbol
             # check if `child_text` is visible
             if CT_FldChar.numOfNestedFldChar == 0:
                 text += child_text
