@@ -33,10 +33,16 @@ class WD_PARAGRAPH_ALIGNMENT(XmlEnumeration):
             'LEFT', 0, 'left', 'Left-aligned'
         ),
         XmlMappedEnumMember(
+            'LEFT', 0, 'start', 'Left-aligned'
+        ),
+        XmlMappedEnumMember(
             'CENTER', 1, 'center', 'Center-aligned.'
         ),
         XmlMappedEnumMember(
             'RIGHT', 2, 'right', 'Right-aligned.'
+        ),
+        XmlMappedEnumMember(
+            'RIGHT', 2, 'end', 'Right-aligned'
         ),
         XmlMappedEnumMember(
             'JUSTIFY', 3, 'both', 'Fully justified.'
