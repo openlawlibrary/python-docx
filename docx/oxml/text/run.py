@@ -5,7 +5,7 @@ Custom element classes related to text runs (CT_R).
 """
 
 from ..ns import qn
-from ..simpletypes import ST_BrClear, ST_BrType, ST_String
+from ..simpletypes import ST_BrClear, ST_BrType, ST_FldCharType
 from ..xmlchemy import (
     BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne, RequiredAttribute
 )
@@ -91,36 +91,34 @@ class CT_R(BaseOxmlElement):
         """
         text = ''
         for child in self:
-            child_text = ''
             if child.tag == qn('w:t'):
                 t_text = child.text
-                child_text += t_text if t_text is not None else ''
+                text += t_text if t_text is not None else ''
             elif child.tag == qn('w:tab'):
-                child_text += '\t'
+                text += '\t'
             elif child.tag in (qn('w:br'), qn('w:cr')):
-                child_text += '\n'
-            # check if `child_text` is visible
-            if CT_FldChar.numOfNestedFldChar == 0:
-                text += child_text
-            # with complex field char, check if the next
-            # text runs are hidden or shown
-            if child.tag == qn('w:fldChar'):
-                # `fldChar` should ignore text form types form
-                # `begin` to `end` or from `begin` to `separate`
-                if child.fldCharType == 'begin':
-                    CT_FldChar.numOfNestedFldChar += 1
-                elif child.fldCharType == 'separate':
-                    CT_FldChar.numOfNestedFldChar -= 1
-                    # should ignore the next `end`, because text
-                    # is shown from `separate` to `end`
-                    CT_FldChar.hasSeparate = True
-                # We know this `fldCharType == 'end'`, so we check
-                # if this `fldChar` has 'separate' in it.
-                elif CT_FldChar.hasSeparate == False:
-                    CT_FldChar.numOfNestedFldChar -= 1
-                else:
-                    CT_FldChar.hasSeparate = False
-        return text
+                text += '\n'
+        # if present find the first complex field char that is before and after this run
+        before = after = foundSelf = False
+        for r in self.getparent().iterchildren():
+            if after:
+                break
+            if r is self:
+                foundSelf = True
+            else:
+                for f in r.iterchildren(qn('w:fldChar')):
+                    if foundSelf == False:
+                        before = f.fldCharType
+                    else:
+                        after = f.fldCharType
+        # Text is visible in these cases based on positions of `w:fldCharType` and text tags:
+        # 1) `<w:t/> <w:fldChar w:fldCharType="begin"/>`
+        # 2) `<w:fldChar w:fldCharType="end"/> <w:t/> <w:fldChar w:fldCharType="begin"/>`
+        # 3) `<w:fldChar w:fldCharType="separate"/> <w:t/> <w:fldChar w:fldCharType="end"/>`
+        # 4) `<w:fldChar w:fldCharType="separate"/> <w:t/> <w:fldChar w:fldCharType="begin"/>`
+        if (not before and (not after or after == 'begin')) or (before == 'end' and (not after or after == 'begin')) or (before == 'separate' and (not after or after == 'end' or after == 'begin')):
+            return text
+        return ''
 
     @text.setter
     def text(self, text):
@@ -137,14 +135,10 @@ class CT_FldChar(BaseOxmlElement):
     """
     ``<w:fldChr>`` element, containing properties related to field.
     """
-    fldCharType = RequiredAttribute('w:fldCharType', ST_String)
+    fldCharType = RequiredAttribute('w:fldCharType', ST_FldCharType)
     fldData = ZeroOrOne('w:fldData')
     ffData = ZeroOrOne('w:ffData')
     numberingChange = ZeroOrOne('w:numberingChange')
-    # used to count/determent nested complex field characters tag `w:fldChar`
-    numOfNestedFldChar = 0
-    # used to parse text form type `separate` to `end`
-    hasSeparate = False
 
 class _RunContentAppender(object):
     """
