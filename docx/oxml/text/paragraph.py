@@ -128,9 +128,39 @@ class CT_P(BaseOxmlElement):
         """
 
         def get_runs(elem):
+            # Two flags used to remove hidden parts of complex field characters.
+            ignoreRun = 0 # used to count nesting of ``<w:fldChar>``, if it's 0 then the run property is not inside a hidden part of ``<w:fldChar>``
+            hasSeparate = False
             for child in elem:
                 if child.tag == qn('w:r'):
-                    yield child
+                    # Remove run's elements that are not visible.
+                    # Complex field characters have not visible part and they are removed.
+                    # The code below removes hidden run elements and the ``<w:fldChar>`` tags as well.
+                    for child_r in child:
+                        if ignoreRun != 0:
+                            child.remove(child_r)
+                        if child_r.tag == qn('w:fldChar'):
+                            t = child_r.fldCharType
+                            if t == 'begin':
+                                ignoreRun += 1
+                            elif t == 'separate':
+                                ignoreRun -= 1
+                                # should ignore the next `end`, because text
+                                # is shown from `separate` to `end`
+                                hasSeparate = True
+                                # We know this `fldCharType == 'end'`, so we check
+                                # if this `fldChar` has 'separate' in it.
+                            elif hasSeparate is False:
+                                ignoreRun -= 1
+                            else:
+                                hasSeparate = False
+                    # removes ``<w:fldChar>`` form run because the hidden elements are removed and this tag is obsolete
+                    for child_r in child:
+                        if child_r.tag == qn('w:fldChar'):
+                            child.remove(child_r)
+                    # yields runs that have at least one visible element
+                    if len(child) > 0:
+                        yield child
                 elif child.tag in (qn('w:hyperlink'), qn('w:sdt'), qn('w:sdtContent'), qn('w:smartTag'),):
                     yield from get_runs(child)
         yield from get_runs(self)

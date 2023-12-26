@@ -151,27 +151,7 @@ class CT_R(BaseOxmlElement):
                 text += '-'
             elif child.tag == qn('w:sym'):
                 text += child.readSymbol
-        # if present find the first complex field char that is before and after this run
-        before = after = foundSelf = False
-        for r in self.getparent().iterchildren():
-            if after:
-                break
-            if r is self:
-                foundSelf = True
-            else:
-                for f in r.iterchildren(qn('w:fldChar')):
-                    if foundSelf == False:
-                        before = f.fldCharType
-                    else:
-                        after = f.fldCharType
-        # Text is visible in these cases based on positions of `w:fldCharType` and text tags:
-        # 1) `<w:t/> <w:fldChar w:fldCharType="begin"/>`
-        # 2) `<w:fldChar w:fldCharType="end"/> <w:t/> <w:fldChar w:fldCharType="begin"/>`
-        # 3) `<w:fldChar w:fldCharType="separate"/> <w:t/> <w:fldChar w:fldCharType="end"/>`
-        # 4) `<w:fldChar w:fldCharType="separate"/> <w:t/> <w:fldChar w:fldCharType="begin"/>`
-        if (not before and (not after or after == 'begin')) or (before == 'end' and (not after or after == 'begin')) or (before == 'separate' and (not after or after == 'end' or after == 'begin')):
-            return text
-        return ''
+        return text
 
     @text.setter
     def text(self, text):
