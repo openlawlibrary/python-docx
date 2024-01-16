@@ -5,9 +5,9 @@ Custom element classes related to text runs (CT_R).
 """
 
 from ..ns import qn
-from ..simpletypes import ST_BrClear, ST_BrType
+from ..simpletypes import ST_BrClear, ST_BrType, ST_FldCharType
 from ..xmlchemy import (
-    BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne
+    BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne, RequiredAttribute
 )
 
 
@@ -148,15 +148,7 @@ class CT_R(BaseOxmlElement):
             elif child.tag == qn('w:cr'):
                 text += '\r'
             elif child.tag == qn('w:noBreakHyphen'):
-                # if noBreakHyphen is in the same run as instrText then
-                # it is part of fldChar and should be ingored since
-                # it represents part of hidden text
-                has_instr_text = False
-                for _ in self.iterchildren(tag=qn('w:instrText')):
-                    has_instr_text = True
-                    break
-                if not has_instr_text:
-                    text += '-'
+                text += '-'
             elif child.tag == qn('w:sym'):
                 text += child.readSymbol
         return text
@@ -176,6 +168,7 @@ class CT_FldChar(BaseOxmlElement):
     """
     ``<w:fldChr>`` element, containing properties related to field.
     """
+    fldCharType = RequiredAttribute('w:fldCharType', ST_FldCharType)
     fldData = ZeroOrOne('w:fldData')
     ffData = ZeroOrOne('w:ffData')
     numberingChange = ZeroOrOne('w:numberingChange')

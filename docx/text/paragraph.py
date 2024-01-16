@@ -429,8 +429,9 @@ class Paragraph(Parented, BookmarkParent):
     @property
     @cache
     def run_text(self):
-        if self.runs:
-            return ''.join(r.text for r in self.runs)
+        runs = self.runs
+        if runs:
+            return ''.join(r.text for r in runs)
         else:
             return ''
 
