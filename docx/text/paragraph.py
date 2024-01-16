@@ -51,6 +51,7 @@ class Paragraph(Parented, BookmarkParent):
         footnote = document._add_footnote(new_fr_id)
         return footnote
 
+    @text_changing
     def add_run(self, text=None, style=None):
         """
         Append a run to this paragraph containing *text* and having character
@@ -154,6 +155,7 @@ class Paragraph(Parented, BookmarkParent):
     def alignment(self, value):
         self._p.alignment = value
 
+    @text_changing
     def clear(self):
         """
         Return this same paragraph after removing all its content.
