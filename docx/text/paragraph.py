@@ -322,6 +322,7 @@ class Paragraph(Parented, BookmarkParent):
             return self._number
 
     @number.setter
+    @text_changing
     def number(self, new_number):
         self._number = new_number
 
