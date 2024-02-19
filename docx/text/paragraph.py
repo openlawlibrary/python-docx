@@ -15,11 +15,14 @@ import pathlib
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented, Length, lazyproperty, Inches, cache, bust_cache
+from .hyperlink import Hyperlink
+from ..shared import Parented, Length, find_document_parent, is_valid_url, lazyproperty, Inches, cache, bust_cache
 from ..oxml.ns import nsmap
+from ..oxml.text.hyperlink import CT_Hyperlink
 from docx.bookmark import BookmarkParent
 from docx.parts.image import ImagePart
 
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 
 # Decorator for all text changing functions used to invalidate text cache.
 text_changing = bust_cache(('text', 'run_text'))
@@ -50,6 +53,18 @@ class Paragraph(Parented, BookmarkParent):
         r.add_footnoteReference(new_fr_id)
         footnote = document._add_footnote(new_fr_id)
         return footnote
+
+    def add_hyperlink(self, reference, text):
+        """
+        Append a ``<w:hyperlink>`` element.
+        The passed `reference` can be a valid URL address or
+        an bookmark name.
+        """
+        if is_valid_url(reference):
+            # Store URL as relationship rId
+            rId = find_document_parent(self).part.relate_to(reference, RT.HYPERLINK, True)
+            reference = rId
+        return Hyperlink(self._p.add_hyperlink(reference, text), self)
 
     @text_changing
     def add_run(self, text=None, style=None):
@@ -165,6 +180,20 @@ class Paragraph(Parented, BookmarkParent):
         return self
 
     @property
+    def elements(self):
+        """
+        Sequence of |Run| and |Hyperlink| instances corresponding to the
+        ``<w:r>`` and ``<w:hyperlink>`` elements in this paragraph.
+        """
+        el = []
+        for e in self._p.iter_r_lst_recursive(True):
+            if isinstance(e, CT_Hyperlink):
+                el.append(Hyperlink(e, self))
+            else:
+                el.append(Run(e, self))
+        return el
+
+    @property
     def footnotes(self):
         """
         Returns a list of |Footnote| instances that refers to the footnotes in this paragraph,
@@ -178,6 +207,18 @@ class Paragraph(Parented, BookmarkParent):
         for ref_id in reference_ids:
             footnote_list.append(footnotes[ref_id])
         return footnote_list
+
+    @property
+    def hyperlinks(self):
+        """
+        Sequence of |Hyperlink| instances corresponding to the <w:hyperlink>
+        elements in this paragraph.
+        """
+        hyperlinks = []
+        for h in self._p.iter_r_lst_recursive(True):
+            if isinstance(h, CT_Hyperlink):
+                hyperlinks.append(Hyperlink(h, self))
+        return hyperlinks
 
     def insert_paragraph_before(self, text=None, style=None, ilvl=None):
         """

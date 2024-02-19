@@ -7,6 +7,8 @@ Objects shared by docx modules.
 from __future__ import absolute_import, print_function, unicode_literals
 from functools import wraps
 
+from docx.exceptions import PythonDocxError
+
 
 class Length(int):
     """
@@ -275,3 +277,35 @@ def bust_cache(fn_names):
             return out
         return wrapper
     return decorator
+
+
+def find_document_parent(element):
+    """
+    Go through elements parent until it finds the root element (Document)
+    And return it.
+    """
+    from .document import Document
+    while True:
+        if not hasattr(element, '_parent'):
+            raise PythonDocxError(f'{type(element)} has no `_parent` property.')
+        if isinstance(element._parent, Document):
+            return element._parent
+        else:
+            element = element._parent
+
+
+def is_valid_url(url):
+    """
+    Returns `True` if it's a valid URL.
+    """
+    if type(url) is not str:
+        return False
+    import re
+    regex = re.compile(
+        r'^https?://'  # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain...
+        r'localhost|'  # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+        r'(?::\d+)?'  # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+    return bool(regex.search(url))
