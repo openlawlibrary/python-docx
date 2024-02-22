@@ -279,7 +279,7 @@ def bust_cache(fn_names):
     return decorator
 
 
-def find_document_parent(element):
+def find_containing_document(element):
     """
     Go through elements parent until it finds the root element (Document)
     And return it.
@@ -298,7 +298,7 @@ def is_valid_url(url):
     """
     Returns `True` if it's a valid URL.
     """
-    if type(url) is not str:
+    if not isinstance(url, str):
         return False
     import re
     regex = re.compile(
