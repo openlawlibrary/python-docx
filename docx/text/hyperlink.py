@@ -1,4 +1,4 @@
-from ..shared import Parented, find_document_parent
+from ..shared import Parented, find_containing_document
 
 class Hyperlink(Parented):
 
@@ -25,6 +25,6 @@ class Hyperlink(Parented):
         String that can be either an URL or an |Bookmark| name.
         """
         if self._h.relationship_id:
-            return find_document_parent(self).part.rels[self._h.relationship_id].target_ref
+            return find_containing_document(self).part.rels[self._h.relationship_id].target_ref
         else:
             return self._h.anchor
