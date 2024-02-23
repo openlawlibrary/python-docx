@@ -27,7 +27,7 @@ class CT_Footnotes(BaseOxmlElement):
         return new_f
 
     def get_by_id(self, id):
-        found = self.xpath('w:footnote[@w:id="%s"]' % id)
+        found = self.xpath(f'w:footnote[@w:id="{id}"]')
         if not found:
             return None
         return found[0]
@@ -49,16 +49,3 @@ class CT_FtnEnd(BaseOxmlElement):
         new_footnote.id = footnote_reference_id
         self.addprevious(new_footnote)
         return new_footnote
-
-    @property
-    def paragraphs(self):
-        """
-        Returns a list of paragraphs |CT_P|, or |None| if none paragraph is present.
-        """
-        paragraphs = []
-        for child in self:
-            if child.tag == qn('w:p'):
-                paragraphs.append(child)
-        if paragraphs == []:
-            paragraphs = None
-        return paragraphs
