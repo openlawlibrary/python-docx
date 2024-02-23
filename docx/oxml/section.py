@@ -9,6 +9,7 @@ from copy import deepcopy
 from warnings import warn
 
 from docx.enum.section import WD_HEADER_FOOTER, WD_ORIENTATION, WD_SECTION_START
+from docx.oxml.exceptions import XmlchemyError
 from docx.oxml.simpletypes import ST_SignedTwipsMeasure, ST_TwipsMeasure, XsdString, ST_FtnPos, ST_NumberFormat, ST_RestartNumber
 from docx.oxml.xmlchemy import (
     BaseOxmlElement,
@@ -169,16 +170,18 @@ class CT_SectPr(BaseOxmlElement):
     def footnote_number_format(self):
         """
         The value of the ``w:val`` attribute in the ``<w:numFmt>`` child
-        element of ``<w:footnotePr>`` element, as a |String|, or |None| if either the element or the
+        element of ``<w:footnotePr>`` element, as a |String|, or |'decimal'| if either the element or the
         attribute is not present.
         """
         fPr = self.footnotePr
         if fPr is None or fPr.numFmt is None:
-            return None
+            return 'decimal'
         return fPr.numFmt.val
 
     @footnote_number_format.setter
     def footnote_number_format(self, value):
+        if value is None:
+            value = 'decimal'
         fPr = self.get_or_add_footnotePr()
         numFmt = fPr.get_or_add_numFmt()
         numFmt.val = value
@@ -187,66 +190,72 @@ class CT_SectPr(BaseOxmlElement):
     def footnote_numbering_restart_location(self):
         """
         The value of the ``w:val`` attribute in the ``<w:numRestart>`` child
-        element of ``<w:footnotePr>`` element, as a |String|, or |None| if either the element or the
+        element of ``<w:footnotePr>`` element, as a |String|, or |'continuous'| if either the element or the
         attribute is not present.
+        This property is tied with ``<w:numStart>``.
         """
         fPr = self.footnotePr
         if fPr is None or fPr.numRestart is None:
-            return None
+            return 'continuous'
         return fPr.numRestart.val
 
     @footnote_numbering_restart_location.setter
     def footnote_numbering_restart_location(self, value):
+        # this property must have an appropriate ``<w:numStart>`` property.
+        if value is None:
+            value = 'continuous'
+        numStartValue = self.footnote_numbering_start_value
+        if value != 'continuous' and numStartValue != 1:
+            raise XmlchemyError( "When ``<w:numRestart> is not 'continuous', then ``<w:numStart>`` must be 1.")
         fPr = self.get_or_add_footnotePr()
         numStart = fPr.get_or_add_numStart()
         numRestart = fPr.get_or_add_numRestart()
+        numStart.val = numStartValue
         numRestart.val = value
-        if numStart is None or len(numStart.values()) == 0:
-            numStart.val = 1
-        elif value != 'continuous':
-            numStart.val = 1
-            msg = "When ``<w:numRestart> is not 'continuous', then ``<w:numStart>`` must be 1."
-            warn(msg, UserWarning, stacklevel=2)
 
     @property
     def footnote_numbering_start_value(self):
         """
         The value of the ``w:val`` attribute in the ``<w:numStart>`` child
-        element of ``<w:footnotePr>`` element, as a |Number|, or |None| if either the element or the
+        element of ``<w:footnotePr>`` element, as a |Number|, or |1| if either the element or the
         attribute is not present.
+        This property is tied with ``<w:numRestart>``.
         """
         fPr = self.footnotePr
         if fPr is None or fPr.numStart is None:
-            return None
+            return 1
         return fPr.numStart.val
 
     @footnote_numbering_start_value.setter
     def footnote_numbering_start_value(self, value):
+        # this property must have an appropriate ``<w:numRestart>`` property.
+        if value is None:
+            value = 1
+        numRestartValue = self.footnote_numbering_restart_location
+        if value != 1 and numRestartValue != 'continuous':
+            raise XmlchemyError( "When ``<w:numStart> is not 1, then ``<w:numRestart>`` must be 'continuous'.")
         fPr = self.get_or_add_footnotePr()
         numStart = fPr.get_or_add_numStart()
         numRestart = fPr.get_or_add_numRestart()
         numStart.val = value
-        if numRestart is None or len(numRestart.values()) == 0:
-            numRestart.val = 'continuous'
-        elif value != 1:
-            numRestart.val = 'continuous'
-            msg = "When ``<w:numStart> is not 1, then ``<w:numRestart>`` must be 'continuous'."
-            warn(msg, UserWarning, stacklevel=2)
+        numRestart.val = numRestartValue
 
     @property
     def footnote_position(self):
         """
         The value of the ``w:val`` attribute in the ``<w:pos>`` child
-        element of ``<w:footnotePr>`` element, as a |String|, or |None| if either the element or the
+        element of ``<w:footnotePr>`` element, as a |String|, or |'pageBottom'| if either the element or the
         attribute is not present.
         """
         fPr = self.footnotePr
         if fPr is None or fPr.pos is None:
-            return None
+            return 'pageBottom'
         return fPr.pos.val
 
     @footnote_position.setter
     def footnote_position(self, value):
+        if value is None:
+            value = 'pageBottom'
         fPr = self.get_or_add_footnotePr()
         pos = fPr.get_or_add_pos()
         pos.val = value

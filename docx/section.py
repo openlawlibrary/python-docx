@@ -135,7 +135,7 @@ class Section(object):
     def footnote_number_format(self):
         """The number format property for the |Footnotes|.
 
-        Read/write. |None| if no setting is present in the XML.
+        Read/write. |'decimal'| if no setting is present in the XML.
         """
         return self._sectPr.footnote_number_format
 
@@ -147,8 +147,8 @@ class Section(object):
     def footnote_numbering_restart_location(self):
         """The number restart location property for the |Footnotes|.
 
-        If the value is not |continuous| then the footnote number start value property is set to |1|.
-        Read/write. |None| if no setting is present in the XML.
+        If the value is not |'continuous'| then the footnote number start value property is set to |1|.
+        Read/write. |'continuous'| if no setting is present in the XML.
         """
         return self._sectPr.footnote_numbering_restart_location
 
@@ -161,7 +161,7 @@ class Section(object):
         """The number start value property for the |Footnotes|.
 
         If the value is not |1| then footnote number restart position property is set to |continuous|.
-        Read/write. |None| if no setting is present in the XML.
+        Read/write. |1| if no setting is present in the XML.
         """
         return self._sectPr.footnote_numbering_start_value
 
@@ -173,7 +173,7 @@ class Section(object):
     def footnote_position(self):
         """The position property for the |Footnotes|.
 
-        Read/write. |None| if no setting is present in the XML.
+        Read/write. |'pageBottom'| if no setting is present in the XML.
         """
         return self._sectPr.footnote_position
 
