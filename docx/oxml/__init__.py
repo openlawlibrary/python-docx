@@ -287,3 +287,6 @@ register_element_cls('w:footnotes',          CT_Footnotes)
 
 from .text.symbol import CT_Sym
 register_element_cls('w:sym', CT_Sym)
+
+from .text.hyperlink import CT_Hyperlink
+register_element_cls('w:hyperlink', CT_Hyperlink)

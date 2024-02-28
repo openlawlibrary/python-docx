@@ -15,11 +15,14 @@ import pathlib
 from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
-from ..shared import Parented, Length, lazyproperty, Inches, cache, bust_cache
+from .hyperlink import Hyperlink
+from ..shared import Parented, Length, find_containing_document, is_valid_url, lazyproperty, Inches, cache, bust_cache
 from ..oxml.ns import nsmap
+from ..oxml.text.hyperlink import CT_Hyperlink
 from docx.bookmark import BookmarkParent
 from docx.parts.image import ImagePart
 
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 
 # Decorator for all text changing functions used to invalidate text cache.
 text_changing = bust_cache(('text', 'run_text'))
@@ -50,6 +53,19 @@ class Paragraph(Parented, BookmarkParent):
         r.add_footnoteReference(new_fr_id)
         footnote = document._add_footnote(new_fr_id)
         return footnote
+
+    def add_hyperlink(self, text, reference):
+        """
+        Append a ``<w:hyperlink>`` element.
+        The passed `reference` can be a valid URL address or
+        an bookmark name.
+        """
+        if is_valid_url(reference):
+            # Store URL as relationship rId
+            rId = find_containing_document(self).part.relate_to(
+                reference, RT.HYPERLINK, True)
+            reference = rId
+        return Hyperlink(self._p.add_hyperlink(text, reference), self)
 
     @text_changing
     def add_run(self, text=None, style=None):
@@ -110,7 +126,6 @@ class Paragraph(Parented, BookmarkParent):
             active_placeholder = sdtPr._add_active_placeholder()
             active_placeholder.set('{%s}val' % nsmap['w'], 'true')
 
-
         sdt = self._p._new_sdt()
 
         sdtPr = sdt._add_sdtPr()
@@ -165,6 +180,14 @@ class Paragraph(Parented, BookmarkParent):
         return self
 
     @property
+    def runs_and_hyperlinks(self):
+        """
+        Sequence of |Run| and |Hyperlink| instances corresponding to the
+        ``<w:r>`` and ``<w:hyperlink>`` elements in this paragraph.
+        """
+        return [Hyperlink(e, self) if isinstance(e, CT_Hyperlink) else Run(e, self) for e in self._p.iter_r_and_hyperlinks(return_hyperlinks=True)]
+
+    @property
     def footnotes(self):
         """
         Returns a list of |Footnote| instances that refers to the footnotes in this paragraph,
@@ -178,6 +201,14 @@ class Paragraph(Parented, BookmarkParent):
         for ref_id in reference_ids:
             footnote_list.append(footnotes[ref_id])
         return footnote_list
+
+    @property
+    def hyperlinks(self):
+        """
+        Sequence of |Hyperlink| instances corresponding to the <w:hyperlink>
+        elements in this paragraph.
+        """
+        return [Hyperlink(h, self) for h in self._p.hyperlink_lst]
 
     def insert_paragraph_before(self, text=None, style=None, ilvl=None):
         """
@@ -269,7 +300,7 @@ class Paragraph(Parented, BookmarkParent):
             runend = runstart + len(run.text)
             if runstart <= start and end <= runend:
                 run.text = run.text[:(start-runstart)] \
-                           + run.text[(end-runstart):]
+                    + run.text[(end-runstart):]
                 if not run.text:
                     run._r.getparent().remove(run._r)
                 return self
@@ -334,7 +365,8 @@ class Paragraph(Parented, BookmarkParent):
         """
         if self._lvl_from_para_props is None:
             try:
-                self._lvl_from_para_props = self._p.lvl_from_para_props(self.part.numbering_part._element)
+                self._lvl_from_para_props = self._p.lvl_from_para_props(
+                    self.part.numbering_part._element)
             except (AttributeError, NotImplementedError):
                 return None
         return self._lvl_from_para_props
@@ -384,7 +416,7 @@ class Paragraph(Parented, BookmarkParent):
         Sequence of |Run| instances corresponding to the <w:r> elements in
         this paragraph.
         """
-        return [Run(r, self) for r in self._p.iter_r_lst_recursive()]
+        return [Run(r, self) for r in self._p.iter_r_and_hyperlinks()]
 
     @property
     def bookmark_starts(self):
@@ -445,7 +477,7 @@ class Paragraph(Parented, BookmarkParent):
         prev_el = prev._element if prev else None
         _ilvl = 0 if ilvl is None else ilvl
         self._p.set_li_lvl(self.part.numbering_part._element,
-                              self.part.cached_styles, prev_el, _ilvl)
+                           self.part.cached_styles, prev_el, _ilvl)
 
     @property
     @cache
@@ -506,7 +538,7 @@ class Paragraph(Parented, BookmarkParent):
             runend += len(run.text)
             if runend >= position:
                 run.text = run.text[:(position-runstart)] \
-                           + new_text + run.text[(position-runstart):]
+                    + new_text + run.text[(position-runstart):]
                 break
         return self
 
@@ -618,7 +650,8 @@ class Paragraph(Parented, BookmarkParent):
 
                 obj = obj.paragraph_format
 
-                tabstops.extend([round(ts.position.inches, 2) for ts in obj.tab_stops])
+                tabstops.extend([round(ts.position.inches, 2)
+                                for ts in obj.tab_stops])
                 clear_t_stops = [round(ts.position.inches, 2)
                                  for ts in obj.tab_stops
                                  if ts._element.attrib['{%s}val' % nsmap['w']] == 'clear']
@@ -637,16 +670,21 @@ class Paragraph(Parented, BookmarkParent):
 
         # Apply paragraph styles by priority (from lowest to highest).
         # Formatting from the base style has the lowest priority.
-        first_line_indent = get_base_style_attr(self.style, 'first_line_indent')
+        first_line_indent = get_base_style_attr(
+            self.style, 'first_line_indent')
         left_indent = get_base_style_attr(self.style, 'left_indent')
         # Next, we apply formatting from numbering properties defined in paragraph style.
-        first_line_indent, left_indent = apply_formatting(self.style_numbering_format, first_line_indent, left_indent)
+        first_line_indent, left_indent = apply_formatting(
+            self.style_numbering_format, first_line_indent, left_indent)
         # Then formatting from paragraph style.
-        first_line_indent, left_indent = apply_formatting(self.style.paragraph_format, first_line_indent, left_indent)
+        first_line_indent, left_indent = apply_formatting(
+            self.style.paragraph_format, first_line_indent, left_indent)
         # Next, formatting from numbering properties defined in direct paragraph properties is applied.
-        first_line_indent, left_indent = apply_formatting(self.para_numbering_format, first_line_indent, left_indent)
+        first_line_indent, left_indent = apply_formatting(
+            self.para_numbering_format, first_line_indent, left_indent)
         # Finally, we apply formatting from direct paragraph formatting.
-        first_line_indent, left_indent = apply_formatting(self.paragraph_format, first_line_indent, left_indent)
+        first_line_indent, left_indent = apply_formatting(
+            self.paragraph_format, first_line_indent, left_indent)
 
         # Get explicitly set indentation
         if first_line_indent is not None:
@@ -664,13 +702,15 @@ class Paragraph(Parented, BookmarkParent):
 
         # Find out the number of tabs at the beginning of the paragraph.
         # Ignore regular spaces.
-        tab_count = self.text[:len(self.text) - len(self.text.lstrip())].count('\t')
+        tab_count = self.text[:len(self.text) -
+                              len(self.text.lstrip())].count('\t')
 
         if tab_count:
 
             # Get tab stops but only those to the right of first line indent as the previous
             # don't affect the indentation.
-            tab_stops = [ts for ts in get_tabstops(self) if ts > first_line_indent]
+            tab_stops = [ts for ts in get_tabstops(
+                self) if ts > first_line_indent]
 
             # If the first line indent is left of the paragraph indent, first tab will tab to
             # the paragraph indent.
@@ -695,7 +735,8 @@ class Paragraph(Parented, BookmarkParent):
 
                 # Let's round up to the first tab char indent. If already rounded add one.
                 tab_count -= 1
-                indent = math.ceil(indent) if not indent.is_integer() else indent + 1
+                indent = math.ceil(
+                    indent) if not indent.is_integer() else indent + 1
 
                 # The remaining tab chars just adds whole indents.
                 indent += tab_count

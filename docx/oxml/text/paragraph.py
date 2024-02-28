@@ -17,10 +17,35 @@ class CT_P(BaseOxmlElement):
     pPr = ZeroOrOne('w:pPr', successors=('w:bookmarkEnd',))
     r = ZeroOrMore('w:r', successors=('w:bookmarkEnd',))
     bookmarkEnd = ZeroOrMore('w:bookmarkEnd')
+    hyperlink = ZeroOrMore('w:hyperlink')
 
     def _insert_pPr(self, pPr):
         self.insert(0, pPr)
         return pPr
+
+    def add_hyperlink(self, text, reference):
+        """
+        Return a new ``<w:hyperlink>`` element inserted at the end of this
+        paragraph. The `reference` can be a valid URL or an bookmark name.
+
+        If the `reference` is a URL than a relationship element is created in
+        the relationship part of the document, and the id of this relationship
+        is stored in `relationship_id` attribute of the ``<w:hyperlink>``.
+
+        If the `reference` is an bookmark name then that value is stored in
+        `anchor` attribute of the ``<w:hyperlink>``.
+        """
+        new_h = self._add_hyperlink()
+        r = new_h._add_r()
+        r.text = text
+        r.style = 'Hyperlink'
+        if reference.startswith('rId'):
+            # reference is an relationship id of a URL,
+            # so it's stored in a `relationship_id`
+            new_h.relationship_id = reference
+        else:
+            new_h.anchor = reference
+        return new_h
 
     def add_p_before(self):
         """
@@ -121,13 +146,15 @@ class CT_P(BaseOxmlElement):
         pPr = self.get_or_add_pPr()
         pPr.style = style
 
-    def iter_r_lst_recursive(self):
+    def iter_r_and_hyperlinks(self, return_hyperlinks=False):
         """
         Override xmlchemy generated list of runs to include runs from
         hyperlinks and content controls.
+        If the argument `return_hyperlinks` is `True` then the hyperlinks
+        will be yielded as `CT_Hyperlink`.
         """
 
-        def get_runs(elem):
+        def get_el(elem):
             # Two flags used to remove hidden parts of complex field characters.
             ignoreRun = 0 # used to count nesting of ``<w:fldChar>``, if it's 0 then the run property is not inside a hidden part of ``<w:fldChar>``
             hasSeparate = False
@@ -161,6 +188,11 @@ class CT_P(BaseOxmlElement):
                     # yields runs that have at least one visible element
                     if len(child) > 0:
                         yield child
-                elif child.tag in (qn('w:hyperlink'), qn('w:sdt'), qn('w:sdtContent'), qn('w:smartTag'),):
-                    yield from get_runs(child)
-        yield from get_runs(self)
+                elif child.tag == qn('w:hyperlink'):
+                    if return_hyperlinks:
+                        yield child
+                    else:
+                        yield from get_el(child)
+                elif child.tag in (qn('w:sdt'), qn('w:sdtContent'), qn('w:smartTag'),):
+                    yield from get_el(child)
+        yield from get_el(self)
