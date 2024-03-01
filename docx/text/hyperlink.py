@@ -1,4 +1,5 @@
 from ..shared import Parented, find_containing_document
+from .run import Run
 
 class Hyperlink(Parented):
 
@@ -24,7 +25,15 @@ class Hyperlink(Parented):
         """
         String that can be either an URL or an |Bookmark| name.
         """
+        return_link = ''
         if self._h.relationship_id:
-            return find_containing_document(self).part.rels[self._h.relationship_id].target_ref
+            return_link = find_containing_document(self).part.rels[self._h.relationship_id].target_ref
+            if self._h.anchor:
+                return_link += '#' + self._h.anchor
         else:
-            return self._h.anchor
+            return_link = self._h.anchor
+        return return_link
+
+    @property
+    def runs(self):
+        return [Run(r, self) for r in self._h.r_lst]
