@@ -86,17 +86,13 @@ class CT_R(BaseOxmlElement):
             self.remove(child)
 
     @property
-    def footnote_reference_ids(self) -> (list[int]|None):
+    def footnote_reference_ids(self):
         """
-        Return all footnote reference ids (``<w:footnoteReference>``), or |None| if not present.
+        Return all footnote reference ids (``<w:footnoteReference>``).
         """
-        references = []
         for child in self:
             if child.tag == qn('w:footnoteReference'):
-               references.append(child.id)
-        if references == []:
-            references = None
-        return references
+                yield child.id
 
     def increment_containing_footnote_reference_ids(self):
         """

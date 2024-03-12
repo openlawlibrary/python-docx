@@ -6,8 +6,11 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 from copy import deepcopy
 
+from warnings import warn
+
 from docx.enum.section import WD_HEADER_FOOTER, WD_ORIENTATION, WD_SECTION_START
-from docx.oxml.simpletypes import ST_SignedTwipsMeasure, ST_TwipsMeasure, XsdString
+from docx.oxml.exceptions import XmlchemyError
+from docx.oxml.simpletypes import ST_SignedTwipsMeasure, ST_TwipsMeasure, XsdString, ST_FtnPos, ST_NumberFormat, ST_RestartNumber
 from docx.oxml.xmlchemy import (
     BaseOxmlElement,
     OptionalAttribute,
@@ -15,6 +18,22 @@ from docx.oxml.xmlchemy import (
     ZeroOrMore,
     ZeroOrOne,
 )
+
+
+class CT_FtnPos(BaseOxmlElement):
+    """``<w:pos>`` element, footnote placement"""
+    val = RequiredAttribute('w:val', ST_FtnPos)
+
+
+class CT_FtnProps(BaseOxmlElement):
+    """``<w:footnotePr>`` element, section wide footnote properties"""
+    _tag_seq = (
+        'w:pos', 'w:numFmt', 'w:numStart', 'w:numRestart'
+    )
+    pos = ZeroOrOne('w:pos', successors=_tag_seq)
+    numFmt = ZeroOrOne('w:numFmt', successors=_tag_seq[1:])
+    numStart = ZeroOrOne('w:numStart', successors=_tag_seq[2:])
+    numRestart = ZeroOrOne('w:numRestart', successors=_tag_seq[3:])
 
 
 class CT_HdrFtr(BaseOxmlElement):
@@ -30,6 +49,16 @@ class CT_HdrFtrRef(BaseOxmlElement):
 
     type_ = RequiredAttribute('w:type', WD_HEADER_FOOTER)
     rId = RequiredAttribute('r:id', XsdString)
+
+
+class CT_NumFmt(BaseOxmlElement):
+    """``<w:numFmt>`` element, footnote numbering format"""
+    val = RequiredAttribute('w:val', ST_NumberFormat)
+
+
+class CT_NumRestart(BaseOxmlElement):
+    """``<w:numStart>`` element, footnote numbering restart location"""
+    val = RequiredAttribute('w:val', ST_RestartNumber)
 
 
 class CT_PageMar(BaseOxmlElement):
@@ -71,6 +100,7 @@ class CT_SectPr(BaseOxmlElement):
     pgSz = ZeroOrOne("w:pgSz", successors=_tag_seq[4:])
     pgMar = ZeroOrOne("w:pgMar", successors=_tag_seq[5:])
     titlePg = ZeroOrOne("w:titlePg", successors=_tag_seq[14:])
+    footnotePr = ZeroOrOne("w:footnotePr", successors=_tag_seq[1:])
     del _tag_seq
 
     def add_footerReference(self, type_, rId):
@@ -136,6 +166,100 @@ class CT_SectPr(BaseOxmlElement):
     def footer(self, value):
         pgMar = self.get_or_add_pgMar()
         pgMar.footer = value
+
+    @property
+    def footnote_number_format(self):
+        """
+        The value of the ``w:val`` attribute in the ``<w:numFmt>`` child
+        element of ``<w:footnotePr>`` element, as a |String|, or |'decimal'| if either the element or the
+        attribute is not present.
+        """
+        fPr = self.footnotePr
+        if fPr is None or fPr.numFmt is None:
+            return 'decimal'
+        return fPr.numFmt.val
+
+    @footnote_number_format.setter
+    def footnote_number_format(self, value):
+        if value is None:
+            value = 'decimal'
+        fPr = self.get_or_add_footnotePr()
+        numFmt = fPr.get_or_add_numFmt()
+        numFmt.val = value
+
+    @property
+    def footnote_numbering_restart_location(self):
+        """
+        The value of the ``w:val`` attribute in the ``<w:numRestart>`` child
+        element of ``<w:footnotePr>`` element, as a |String|, or |'continuous'| if either the element or the
+        attribute is not present.
+        This property is tied with ``<w:numStart>``.
+        """
+        fPr = self.footnotePr
+        if fPr is None or fPr.numRestart is None:
+            return 'continuous'
+        return fPr.numRestart.val
+
+    @footnote_numbering_restart_location.setter
+    def footnote_numbering_restart_location(self, value):
+        # this property must have an appropriate ``<w:numStart>`` property.
+        if value is None:
+            value = 'continuous'
+        numStartValue = self.footnote_numbering_start_value
+        if value != 'continuous' and numStartValue != 1:
+            raise XmlchemyError( "When ``<w:numRestart> is not 'continuous', then ``<w:numStart>`` must be 1.")
+        fPr = self.get_or_add_footnotePr()
+        numStart = fPr.get_or_add_numStart()
+        numRestart = fPr.get_or_add_numRestart()
+        numStart.val = numStartValue
+        numRestart.val = value
+
+    @property
+    def footnote_numbering_start_value(self):
+        """
+        The value of the ``w:val`` attribute in the ``<w:numStart>`` child
+        element of ``<w:footnotePr>`` element, as a |Number|, or |1| if either the element or the
+        attribute is not present.
+        This property is tied with ``<w:numRestart>``.
+        """
+        fPr = self.footnotePr
+        if fPr is None or fPr.numStart is None:
+            return 1
+        return fPr.numStart.val
+
+    @footnote_numbering_start_value.setter
+    def footnote_numbering_start_value(self, value):
+        # this property must have an appropriate ``<w:numRestart>`` property.
+        if value is None:
+            value = 1
+        numRestartValue = self.footnote_numbering_restart_location
+        if value != 1 and numRestartValue != 'continuous':
+            raise XmlchemyError( "When ``<w:numStart> is not 1, then ``<w:numRestart>`` must be 'continuous'.")
+        fPr = self.get_or_add_footnotePr()
+        numStart = fPr.get_or_add_numStart()
+        numRestart = fPr.get_or_add_numRestart()
+        numStart.val = value
+        numRestart.val = numRestartValue
+
+    @property
+    def footnote_position(self):
+        """
+        The value of the ``w:val`` attribute in the ``<w:pos>`` child
+        element of ``<w:footnotePr>`` element, as a |String|, or |'pageBottom'| if either the element or the
+        attribute is not present.
+        """
+        fPr = self.footnotePr
+        if fPr is None or fPr.pos is None:
+            return 'pageBottom'
+        return fPr.pos.val
+
+    @footnote_position.setter
+    def footnote_position(self, value):
+        if value is None:
+            value = 'pageBottom'
+        fPr = self.get_or_add_footnotePr()
+        pos = fPr.get_or_add_pos()
+        pos.val = value
 
     def get_footerReference(self, type_):
         """Return footerReference element of *type_* or None if not present."""
