@@ -75,9 +75,8 @@ class CT_R(BaseOxmlElement):
     @property
     def footnote_reference_ids(self):
         """
-        Return all footnote reference ids (``<w:footnoteReference>``), or |None| if not present.
+        Return all footnote reference ids (``<w:footnoteReference>``).
         """
-        references = []
         for child in self:
             if child.tag == qn('w:footnoteReference'):
                 yield child.id
