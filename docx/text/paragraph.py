@@ -571,7 +571,7 @@ class Paragraph(Parented, BookmarkParent):
         while self.runs:
             run = self.runs[0]
             run.text = run.text.lstrip(chars)
-            if not run.text:
+            if not run.text and len(run.footnote_reference_ids) == 0:
                 run._r.getparent().remove(run._r)
             else:
                 break
@@ -585,7 +585,7 @@ class Paragraph(Parented, BookmarkParent):
         while self.runs:
             run = self.runs[len(self.runs) - 1]
             run.text = run.text.rstrip(chars)
-            if not run.text:
+            if not run.text and len(run.footnote_reference_ids) == 0:
                 run._r.getparent().remove(run._r)
             else:
                 break
