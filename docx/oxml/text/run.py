@@ -83,6 +83,8 @@ class CT_R(BaseOxmlElement):
         """
         content_child_elms = self[1:] if self.rPr is not None else self[:]
         for child in content_child_elms:
+            # We keep ``w:footnoteReference`` because of the
+            # platform `replace_special_chars_preprocessor` preprocessor.
             if child.tag == qn('w:footnoteReference'):
                 continue
             self.remove(child)

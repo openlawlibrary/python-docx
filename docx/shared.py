@@ -286,12 +286,20 @@ def find_containing_document(element):
     """
     from .document import Document
     while True:
-        if not hasattr(element, '_parent'):
-            raise PythonDocxError(f'{type(element)} has no `_parent` property.')
-        if isinstance(element._parent, Document):
-            return element._parent
+        if hasattr(element, '_document_part'):
+            return element._document_part.document
+        elif hasattr(element, '_parent'):
+            if isinstance(element._parent, Document):
+                return element._parent
+            else:
+                element = element._parent
+        elif hasattr(element, 'parent'):
+            if isinstance(element.parent, Document):
+                return element.parent
+            else:
+                element = element.parent
         else:
-            element = element._parent
+            raise PythonDocxError(f'{type(element)} couldn\'t find root Document.')
 
 
 def is_valid_url(url):

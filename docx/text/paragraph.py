@@ -780,7 +780,7 @@ class Paragraph(Parented, BookmarkParent):
         """
         Return all image parts related to this paragraph.
         """
-        doc = self.part.document
+        doc = find_containing_document(self)
         drawings = []
         parts = []
 
