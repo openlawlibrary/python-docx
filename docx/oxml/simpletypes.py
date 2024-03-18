@@ -249,6 +249,18 @@ class ST_FldCharType(XsdString):
             )
 
 
+class ST_FtnPos(XsdString):
+
+    @classmethod
+    def validate(cls, value):
+        cls.validate_string(value)
+        valid_values = ('pageBottom', 'beneathText', 'sectEnd', 'docEnd')
+        if value not in valid_values:
+            raise ValueError(
+                "must be one of %s, got '%s'" % (valid_values, value)
+            )
+
+
 class ST_HexColor(BaseStringType):
 
     @classmethod
@@ -301,6 +313,10 @@ class ST_HpsMeasure(XsdUnsignedLong):
         return str(half_points)
 
 
+class ST_NumberFormat(XsdString):
+    pass
+
+
 class ST_Merge(XsdStringEnumeration):
     """
     Valid values for <w:xMerge val=""> attribute
@@ -336,6 +352,18 @@ class ST_PositiveCoordinate(XsdLong):
 
 class ST_RelationshipId(XsdString):
     pass
+
+
+class ST_RestartNumber(XsdString):
+
+    @classmethod
+    def validate(cls, value):
+        cls.validate_string(value)
+        valid_values = ('continuous', 'eachSect', 'eachPage')
+        if value not in valid_values:
+            raise ValueError(
+                "must be one of %s, got '%s'" % (valid_values, value)
+            )
 
 
 class ST_SignedTwipsMeasure(XsdInt):

@@ -47,7 +47,7 @@ class Paragraph(Parented, BookmarkParent):
         The footnotes are kept in order by `footnote_reference_id`, so
         the appropriate id is calculated based on the current state.
         """
-        document = self._parent._parent
+        document = find_containing_document(self)
         new_fr_id = document._calculate_next_footnote_reference_id(self._p)
         r = self._p.add_r()
         r.add_footnoteReference(new_fr_id)
@@ -190,14 +190,14 @@ class Paragraph(Parented, BookmarkParent):
     @property
     def footnotes(self):
         """
-        Returns a list of |Footnote| instances that refers to the footnotes in this paragraph,
-        or |None| if none footnote is defined.
+        Returns a list of |Footnote| instances that refers to the footnotes in this paragraph.
         """
-        reference_ids = self._p.footnote_reference_ids
-        if reference_ids == None:
-            return None
-        footnotes = self._parent._parent.footnotes
         footnote_list = []
+        reference_ids = self._p.footnote_reference_ids
+        document = find_containing_document(self)
+        if document is None:
+            return footnote_list
+        footnotes = document.footnotes
         for ref_id in reference_ids:
             footnote_list.append(footnotes[ref_id])
         return footnote_list
@@ -571,7 +571,7 @@ class Paragraph(Parented, BookmarkParent):
         while self.runs:
             run = self.runs[0]
             run.text = run.text.lstrip(chars)
-            if not run.text:
+            if not run.text and len(run.footnote_reference_ids) == 0:
                 run._r.getparent().remove(run._r)
             else:
                 break
@@ -585,7 +585,7 @@ class Paragraph(Parented, BookmarkParent):
         while self.runs:
             run = self.runs[len(self.runs) - 1]
             run.text = run.text.rstrip(chars)
-            if not run.text:
+            if not run.text and len(run.footnote_reference_ids) == 0:
                 run._r.getparent().remove(run._r)
             else:
                 break
@@ -780,7 +780,7 @@ class Paragraph(Parented, BookmarkParent):
         """
         Return all image parts related to this paragraph.
         """
-        doc = self.part.document
+        doc = find_containing_document(self)
         drawings = []
         parts = []
 

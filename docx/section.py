@@ -132,6 +132,56 @@ class Section(object):
         self._sectPr.footer = value
 
     @property
+    def footnote_number_format(self):
+        """The number format property for the |Footnotes|.
+
+        Read/write. |'decimal'| if no setting is present in the XML.
+        """
+        return self._sectPr.footnote_number_format
+
+    @footnote_number_format.setter
+    def footnote_number_format(self, value):
+        self._sectPr.footnote_number_format = value
+
+    @property
+    def footnote_numbering_restart_location(self):
+        """The number restart location property for the |Footnotes|.
+
+        If the value is not |'continuous'| then the footnote number start value property is set to |1|.
+        Read/write. |'continuous'| if no setting is present in the XML.
+        """
+        return self._sectPr.footnote_numbering_restart_location
+
+    @footnote_numbering_restart_location.setter
+    def footnote_numbering_restart_location(self, value):
+        self._sectPr.footnote_numbering_restart_location = value
+
+    @property
+    def footnote_numbering_start_value(self):
+        """The number start value property for the |Footnotes|.
+
+        If the value is not |1| then footnote number restart position property is set to |continuous|.
+        Read/write. |1| if no setting is present in the XML.
+        """
+        return self._sectPr.footnote_numbering_start_value
+
+    @footnote_numbering_start_value.setter
+    def footnote_numbering_start_value(self, value):
+        self._sectPr.footnote_numbering_start_value = value
+
+    @property
+    def footnote_position(self):
+        """The position property for the |Footnotes|.
+
+        Read/write. |'pageBottom'| if no setting is present in the XML.
+        """
+        return self._sectPr.footnote_position
+
+    @footnote_position.setter
+    def footnote_position(self, value):
+        self._sectPr.footnote_position = value
+
+    @property
     def gutter(self):
         """
         |Length| object representing the page gutter size in English Metric

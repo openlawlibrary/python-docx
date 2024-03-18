@@ -142,11 +142,11 @@ class Run(Parented, BookmarkParent):
         return Font(self._element)
 
     @property
-    def footnote_reference_ids(self) -> (list[int]|None):
+    def footnote_reference_ids(self):
         """
-        Returns all footnote reference ids from the run, or |None| if none found.
+        Returns all footnote reference ids from the run as a list.
         """
-        return self._r.footnote_reference_ids
+        return [ref_id for ref_id in self._r.footnote_reference_ids]
 
     @property
     def italic(self):

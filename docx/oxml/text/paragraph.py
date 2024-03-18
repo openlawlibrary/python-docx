@@ -88,11 +88,7 @@ class CT_P(BaseOxmlElement):
         """
         footnote_ids = []
         for run in self.r_lst:
-            new_footnote_ids = run.footnote_reference_ids
-            if new_footnote_ids:
-                footnote_ids.extend(new_footnote_ids)
-        if footnote_ids == []:
-            footnote_ids = None
+            footnote_ids.extend([ref_id for ref_id in run.footnote_reference_ids])
         return footnote_ids
 
     def lvl_from_para_props(self, numbering_el):
