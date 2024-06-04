@@ -6,6 +6,7 @@ Custom element classes related to text runs (CT_R).
 
 from ..ns import qn
 from ..simpletypes import ST_BrClear, ST_BrType, ST_FldCharType
+from .symbol import convert_char_to_symbol
 from ..xmlchemy import (
     BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne, RequiredAttribute
 )
@@ -140,6 +141,14 @@ class CT_R(BaseOxmlElement):
         for child in self:
             if child.tag == qn('w:t'):
                 t_text = child.text
+                try:
+                    if self.rPr.rFonts is not None and \
+                        len(t_text) == 1 and \
+                        self.rPr.rFonts.attrib['{'+self.nsmap['w']+'}ascii'] == 'WP TypographicSymbols':
+                        # this is an symbol mapping from aspose lib
+                            t_text = convert_char_to_symbol(t_text, 'WP TypographicSymbols')
+                except:
+                    pass
                 text += t_text if t_text is not None else ''
             elif child.tag == qn('w:tab'):
                 text += '\t'
