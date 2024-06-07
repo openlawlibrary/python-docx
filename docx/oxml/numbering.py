@@ -159,7 +159,7 @@ class CT_Numbering(BaseOxmlElement):
         except AttributeError:
             return None
 
-    def get_num_for_p(self, p, styles_cache):
+    def get_num_for_p(self, p, styles_cache, append_suffix=True):
         """
         Returns list item for the given paragraph.
         """
@@ -206,6 +206,24 @@ class CT_Numbering(BaseOxmlElement):
                             break
                 except AttributeError:
                     continue
+
+        def get_preceding_paragraph(p, p_ilvl):
+            """
+            Returns the first sibling that has the same numbering format
+            """
+            pStyle = p.pPr.pStyle
+            for prev_p in p.itersiblings(preceding=True):
+                try:
+                    prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
+                    # skip unnumbered paragraphs within numbering list
+                    if prev_p_numId == 0:
+                        continue
+                    prev_p_pStyle = prev_p.pPr.pStyle
+                    if prev_p_ilvl <= p_ilvl and pStyle.val == prev_p_pStyle.val:
+                        return (prev_p, prev_p_ilvl, prev_p_numId)
+                except AttributeError:
+                    continue
+            return None
 
         def count_same_numIds(preceding_paragraphs_numIds, numId, num):
             """
@@ -259,12 +277,51 @@ class CT_Numbering(BaseOxmlElement):
         p_num = count_same_numIds(preceding_paragraphs_numIds, numId, p_num)
 
         try:
+            # apply numbering style
             p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
         except KeyError:
             return None
 
+        suffix = ''
+        if append_suffix is True:
+            suffix = lvl_el.suffix
         lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
-        return re.sub(r'%(\d)', str(p_num), lvlText, 1) + lvl_el.suffix
+        if lvlText.count('%') > 1:
+            # `lvlText` is an custom defined list label that has multiple numbering values
+            # e.g. `1.1.2`, `1.1.3`
+            prev_p_tuple = get_preceding_paragraph(p, ilvl)
+            if prev_p_tuple is not None:
+                prev_p, prev_p_ilvl, _ = prev_p_tuple
+                prev_num = self.get_num_for_p(prev_p, styles_cache, append_suffix=False)
+                # get text that is before and after every number part of the list text
+                lvl_text_split_by_num = str(re.sub(r'%(\d)', '$', lvlText)).split("$")
+                pre_num_text = lvl_text_split_by_num[0]
+                after_num_text = lvl_text_split_by_num[-1]
+                if prev_p_ilvl < ilvl:
+                    # first indented paragraph => on prev para num append new indent number
+                    return f"{prev_num}{pre_num_text}{p_num}{after_num_text}{suffix}"
+                # copy the prev list numbers and bump the last number to the correct value
+                if len(after_num_text) > 0:
+                    prev_num_after_text = prev_num.split(after_num_text)
+                    prev_num_after_text[-2] = pre_num_text + str(p_num)
+                    return after_num_text.join(prev_num_after_text) + suffix
+                # the numbering style is something like `#1#1#2`
+                if len(pre_num_text) > 0:
+                    prev_num_pre_text = prev_num.split(pre_num_text)
+                    prev_num_pre_text[-1] = str(p_num) + after_num_text
+                    return pre_num_text.join(prev_num_pre_text) + suffix
+                # the number style is like `1.2`, so no char before or after, only in the middle
+                mid_num_text = lvl_text_split_by_num[1]
+                prev_num_mid_text = prev_num.split(mid_num_text)
+                prev_num_mid_text[-1] = str(p_num)
+                if p_num == 1:
+                    # increment the first number
+                    # this is specific case for bylaw
+                    prev_num_mid_text[0] = str(int(prev_num_mid_text[0])+1)
+                return mid_num_text.join(prev_num_mid_text) + suffix
+            # set all number parts to default value
+            return re.sub(r'%(\d)', str(p_num), lvlText) + suffix
+        return re.sub(r'%(\d)', str(p_num), lvlText, 1) + suffix
 
     def num_having_numId(self, numId):
         """
