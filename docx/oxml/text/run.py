@@ -77,6 +77,16 @@ class CT_R(BaseOxmlElement):
         drawing.append(inline_or_anchor)
         return drawing
 
+    def add_symbol(self, char, font):
+        """
+        Add symbol element to run.
+        """
+        rS = self._add_sym()
+        if char != None:
+            rS.char = char
+        if font != None:
+            rS.font = font
+
     def clear_content(self):
         """
         Remove all child elements except the ``<w:rPr>`` and ``<w:footnoteReference>`` element if present.
