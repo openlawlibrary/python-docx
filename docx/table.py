@@ -74,6 +74,27 @@ class Table(Parented, BookmarkParent):
         self._tblPr.autofit = value
 
     @property
+    def borders(self):
+        """
+        Return list of borders in order: top, left, bottom, right.
+        """
+        b = self._tblPr.borders
+        return [b.top, b.left, b.bottom, b.right]
+
+    @borders.setter
+    def borders(self, value):
+        """
+        Set's the borders with an list with order: top, left, bottom, and right.
+        """
+        if len(value) != 4:
+            raise ValueError('Borders are set with list of 4 elements!\nlist: [top, left, bottom, right]')
+        b = self._tblPr.borders
+        b.top = value[0]
+        b.left = value[1]
+        b.bottom = value[2]
+        b.right = value[3]
+
+    @property
     def bookmark_starts(self):
         return self._element.bookmarkStart_lst
 
@@ -104,6 +125,27 @@ class Table(Parented, BookmarkParent):
         table.
         """
         return _Columns(self._tbl, self)
+
+    @property
+    def margins(self):
+        """
+        Returns list of margins in order: top, left, bottom, and right.
+        """
+        cm = self._tblPr.cell_margins
+        return [cm.top, cm.left, cm.bottom, cm.right]
+
+    @margins.setter
+    def margins(self, value):
+        """
+        Set's the margin with an list with order: top, left, bottom, and right.
+        """
+        if len(value) != 4:
+            raise ValueError('Margins are set with list of 4 elements!\nlist: [top, left, bottom, right]')
+        cm = self._tblPr.cell_margins
+        cm.top = value[0]
+        cm.left = value[1]
+        cm.bottom = value[2]
+        cm.right = value[3]
 
     def row_cells(self, row_idx):
         """
@@ -204,6 +246,27 @@ class _Cell(BlockItemContainer):
     def __init__(self, tc, parent):
         super(_Cell, self).__init__(tc, parent)
         self._tc = self._element = tc
+
+    @property
+    def borders(self):
+        """
+        Return list of borders in order: top, left, bottom, right.
+        """
+        b = self._tc.borders
+        return [b.top, b.left, b.bottom, b.right]
+
+    @borders.setter
+    def borders(self, value):
+        """
+        Set's the borders with an list with order: top, left, bottom, and right.
+        """
+        if len(value) != 4:
+            raise ValueError('Borders are set with list of 4 elements!\nlist: [top, left, bottom, right]')
+        b = self._tc.borders
+        b.top = value[0]
+        b.left = value[1]
+        b.bottom = value[2]
+        b.right = value[3]
 
     def add_paragraph(self, text='', style=None):
         """
