@@ -365,6 +365,8 @@ class CT_Numbering(BaseOxmlElement):
             if ilvl is None:
                 ilvl = 0
             numPr = para_el.pPr.get_numPr(styles)
+            if numPr == None:
+                return
             numId = numPr.numId.val
             num_el = self.num_having_numId(numId)
             anum = num_el.abstractNumId.val
