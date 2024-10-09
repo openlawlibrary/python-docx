@@ -12,12 +12,19 @@ from ..exceptions import InvalidSpanError
 from .ns import nsdecls, qn
 from ..shared import Emu, Twips
 from .simpletypes import (
-    ST_Merge, ST_TblLayoutType, ST_TblWidth, ST_TwipsMeasure, XsdInt
+    ST_Merge, ST_TblLayoutType, ST_TblWidth, ST_TwipsMeasure, XsdInt, ST_Border
 )
 from .xmlchemy import (
     BaseOxmlElement, OneAndOnlyOne, OneOrMore, OptionalAttribute,
     RequiredAttribute, ZeroOrOne, ZeroOrMore
 )
+
+
+class CT_Border(BaseOxmlElement):
+    """
+    ``<w:CT_Border>`` element, defining border properties.
+    """
+    val = RequiredAttribute('w:val', ST_Border)
 
 
 class CT_Height(BaseOxmlElement):
@@ -282,7 +289,9 @@ class CT_TblPr(BaseOxmlElement):
     )
     tblStyle = ZeroOrOne('w:tblStyle', successors=_tag_seq[1:])
     bidiVisual = ZeroOrOne('w:bidiVisual', successors=_tag_seq[4:])
+    tblW = ZeroOrOne('w:tblW', successors=_tag_seq[7:])
     jc = ZeroOrOne('w:jc', successors=_tag_seq[8:])
+    tblBorders = ZeroOrOne('w:tblBorders', successors=_tag_seq[11:])
     tblLayout = ZeroOrOne('w:tblLayout', successors=_tag_seq[13:])
     del _tag_seq
 
@@ -321,6 +330,17 @@ class CT_TblPr(BaseOxmlElement):
     def autofit(self, value):
         tblLayout = self.get_or_add_tblLayout()
         tblLayout.type = 'autofit' if value else 'fixed'
+        if tblLayout.type == 'autofit':
+            tblW = self.get_or_add_tblW()
+            tblW.type = 'auto'
+
+    @property
+    def borders(self):
+        """"""
+        tblBorders = self.tblBorders
+        if tblBorders is None:
+            tblBorders = self._add_tblBorders()
+        return tblBorders
 
     @property
     def style(self):
@@ -350,7 +370,7 @@ class CT_TblWidth(BaseOxmlElement):
     # XsdInt for now because only dxa (twips) values are being used. It's not
     # entirely clear what the semantics are for other values like -01.4mm
     w = RequiredAttribute('w:w', XsdInt)
-    type = RequiredAttribute('w:type', ST_TblWidth)
+    t = RequiredAttribute('w:type', ST_TblWidth)
 
     @property
     def width(self):
@@ -367,6 +387,14 @@ class CT_TblWidth(BaseOxmlElement):
         self.type = 'dxa'
         self.w = Emu(value).twips
 
+    @property
+    def type(self):
+        return self.t
+
+    @type.setter
+    def type(self, val):
+        self.t = val
+
 
 class CT_Tc(BaseOxmlElement):
     """`w:tc` table cell element"""
@@ -374,6 +402,14 @@ class CT_Tc(BaseOxmlElement):
     tcPr = ZeroOrOne('w:tcPr')  # bunches of successors, overriding insert
     p = OneOrMore('w:p')
     tbl = OneOrMore('w:tbl')
+
+    @property
+    def borders(self):
+        """"""
+        tcPr = self.tcPr
+        if tcPr is None:
+            tcPr = self._add_tcPr()
+        return tcPr.borders
 
     @property
     def bottom(self):
@@ -750,6 +786,65 @@ class CT_Tc(BaseOxmlElement):
         return self._tbl.tr_lst.index(self._tr)
 
 
+class CT_TcBorders(BaseOxmlElement):
+    """
+    ``<w:tcBorders>`` element, defining table and table cells border properties.
+    """
+    _tag_seq = (
+        'w:top', 'w:left', 'w:bottom', 'w:right', 'w:insideH',
+        'w:insideV', 'w:tl2br', 'w:tr2bl'
+    )
+    top = ZeroOrOne('w:top', successors=_tag_seq[1:])
+    left = ZeroOrOne('w:left', successors=_tag_seq[2:])
+    bottom = ZeroOrOne('w:bottom', successors=_tag_seq[3:])
+    right = ZeroOrOne('w:right', successors=_tag_seq[4:])
+    del _tag_seq
+
+    @property
+    def top_value(self):
+        if self.top is None:
+            return None
+        return self.top.val
+
+    @top_value.setter
+    def top_value(self, value):
+        top_val = self.get_or_add_top()
+        top_val.val = value
+
+    @property
+    def left_value(self):
+        if self.left is None:
+            return None
+        return self.left.val
+
+    @left_value.setter
+    def left_value(self, value):
+        left_val = self.get_or_add_left()
+        left_val.val = value
+
+    @property
+    def bottom_value(self):
+        if self.bottom is None:
+            return None
+        return self.bottom.val
+
+    @bottom_value.setter
+    def bottom_value(self, value):
+        bottom_val = self.get_or_add_bottom()
+        bottom_val.val = value
+
+    @property
+    def right_value(self):
+        if self.right is None:
+            return None
+        return self.right.val
+
+    @right_value.setter
+    def right_value(self, value):
+        right_val = self.get_or_add_right()
+        right_val.val = value
+
+
 class CT_TcPr(BaseOxmlElement):
     """
     ``<w:tcPr>`` element, defining table cell properties
@@ -766,6 +861,14 @@ class CT_TcPr(BaseOxmlElement):
     vMerge = ZeroOrOne('w:vMerge', successors=_tag_seq[5:])
     vAlign = ZeroOrOne('w:vAlign', successors=_tag_seq[12:])
     del _tag_seq
+
+    @property
+    def borders(self):
+        """
+        Return the `w:tcBorders` property of the cell.
+        """
+        tcBorders = self.get_or_add_tcBorders()
+        return tcBorders
 
     @property
     def grid_span(self):

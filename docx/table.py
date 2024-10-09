@@ -74,6 +74,11 @@ class Table(Parented, BookmarkParent):
         self._tblPr.autofit = value
 
     @property
+    def borders(self):
+        """Return borders for the table"""
+        return self._tblPr.borders
+
+    @property
     def bookmark_starts(self):
         return self._element.bookmarkStart_lst
 
@@ -204,6 +209,11 @@ class _Cell(BlockItemContainer):
     def __init__(self, tc, parent):
         super(_Cell, self).__init__(tc, parent)
         self._tc = self._element = tc
+
+    @property
+    def borders(self):
+        """Return borders for a cell"""
+        return self._tc.borders
 
     def add_paragraph(self, text='', style=None):
         """
