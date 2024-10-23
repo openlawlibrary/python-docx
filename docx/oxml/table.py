@@ -800,6 +800,16 @@ class CT_TcBorders(BaseOxmlElement):
     right = ZeroOrOne('w:right', successors=_tag_seq[4:])
     del _tag_seq
 
+    def set_all_borders(self, border_type):
+        top_val = self.get_or_add_top()
+        top_val.val = border_type
+        left_val = self.get_or_add_left()
+        left_val.val = border_type
+        right_val = self.get_or_add_right()
+        right_val.val = border_type
+        bottom_val = self.get_or_add_bottom()
+        bottom_val.val = border_type
+
     @property
     def top_value(self):
         if self.top is None:
