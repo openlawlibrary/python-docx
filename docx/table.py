@@ -342,6 +342,18 @@ class _Cell(BlockItemContainer):
         r.text = text
 
     @property
+    def text_direction(self):
+        tcPr = self._element.tcPr
+        if tcPr is None:
+            return None
+        return tcPr.text_direction
+
+    @text_direction.setter
+    def text_direction(self, value):
+        tcPr = self._element.get_or_add_tcPr()
+        tcPr.text_direction = value
+
+    @property
     def vertical_alignment(self):
         """Member of :ref:`WdCellVerticalAlignment` or None.
 

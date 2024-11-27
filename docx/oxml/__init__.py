@@ -189,6 +189,7 @@ from .table import (  # noqa
     CT_TrPr,
     CT_VMerge,
     CT_VerticalJc,
+    CT_TextDirection,
     MT_BorderMargin,
 )
 register_element_cls('w:bidiVisual', CT_OnOff)
@@ -214,6 +215,7 @@ register_element_cls('w:tr',         CT_Row)
 register_element_cls('w:trHeight',   CT_Height)
 register_element_cls('w:trPr',       CT_TrPr)
 register_element_cls('w:vAlign',     CT_VerticalJc)
+register_element_cls('w:textDirection', CT_TextDirection)
 register_element_cls('w:vMerge',     CT_VMerge)
 
 from .sdts import (

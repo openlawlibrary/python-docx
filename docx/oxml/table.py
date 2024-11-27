@@ -12,7 +12,7 @@ from ..exceptions import InvalidSpanError
 from .ns import nsdecls, qn
 from ..shared import Emu, Twips
 from .simpletypes import (
-    ST_Merge, ST_TblLayoutType, ST_TblWidth, ST_TwipsMeasure, XsdInt, ST_Border, ST_DecimalNumber
+    ST_Merge, ST_TblLayoutType, ST_TblWidth, ST_TextDirection, ST_TwipsMeasure, XsdInt, ST_Border, ST_DecimalNumber
 )
 from .xmlchemy import (
     BaseOxmlElement, OneAndOnlyOne, OneOrMore, OptionalAttribute,
@@ -946,6 +946,7 @@ class CT_TcPr(BaseOxmlElement):
     tcBorders = ZeroOrOne('w:tcBorders', successors=_tag_seq[6:])
     gridSpan = ZeroOrOne('w:gridSpan', successors=_tag_seq[3:])
     vMerge = ZeroOrOne('w:vMerge', successors=_tag_seq[5:])
+    textDirection = ZeroOrOne('w:textDirection', successors=_tag_seq[10:])
     vAlign = ZeroOrOne('w:vAlign', successors=_tag_seq[12:])
     del _tag_seq
 
@@ -973,6 +974,18 @@ class CT_TcPr(BaseOxmlElement):
         self._remove_gridSpan()
         if value > 1:
             self.get_or_add_gridSpan().val = value
+
+    @property
+    def text_direction(self):
+        direction = self.textDirection
+        if direction is None:
+            return None
+        return direction.val
+
+    @text_direction.setter
+    def text_direction(self, value):
+        direction = self.get_or_add_textDirection()
+        direction.val = value
 
     @property
     def vAlign_val(self):
@@ -1085,6 +1098,12 @@ class CT_VMerge(BaseOxmlElement):
     ``<w:vMerge>`` element, specifying vertical merging behavior of a cell.
     """
     val = OptionalAttribute('w:val', ST_Merge, default=ST_Merge.CONTINUE)
+
+class CT_TextDirection(BaseOxmlElement):
+    """
+    ``<w:textDirection>`` element, specifying text flow in cell.
+    """
+    val = RequiredAttribute('w:val', ST_TextDirection)
 
 class MT_BorderMargin(CT_Border, CT_TblWidth):
     """
