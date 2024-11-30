@@ -180,6 +180,14 @@ class Paragraph(Parented, BookmarkParent):
         return self
 
     @property
+    def remove_new_line_breaks(self):
+        """
+        In paragraph text remove "new line" (tag: ``<br>``) and replace it with a space.
+        """
+        for r in self.runs:
+            r._r.remove_br_tag_childrens()
+
+    @property
     def runs_and_hyperlinks(self):
         """
         Sequence of |Run| and |Hyperlink| instances corresponding to the

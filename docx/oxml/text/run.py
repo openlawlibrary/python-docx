@@ -168,6 +168,12 @@ class CT_R(BaseOxmlElement):
         self.clear_content()
         _RunContentAppender.append_to_run_from_text(self, text)
 
+    def remove_br_tag_childrens(self):
+        for child in self:
+            if child.tag == qn('w:br'):
+                child.tag = qn('w:t')
+                child.text = " "
+
 
 class CT_Text(BaseOxmlElement):
     """
