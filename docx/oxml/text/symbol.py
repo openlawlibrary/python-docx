@@ -45,6 +45,12 @@ font_to_char_map = {
         '0066': '⅞',
         '006E': '—',
     },
+    'WP IconicSymbolsA': {
+        'F046': '☎',
+    },
+    'Symbol': {
+        'F0B0': '°',
+    },
     'WP Phonetic': {
         'F05F': 'C',
     }
