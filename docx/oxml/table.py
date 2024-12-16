@@ -439,6 +439,18 @@ class CT_TblPr(BaseOxmlElement):
             return
         self._add_tblStyle(val=value)
 
+    @property
+    def width(self):
+        w = self.tblW
+        if w is None:
+            return None
+        return w.width
+
+    @width.setter
+    def width(self, value):
+        w = self.get_or_add_tblW()
+        w.width = value
+
 
 class CT_TblWidth(BaseOxmlElement):
     """

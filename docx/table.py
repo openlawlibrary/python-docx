@@ -21,6 +21,17 @@ class Table(Parented, BookmarkParent):
         super(Table, self).__init__(parent)
         self._element = self._tbl = tbl
 
+    @property
+    def width(self):
+        """
+        Return table width in EMU, or |None| if no explicit width is set.
+        """
+        return self._tblPr.width
+
+    @width.setter
+    def width(self, value):
+        self._tblPr.width = value
+
     def add_column(self, width):
         """
         Return a |_Column| object of *width*, newly added rightmost to the
