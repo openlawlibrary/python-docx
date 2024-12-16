@@ -88,6 +88,8 @@ class Table(Parented, BookmarkParent):
     def borders(self):
         """
         Return list of borders in order: top, left, bottom, right.
+        Border is Member of `ST_Border`.
+        If the border value is not set that has a value of "none".
         """
         b = self._tblPr.borders
         return [b.top, b.left, b.bottom, b.right]
@@ -141,6 +143,7 @@ class Table(Parented, BookmarkParent):
     def margins(self):
         """
         Returns list of margins in order: top, left, bottom, and right.
+        Margins are of type `EMU` or |None|.
         """
         cm = self._tblPr.cell_margins
         return [cm.top, cm.left, cm.bottom, cm.right]
@@ -262,6 +265,8 @@ class _Cell(BlockItemContainer):
     def borders(self):
         """
         Return list of borders in order: top, left, bottom, right.
+        Border is Member of `ST_Border`.
+        If the border value is not set that has a value of "none".
         """
         b = self._tc.borders
         return [b.top, b.left, b.bottom, b.right]
@@ -354,6 +359,12 @@ class _Cell(BlockItemContainer):
 
     @property
     def text_direction(self):
+        """
+        Member of :ref:`ST_TextDirection` or |None|.
+
+        Value of |None| indicates that the text direction is not set
+        (the text is then from left to right).
+        """
         tcPr = self._element.tcPr
         if tcPr is None:
             return None
