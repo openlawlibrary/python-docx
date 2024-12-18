@@ -82,7 +82,15 @@ class Table(Parented, BookmarkParent):
 
     @autofit.setter
     def autofit(self, value):
-        self._tblPr.autofit = value
+        if value is True:
+            self.allow_autofit = True
+            self._tblPr.autofit = True
+            for row_idx, _ in enumerate(self.rows):
+                for cell in self.rows[row_idx].cells:
+                    cell._tc.tcPr.tcW.type = 'auto'
+                    cell._tc.tcPr.tcW.w = 0
+        else:
+            self._tblPr.autofit = False
 
     @property
     def borders(self):

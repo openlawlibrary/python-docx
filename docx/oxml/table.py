@@ -392,7 +392,7 @@ class CT_TblPr(BaseOxmlElement):
     def autofit(self, value):
         tblLayout = self.get_or_add_tblLayout()
         tblLayout.type = 'autofit' if value else 'fixed'
-        if tblLayout.type == 'autofit':
+        if value is True:
             tblW = self.get_or_add_tblW()
             tblW.type = 'auto'
 
