@@ -90,7 +90,11 @@ class Table(Parented, BookmarkParent):
                     cell._tc.tcPr.tcW.type = 'auto'
                     cell._tc.tcPr.tcW.w = 0
         else:
+            self.allow_autofit = False
             self._tblPr.autofit = False
+            for row_idx, _ in enumerate(self.rows):
+                for cell in self.rows[row_idx].cells:
+                    cell._tc.tcPr.tcW.type = 'dxa'
 
     @property
     def borders(self):
