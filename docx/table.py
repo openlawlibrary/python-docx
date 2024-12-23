@@ -21,6 +21,17 @@ class Table(Parented, BookmarkParent):
         super(Table, self).__init__(parent)
         self._element = self._tbl = tbl
 
+    @property
+    def width(self):
+        """
+        Return table width in EMU, or |None| if no explicit width is set.
+        """
+        return self._tblPr.width
+
+    @width.setter
+    def width(self, value):
+        self._tblPr.width = value
+
     def add_column(self, width):
         """
         Return a |_Column| object of *width*, newly added rightmost to the
@@ -71,7 +82,42 @@ class Table(Parented, BookmarkParent):
 
     @autofit.setter
     def autofit(self, value):
-        self._tblPr.autofit = value
+        if value is True:
+            self.allow_autofit = True
+            self._tblPr.autofit = True
+            for row_idx, _ in enumerate(self.rows):
+                for cell in self.rows[row_idx].cells:
+                    cell._tc.tcPr.tcW.type = 'auto'
+                    cell._tc.tcPr.tcW.w = 0
+        else:
+            self.allow_autofit = False
+            self._tblPr.autofit = False
+            for row_idx, _ in enumerate(self.rows):
+                for cell in self.rows[row_idx].cells:
+                    cell._tc.tcPr.tcW.type = 'dxa'
+
+    @property
+    def borders(self):
+        """
+        Return list of borders in order: top, left, bottom, right.
+        Border is Member of `ST_Border`.
+        If the border value is not set that has a value of "none".
+        """
+        b = self._tblPr.borders
+        return [b.top, b.left, b.bottom, b.right]
+
+    @borders.setter
+    def borders(self, value):
+        """
+        Set's the borders with an list with order: top, left, bottom, and right.
+        """
+        if len(value) != 4:
+            raise ValueError('Borders are set with list of 4 elements!\nlist: [top, left, bottom, right]')
+        b = self._tblPr.borders
+        b.top = value[0]
+        b.left = value[1]
+        b.bottom = value[2]
+        b.right = value[3]
 
     @property
     def bookmark_starts(self):
@@ -104,6 +150,28 @@ class Table(Parented, BookmarkParent):
         table.
         """
         return _Columns(self._tbl, self)
+
+    @property
+    def margins(self):
+        """
+        Returns list of margins in order: top, left, bottom, and right.
+        Margins are of type `EMU` or |None|.
+        """
+        cm = self._tblPr.cell_margins
+        return [cm.top, cm.left, cm.bottom, cm.right]
+
+    @margins.setter
+    def margins(self, value):
+        """
+        Set's the margin with an list with order: top, left, bottom, and right.
+        """
+        if len(value) != 4:
+            raise ValueError('Margins are set with list of 4 elements!\nlist: [top, left, bottom, right]')
+        cm = self._tblPr.cell_margins
+        cm.top = value[0]
+        cm.left = value[1]
+        cm.bottom = value[2]
+        cm.right = value[3]
 
     def row_cells(self, row_idx):
         """
@@ -205,6 +273,29 @@ class _Cell(BlockItemContainer):
         super(_Cell, self).__init__(tc, parent)
         self._tc = self._element = tc
 
+    @property
+    def borders(self):
+        """
+        Return list of borders in order: top, left, bottom, right.
+        Border is Member of `ST_Border`.
+        If the border value is not set that has a value of "none".
+        """
+        b = self._tc.borders
+        return [b.top, b.left, b.bottom, b.right]
+
+    @borders.setter
+    def borders(self, value):
+        """
+        Set's the borders with an list with order: top, left, bottom, and right.
+        """
+        if len(value) != 4:
+            raise ValueError('Borders are set with list of 4 elements!\nlist: [top, left, bottom, right]')
+        b = self._tc.borders
+        b.top = value[0]
+        b.left = value[1]
+        b.bottom = value[2]
+        b.right = value[3]
+
     def add_paragraph(self, text='', style=None):
         """
         Return a paragraph newly added to the end of the content in this
@@ -277,6 +368,24 @@ class _Cell(BlockItemContainer):
         p = tc.add_p()
         r = p.add_r()
         r.text = text
+
+    @property
+    def text_direction(self):
+        """
+        Member of :ref:`ST_TextDirection` or |None|.
+
+        Value of |None| indicates that the text direction is not set
+        (the text is then from left to right).
+        """
+        tcPr = self._element.tcPr
+        if tcPr is None:
+            return None
+        return tcPr.text_direction
+
+    @text_direction.setter
+    def text_direction(self, value):
+        tcPr = self._element.get_or_add_tcPr()
+        tcPr.text_direction = value
 
     @property
     def vertical_alignment(self):

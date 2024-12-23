@@ -82,6 +82,13 @@ class Run(Parented, BookmarkParent):
         t = self._r.add_t(text)
         return _Text(t)
 
+    def add_symbol(self, char=None, font=None):
+        """
+        Add a ``<w:sym char font>`` element at the end of the run, which Word
+        interptets as a symbol element for that specific font.
+        """
+        self._r.add_symbol(char, font)
+
     def split(self, pos):
         """
         Splits run at the given position in the text.

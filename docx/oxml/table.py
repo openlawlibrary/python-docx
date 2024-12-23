@@ -12,12 +12,19 @@ from ..exceptions import InvalidSpanError
 from .ns import nsdecls, qn
 from ..shared import Emu, Twips
 from .simpletypes import (
-    ST_Merge, ST_TblLayoutType, ST_TblWidth, ST_TwipsMeasure, XsdInt
+    ST_Merge, ST_TblLayoutType, ST_TblWidth, ST_TextDirection, ST_TwipsMeasure, XsdInt, ST_Border, ST_DecimalNumber
 )
 from .xmlchemy import (
     BaseOxmlElement, OneAndOnlyOne, OneOrMore, OptionalAttribute,
     RequiredAttribute, ZeroOrOne, ZeroOrMore
 )
+
+
+class CT_Border(BaseOxmlElement):
+    """
+    ``<w:CT_Border>`` element, defining border properties.
+    """
+    val = RequiredAttribute('w:val', ST_Border)
 
 
 class CT_Height(BaseOxmlElement):
@@ -268,6 +275,67 @@ class CT_TblLayoutType(BaseOxmlElement):
     type = OptionalAttribute('w:type', ST_TblLayoutType)
 
 
+class CT_TblCellMar(BaseOxmlElement):
+    """
+    ``<w:tblCellMar>`` element, specifying default table cell margins.
+    """
+    _tag_seq = (
+        'w:top', 'w:left', 'w:bottom', 'w:right'
+    )
+    t = ZeroOrOne('w:top', successors=_tag_seq[1:])
+    l = ZeroOrOne('w:left', successors=_tag_seq[2:])
+    b = ZeroOrOne('w:bottom', successors=_tag_seq[3:])
+    r = ZeroOrOne('w:right', successors=_tag_seq[4:])
+
+    @property
+    def top(self):
+        t = self.t
+        if t is None:
+            return None
+        return t.width
+
+    @top.setter
+    def top(self, value):
+        t = self.get_or_add_t()
+        t.width = value
+
+    @property
+    def left(self):
+        l = self.l
+        if l is None:
+            return None
+        return l.width
+
+    @left.setter
+    def left(self, value):
+        l = self.get_or_add_l()
+        l.width = value
+
+    @property
+    def bottom(self):
+        b = self.b
+        if b is None:
+            return None
+        return b.width
+
+    @bottom.setter
+    def bottom(self, value):
+        b = self.get_or_add_b()
+        b.width = value
+
+    @property
+    def right(self):
+        r = self.r
+        if r is None:
+            return None
+        return r.width
+
+    @right.setter
+    def right(self, value):
+        r = self.get_or_add_r()
+        r.width = value
+
+
 class CT_TblPr(BaseOxmlElement):
     """
     ``<w:tblPr>`` element, child of ``<w:tbl>``, holds child elements that
@@ -282,8 +350,11 @@ class CT_TblPr(BaseOxmlElement):
     )
     tblStyle = ZeroOrOne('w:tblStyle', successors=_tag_seq[1:])
     bidiVisual = ZeroOrOne('w:bidiVisual', successors=_tag_seq[4:])
+    tblW = ZeroOrOne('w:tblW', successors=_tag_seq[7:])
     jc = ZeroOrOne('w:jc', successors=_tag_seq[8:])
+    tblBorders = ZeroOrOne('w:tblBorders', successors=_tag_seq[11:])
     tblLayout = ZeroOrOne('w:tblLayout', successors=_tag_seq[13:])
+    tblCellMar = ZeroOrOne('w:tblCellMar', successors=_tag_seq[14:])
     del _tag_seq
 
     @property
@@ -321,6 +392,34 @@ class CT_TblPr(BaseOxmlElement):
     def autofit(self, value):
         tblLayout = self.get_or_add_tblLayout()
         tblLayout.type = 'autofit' if value else 'fixed'
+        if value is True:
+            tblW = self.get_or_add_tblW()
+            tblW.type = 'auto'
+
+    @property
+    def borders(self):
+        """
+        Returns ``<w:tcBorders>`` element.
+        """
+        tblBorders = self.tblBorders
+        if tblBorders is None:
+            tblBorders = self._add_tblBorders()
+        return tblBorders
+
+    @property
+    def cell_margins(self):
+        cellMar = self.tblCellMar
+        if cellMar is None:
+            cellMar = self._add_tblCellMar()
+        return cellMar
+
+    @cell_margins.setter
+    def cell_margins(self, value):
+        cellMar = self.get_or_add_tblCellMar()
+        cellMar.top = value[0]
+        cellMar.left = value[1]
+        cellMar.bottom = value[2]
+        cellMar.right = value[3]
 
     @property
     def style(self):
@@ -340,6 +439,18 @@ class CT_TblPr(BaseOxmlElement):
             return
         self._add_tblStyle(val=value)
 
+    @property
+    def width(self):
+        w = self.tblW
+        if w is None:
+            return None
+        return w.width
+
+    @width.setter
+    def width(self, value):
+        w = self.get_or_add_tblW()
+        w.width = value
+
 
 class CT_TblWidth(BaseOxmlElement):
     """
@@ -350,7 +461,7 @@ class CT_TblWidth(BaseOxmlElement):
     # XsdInt for now because only dxa (twips) values are being used. It's not
     # entirely clear what the semantics are for other values like -01.4mm
     w = RequiredAttribute('w:w', XsdInt)
-    type = RequiredAttribute('w:type', ST_TblWidth)
+    t = RequiredAttribute('w:type', ST_TblWidth)
 
     @property
     def width(self):
@@ -367,6 +478,14 @@ class CT_TblWidth(BaseOxmlElement):
         self.type = 'dxa'
         self.w = Emu(value).twips
 
+    @property
+    def type(self):
+        return self.t
+
+    @type.setter
+    def type(self, val):
+        self.t = val
+
 
 class CT_Tc(BaseOxmlElement):
     """`w:tc` table cell element"""
@@ -374,6 +493,14 @@ class CT_Tc(BaseOxmlElement):
     tcPr = ZeroOrOne('w:tcPr')  # bunches of successors, overriding insert
     p = OneOrMore('w:p')
     tbl = OneOrMore('w:tbl')
+
+    @property
+    def borders(self):
+        """"""
+        tcPr = self.tcPr
+        if tcPr is None:
+            tcPr = self._add_tcPr()
+        return tcPr.borders
 
     @property
     def bottom(self):
@@ -750,6 +877,73 @@ class CT_Tc(BaseOxmlElement):
         return self._tbl.tr_lst.index(self._tr)
 
 
+class CT_TcBorders(BaseOxmlElement):
+    """
+    ``<w:tcBorders>`` element, defining table and table cells border properties.
+    """
+    _tag_seq = (
+        'w:top', 'w:left', 'w:bottom', 'w:right', 'w:insideH',
+        'w:insideV', 'w:tl2br', 'w:tr2bl'
+    )
+    t = ZeroOrOne('w:top', successors=_tag_seq[1:])
+    l = ZeroOrOne('w:left', successors=_tag_seq[2:])
+    b = ZeroOrOne('w:bottom', successors=_tag_seq[3:])
+    r = ZeroOrOne('w:right', successors=_tag_seq[4:])
+    del _tag_seq
+
+    @property
+    def top(self):
+        if self.t is None:
+            return 'none'
+        return self.t.val
+
+    @top.setter
+    def top(self, value):
+        if value is None:
+            value = 'none'
+        top_val = self.get_or_add_t()
+        top_val.val = value
+
+    @property
+    def left(self):
+        if self.l is None:
+            return 'none'
+        return self.l.val
+
+    @left.setter
+    def left(self, value):
+        if value is None:
+            value = 'none'
+        left_val = self.get_or_add_l()
+        left_val.val = value
+
+    @property
+    def bottom(self):
+        if self.b is None:
+            return 'none'
+        return self.b.val
+
+    @bottom.setter
+    def bottom(self, value):
+        if value is None:
+            value = 'none'
+        bottom_val = self.get_or_add_b()
+        bottom_val.val = value
+
+    @property
+    def right(self):
+        if self.r is None:
+            return 'none'
+        return self.r.val
+
+    @right.setter
+    def right(self, value):
+        if value is None:
+            value = 'none'
+        right_val = self.get_or_add_r()
+        right_val.val = value
+
+
 class CT_TcPr(BaseOxmlElement):
     """
     ``<w:tcPr>`` element, defining table cell properties
@@ -764,8 +958,17 @@ class CT_TcPr(BaseOxmlElement):
     tcBorders = ZeroOrOne('w:tcBorders', successors=_tag_seq[6:])
     gridSpan = ZeroOrOne('w:gridSpan', successors=_tag_seq[3:])
     vMerge = ZeroOrOne('w:vMerge', successors=_tag_seq[5:])
+    textDirection = ZeroOrOne('w:textDirection', successors=_tag_seq[10:])
     vAlign = ZeroOrOne('w:vAlign', successors=_tag_seq[12:])
     del _tag_seq
+
+    @property
+    def borders(self):
+        """
+        Return the `w:tcBorders` property of the cell.
+        """
+        tcBorders = self.get_or_add_tcBorders()
+        return tcBorders
 
     @property
     def grid_span(self):
@@ -783,6 +986,18 @@ class CT_TcPr(BaseOxmlElement):
         self._remove_gridSpan()
         if value > 1:
             self.get_or_add_gridSpan().val = value
+
+    @property
+    def text_direction(self):
+        direction = self.textDirection
+        if direction is None:
+            return None
+        return direction.val
+
+    @text_direction.setter
+    def text_direction(self, value):
+        direction = self.get_or_add_textDirection()
+        direction.val = value
 
     @property
     def vAlign_val(self):
@@ -895,3 +1110,17 @@ class CT_VMerge(BaseOxmlElement):
     ``<w:vMerge>`` element, specifying vertical merging behavior of a cell.
     """
     val = OptionalAttribute('w:val', ST_Merge, default=ST_Merge.CONTINUE)
+
+class CT_TextDirection(BaseOxmlElement):
+    """
+    ``<w:textDirection>`` element, specifying text flow in cell.
+    """
+    val = RequiredAttribute('w:val', ST_TextDirection)
+
+class MT_BorderMargin(CT_Border, CT_TblWidth):
+    """
+    Multiple tags with same name.
+    `<w:top>`, `<w:left>`, `<w:bottom>`, `<w:right>` can be type of:
+    ``<w:CT_Border>`` or ``<w:CT_TblWidth>``
+    """
+    pass

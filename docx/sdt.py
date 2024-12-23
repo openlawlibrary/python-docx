@@ -33,6 +33,9 @@ class SdtBase(ElementProxy):
             self.__content =_SdtContentBase(self._element.sdtContent, self)
         return self.__content
 
+    def clear_content(self):
+        self._content.clear_content()
+
     @property
     def properties(self):
         return SdtPr(self._element.sdtPr, self)
@@ -53,8 +56,8 @@ class SdtBase(ElementProxy):
     def sdts(self):
         return self._content.sdts
 
-    def add_paragraph(self, text):
-        return self._content.add_paragraph(text)
+    def add_paragraph(self, text, style=None):
+        return self._content.add_paragraph(text, style)
 
     @property
     def paragraphs(self):
@@ -94,6 +97,13 @@ class _SdtContentBase(BlockItemContainer):
     """
     def __init__(self, element, parent):
         super(_SdtContentBase, self).__init__(element, parent)
+
+    def clear_content(self):
+        """
+        Removes all content including placeholder text.
+        """
+        for r in self._element.iter_runs():
+            r.clear_content()
 
     @property
     def text(self):
