@@ -66,6 +66,20 @@ class CT_Row(BaseOxmlElement):
         return self.getparent().tr_lst.index(self)
 
     @property
+    def repeat_header_row(self):
+        """
+        Return the value of `w:trPr/w:tblHeader@w:value`, or |False| if not
+        present.
+        """
+        trPr = self.get_or_add_trPr()
+        return trPr.repeat_header_row
+
+    @repeat_header_row.setter
+    def repeat_header_row(self, value):
+        trPr = self.get_or_add_trPr()
+        trPr.repeat_header_row = value
+
+    @property
     def trHeight_hRule(self):
         """
         Return the value of `w:trPr/w:trHeight@w:hRule`, or |None| if not
@@ -1063,6 +1077,7 @@ class CT_TrPr(BaseOxmlElement):
         'w:trPrChange'
     )
     trHeight = ZeroOrOne('w:trHeight', successors=_tag_seq[8:])
+    tblHeader = ZeroOrOne('w:tblHeader', successors=_tag_seq[9:])
     del _tag_seq
 
     @property
@@ -1098,6 +1113,24 @@ class CT_TrPr(BaseOxmlElement):
             return
         trHeight = self.get_or_add_trHeight()
         trHeight.val = value
+
+    @property
+    def repeat_header_row(self):
+        """
+        Return the value of `w:tblHeader@w:val`, or |None| if not present.
+        """
+        tblHeader = self.tblHeader
+        if tblHeader is None:
+            return False
+        return tblHeader.val
+
+    @repeat_header_row.setter
+    def repeat_header_row(self, value):
+        if value:
+            tblHeader = self.get_or_add_tblHeader()
+            tblHeader.val = True
+        else:
+            self.tblHeader = None
 
 
 class CT_VerticalJc(BaseOxmlElement):

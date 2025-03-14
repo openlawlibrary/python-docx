@@ -557,6 +557,18 @@ class _Row(Parented):
         """
         return self._tr.tr_idx
 
+    @property
+    def repeat_header_row(self):
+        """
+        Returns `True` if this row is repeated if we have a page break in the table.
+        This is mainly used for Table header rows.
+        """
+        return self._tr.repeat_header_row
+
+    @repeat_header_row.setter
+    def repeat_header_row(self, value):
+        self._tr.repeat_header_row = value
+
 
 class _Rows(Parented):
     """
