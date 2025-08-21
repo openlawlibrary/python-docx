@@ -53,7 +53,10 @@ font_to_char_map = {
     },
     'WP Phonetic': {
         'F05F': 'C',
-    }
+    },
+    'Segoe Fluent Icons': {
+        'E001': '✓',
+    },
 }
 
 class CT_Sym(BaseOxmlElement):
@@ -78,4 +81,3 @@ class CT_Sym(BaseOxmlElement):
             symbol = r"\u"+self.char
 
         return symbol
-
