@@ -83,6 +83,22 @@ class DescribeParagraph(object):
         if style:
             style_prop_.assert_called_once_with(style)
 
+    def it_can_add_a_footnote(self, add_footnote_fixture):
+        paragraph, document_, footnote_, num_format = add_footnote_fixture
+        footnote = paragraph.add_footnote(num_format=num_format)
+        document_._calculate_next_footnote_reference_id.assert_called_once_with(
+            paragraph._p
+        )
+        assert footnote is footnote_
+
+    def it_can_add_a_footnote_with_auto_paragraph(self, add_footnote_auto_para_fixture):
+        paragraph, document_, footnote_, p_ = add_footnote_auto_para_fixture
+        footnote = paragraph.add_footnote(auto_paragraph=True)
+        # Verify that a paragraph was added to the footnote
+        footnote_.add_paragraph.assert_called_once_with()
+        # Verify that the paragraph style was set
+        assert p_.style == 'FootnoteText'
+
     def it_can_add_an_endnote(self, add_endnote_fixture):
         paragraph, document_, endnote_, section_endnote, num_format = (
             add_endnote_fixture
@@ -329,6 +345,38 @@ class DescribeParagraph(object):
         from docx.document import Document
         return instance_mock(request, Document)
 
+    @pytest.fixture(params=[None, 'upperRoman'])
+    def add_footnote_fixture(self, request, document_, footnote_, p_):
+        num_format = request.param
+        paragraph = Paragraph(p_, None)
+        paragraph._parent = document_
+        document_._calculate_next_footnote_reference_id.return_value = 1
+        document_._add_footnote.return_value = footnote_
+        p_.add_r.return_value = instance_mock(request, CT_R)
+        return paragraph, document_, footnote_, num_format
+
+    @pytest.fixture
+    def add_footnote_auto_para_fixture(self, request, document_, footnote_, p_):
+        from docx.text.paragraph import Paragraph as ParaProxy
+        paragraph = Paragraph(p_, None)
+        paragraph._parent = document_
+        document_._calculate_next_footnote_reference_id.return_value = 1
+        document_._add_footnote.return_value = footnote_
+        p_.add_r.return_value = instance_mock(request, CT_R)
+
+        # Mock the paragraph added to footnote
+        footnote_para_ = instance_mock(request, ParaProxy)
+        footnote_para_p_ = instance_mock(request, CT_P)
+        footnote_para_r_ = instance_mock(request, CT_R)
+        footnote_para_rPr_ = instance_mock(request, CT_RPr)
+
+        footnote_.add_paragraph.return_value = footnote_para_
+        object.__setattr__(footnote_para_, '_p', footnote_para_p_)
+        footnote_para_p_.add_r.return_value = footnote_para_r_
+        footnote_para_r_.get_or_add_rPr.return_value = footnote_para_rPr_
+
+        return paragraph, document_, footnote_, footnote_para_
+
     @pytest.fixture(params=[
         (False, None),
         (True, 'lowerLetter'),
@@ -365,6 +413,11 @@ class DescribeParagraph(object):
         endnote_para_r_.get_or_add_rPr.return_value = endnote_para_rPr_
 
         return paragraph, document_, endnote_, endnote_para_
+
+    @pytest.fixture
+    def footnote_(self, request):
+        from docx.footnotes import Footnote
+        return instance_mock(request, Footnote)
 
     @pytest.fixture
     def endnote_(self, request):

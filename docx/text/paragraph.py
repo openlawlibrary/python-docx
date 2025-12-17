@@ -41,17 +41,44 @@ class Paragraph(Parented, BookmarkParent):
         self._lvl_from_para_props = None
         self._lvl_from_style_props = None
 
-    def add_footnote(self):
+    def add_footnote(self, num_format=None, auto_paragraph=True):
         """
         Append a run that contains a ``<w:footnoteReferenceId>`` element.
         The footnotes are kept in order by `footnote_reference_id`, so
         the appropriate id is calculated based on the current state.
+
+        :param num_format: The numbering format for the footnote. Can be 'decimal',
+            'upperRoman', 'lowerRoman', 'upperLetter', 'lowerLetter', etc.
+            If None, uses the default 'decimal' format.
+        :param auto_paragraph: If True (default), automatically create an initial
+            paragraph in the footnote with the 'FootnoteText' style and insert a
+            footnoteRef element in the first run.
         """
         document = find_containing_document(self)
         new_fr_id = document._calculate_next_footnote_reference_id(self._p)
         r = self._p.add_r()
         r.add_footnoteReference(new_fr_id)
         footnote = document._add_footnote(new_fr_id)
+
+        # Add initial paragraph with footnote reference mark if requested
+        if auto_paragraph:
+            p = footnote.add_paragraph()
+            p.style = 'FootnoteText'
+            # Add the footnote reference mark in the first run
+            r = p._p.add_r()
+            rPr = r.get_or_add_rPr()
+            rPr.style = 'FootnoteReference'
+            r.add_footnoteRef()
+
+        # Configure section footnote properties if requested
+        if num_format is not None:
+            # Find the section containing this paragraph
+            section = self._find_containing_section(document)
+            sectPr = section._sectPr
+
+            # Set custom number format if provided
+            sectPr.footnote_number_format = num_format
+
         return footnote
 
     def add_endnote(self, section_endnote=False, num_format=None, auto_paragraph=True):

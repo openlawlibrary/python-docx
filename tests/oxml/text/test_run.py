@@ -20,6 +20,11 @@ class DescribeCT_R(object):
         r.add_t(text)
         assert r.xml == expected_xml
 
+    def it_can_add_a_footnoteRef(self, add_footnoteRef_fixture):
+        r, expected_xml = add_footnoteRef_fixture
+        r.add_footnoteRef()
+        assert r.xml == expected_xml
+
     def it_can_add_an_endnoteRef(self, add_endnoteRef_fixture):
         r, expected_xml = add_endnoteRef_fixture
         r.add_endnoteRef()
@@ -38,6 +43,16 @@ class DescribeCT_R(object):
         r = element(initial_cxml)
         expected_xml = xml(expected_cxml)
         return r, text, expected_xml
+
+    @pytest.fixture(params=[
+        ('w:r', 'w:r/w:footnoteRef'),
+        ('w:r/w:rPr', 'w:r/(w:rPr, w:footnoteRef)'),
+    ])
+    def add_footnoteRef_fixture(self, request):
+        initial_cxml, expected_cxml = request.param
+        r = element(initial_cxml)
+        expected_xml = xml(expected_cxml)
+        return r, expected_xml
 
     @pytest.fixture(params=[
         ('w:r', 'w:r/w:endnoteRef'),

@@ -28,6 +28,19 @@ class Settings(ElementProxy):
         self._element.evenAndOddHeaders_val = value
 
     @property
+    def footnote_position(self):
+        """The document-level default footnote position.
+
+        Can be 'pageBottom' or 'beneathText'.
+        Returns None if not set. Read/write.
+        """
+        return self._element.footnote_position
+
+    @footnote_position.setter
+    def footnote_position(self, value):
+        self._element.footnote_position = value
+
+    @property
     def endnote_position(self):
         """The document-level default endnote position.
 
