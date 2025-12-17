@@ -91,6 +91,17 @@ class CT_P(BaseOxmlElement):
             footnote_ids.extend([ref_id for ref_id in run.footnote_reference_ids])
         return footnote_ids
 
+    @property
+    def endnote_reference_ids(self):
+        """
+        Return all endnote reference ids (``<w:endnoteReference>``) from the paragraph,
+        or |None| if not present.
+        """
+        endnote_ids = []
+        for run in self.r_lst:
+            endnote_ids.extend([ref_id for ref_id in run.endnote_reference_ids])
+        return endnote_ids
+
     def lvl_from_para_props(self, numbering_el):
         """
         Returns ``<w:lvl>`` numbering level paragraph formatting for the current paragraph using

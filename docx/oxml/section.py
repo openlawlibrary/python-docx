@@ -36,6 +36,17 @@ class CT_FtnProps(BaseOxmlElement):
     numRestart = ZeroOrOne('w:numRestart', successors=_tag_seq[3:])
 
 
+class CT_EdnProps(BaseOxmlElement):
+    """``<w:endnotePr>`` element, section wide endnote properties"""
+    _tag_seq = (
+        'w:pos', 'w:numFmt', 'w:numStart', 'w:numRestart'
+    )
+    pos = ZeroOrOne('w:pos', successors=_tag_seq)
+    numFmt = ZeroOrOne('w:numFmt', successors=_tag_seq[1:])
+    numStart = ZeroOrOne('w:numStart', successors=_tag_seq[2:])
+    numRestart = ZeroOrOne('w:numRestart', successors=_tag_seq[3:])
+
+
 class CT_HdrFtr(BaseOxmlElement):
     """`w:hdr` and `w:ftr`, the root element for header and footer part respectively"""
 
@@ -101,6 +112,7 @@ class CT_SectPr(BaseOxmlElement):
     pgMar = ZeroOrOne("w:pgMar", successors=_tag_seq[5:])
     titlePg = ZeroOrOne("w:titlePg", successors=_tag_seq[14:])
     footnotePr = ZeroOrOne("w:footnotePr", successors=_tag_seq[1:])
+    endnotePr = ZeroOrOne("w:endnotePr", successors=_tag_seq[2:])
     del _tag_seq
 
     def add_footerReference(self, type_, rId):
@@ -259,6 +271,101 @@ class CT_SectPr(BaseOxmlElement):
             value = 'pageBottom'
         fPr = self.get_or_add_footnotePr()
         pos = fPr.get_or_add_pos()
+        pos.val = value
+
+    @property
+    def endnote_number_format(self):
+        """
+        The value of the ``w:val`` attribute in the ``<w:numFmt>`` child
+        element of ``<w:endnotePr>`` element, as a |String|, or |'decimal'| if either the element or the
+        attribute is not present.
+        """
+        ePr = self.endnotePr
+        if ePr is None or ePr.numFmt is None:
+            return 'decimal'
+        return ePr.numFmt.val
+
+    @endnote_number_format.setter
+    def endnote_number_format(self, value):
+        if value is None:
+            value = 'decimal'
+        ePr = self.get_or_add_endnotePr()
+        numFmt = ePr.get_or_add_numFmt()
+        numFmt.val = value
+
+    @property
+    def endnote_numbering_restart_location(self):
+        """
+        The value of the ``w:val`` attribute in the ``<w:numRestart>`` child
+        element of ``<w:endnotePr>`` element, as a |String|, or |'continuous'| if either the element or the
+        attribute is not present.
+        This property is tied with ``<w:numStart>``.
+        """
+        ePr = self.endnotePr
+        if ePr is None or ePr.numRestart is None:
+            return 'continuous'
+        return ePr.numRestart.val
+
+    @endnote_numbering_restart_location.setter
+    def endnote_numbering_restart_location(self, value):
+        # this property must have an appropriate ``<w:numStart>`` property.
+        if value is None:
+            value = 'continuous'
+        numStartValue = self.endnote_numbering_start_value
+        if value != 'continuous' and numStartValue != 1:
+            raise XmlchemyError("When ``<w:numRestart> is not 'continuous', then ``<w:numStart>`` must be 1.")
+        ePr = self.get_or_add_endnotePr()
+        numStart = ePr.get_or_add_numStart()
+        numRestart = ePr.get_or_add_numRestart()
+        numStart.val = numStartValue
+        numRestart.val = value
+
+    @property
+    def endnote_numbering_start_value(self):
+        """
+        The value of the ``w:val`` attribute in the ``<w:numStart>`` child
+        element of ``<w:endnotePr>`` element, as a |Number|, or |1| if either the element or the
+        attribute is not present.
+        This property is tied with ``<w:numRestart>``.
+        """
+        ePr = self.endnotePr
+        if ePr is None or ePr.numStart is None:
+            return 1
+        return ePr.numStart.val
+
+    @endnote_numbering_start_value.setter
+    def endnote_numbering_start_value(self, value):
+        # this property must have an appropriate ``<w:numRestart>`` property.
+        if value is None:
+            value = 1
+        numRestartValue = self.endnote_numbering_restart_location
+        if value != 1 and numRestartValue != 'continuous':
+            raise XmlchemyError("When ``<w:numStart> is not 1, then ``<w:numRestart>`` must be 'continuous'.")
+        ePr = self.get_or_add_endnotePr()
+        numStart = ePr.get_or_add_numStart()
+        numRestart = ePr.get_or_add_numRestart()
+        numStart.val = value
+        numRestart.val = numRestartValue
+
+    @property
+    def endnote_position(self):
+        """
+        The value of the ``w:val`` attribute in the ``<w:pos>`` child
+        element of ``<w:endnotePr>`` element, as a |String|, or |'docEnd'| if either the element or the
+        attribute is not present.
+        Valid values: 'sectEnd', 'docEnd'
+        """
+        ePr = self.endnotePr
+        if ePr is None or ePr.pos is None:
+            return 'docEnd'
+        return ePr.pos.val
+
+    @endnote_position.setter
+    def endnote_position(self, value):
+        if value is None:
+            value = 'docEnd'
+        ePr = self.get_or_add_endnotePr()
+        pos = ePr.get_or_add_pos()
         pos.val = value
 
     def get_footerReference(self, type_):

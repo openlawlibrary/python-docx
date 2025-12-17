@@ -54,6 +54,41 @@ class Paragraph(Parented, BookmarkParent):
         footnote = document._add_footnote(new_fr_id)
         return footnote
 
+    def add_endnote(self, section_endnote=False, num_format=None):
+        """
+        Append a run that contains a ``<w:endnoteReference>`` element.
+        The endnotes are kept in order by `endnote_reference_id`, so
+        the appropriate id is calculated based on the current state.
+
+        :param section_endnote: If True, configure endnotes to appear at the end of
+            the current section ('sectEnd') instead of the end of the document ('docEnd').
+        :param num_format: The numbering format for the endnote. Can be 'decimal',
+            'upperRoman', 'lowerRoman', 'upperLetter', 'lowerLetter', etc.
+            If None, uses the default 'decimal' format.
+        """
+        document = find_containing_document(self)
+        new_er_id = document._calculate_next_endnote_reference_id(self._p)
+        r = self._p.add_r()
+        r.add_endnoteReference(new_er_id)
+        endnote = document._add_endnote(new_er_id)
+
+        # Configure section endnote properties if requested
+        if section_endnote or num_format is not None:
+            # Find the section containing this paragraph
+            # Get the last section (paragraphs are typically in the last section unless a section break occurs)
+            section = document.sections[-1]
+            sectPr = section._sectPr
+
+            # Set endnote position to end of section if requested
+            if section_endnote:
+                sectPr.endnote_position = 'sectEnd'
+
+            # Set custom number format if provided
+            if num_format is not None:
+                sectPr.endnote_number_format = num_format
+
+        return endnote
+
     def add_hyperlink(self, text, reference):
         """
         Append a ``<w:hyperlink>`` element.
@@ -211,6 +246,21 @@ class Paragraph(Parented, BookmarkParent):
         return footnote_list
 
     @property
+    def endnotes(self):
+        """
+        Returns a list of |Endnote| instances that refers to the endnotes in this paragraph.
+        """
+        endnote_list = []
+        reference_ids = self._p.endnote_reference_ids
+        document = find_containing_document(self)
+        if document is None:
+            return endnote_list
+        endnotes = document.endnotes
+        for ref_id in reference_ids:
+            endnote_list.append(endnotes[ref_id])
+        return endnote_list
+
+    @property
     def hyperlinks(self):
         """
         Sequence of |Hyperlink| instances corresponding to the <w:hyperlink>
@@ -237,6 +287,10 @@ class Paragraph(Parented, BookmarkParent):
     def increment_containing_footnote_reference_ids(self):
         for r in self.runs:
             r._r.increment_containing_footnote_reference_ids()
+
+    def increment_containing_endnote_reference_ids(self):
+        for r in self.runs:
+            r._r.increment_containing_endnote_reference_ids()
 
     def split(self, *positions):
         """Splits paragraph at given positions keeping formatting.

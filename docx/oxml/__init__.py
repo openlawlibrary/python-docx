@@ -101,6 +101,7 @@ register_element_cls('w:startOverride', CT_DecimalNumber)
 
 from .section import (  # noqa
     CT_FtnProps,
+    CT_EdnProps,
     CT_FtnPos,
     CT_HdrFtr,
     CT_HdrFtrRef,
@@ -113,6 +114,7 @@ from .section import (  # noqa
 )
 register_element_cls("w:footerReference", CT_HdrFtrRef)
 register_element_cls('w:footnotePr', CT_FtnProps)
+register_element_cls('w:endnotePr', CT_EdnProps)
 register_element_cls("w:ftr", CT_HdrFtr)
 register_element_cls("w:hdr", CT_HdrFtr)
 register_element_cls("w:headerReference", CT_HdrFtrRef)
@@ -308,6 +310,14 @@ from .text.footnote_reference import CT_FtnEdnRef
 register_element_cls('w:footnoteReference',  CT_FtnEdnRef)
 register_element_cls('w:footnote',           CT_FtnEnd)
 register_element_cls('w:footnotes',          CT_Footnotes)
+
+from .endnote import (
+    CT_FtnEdn,
+    CT_Endnotes
+)
+register_element_cls('w:endnoteReference',  CT_FtnEdnRef)
+register_element_cls('w:endnote',           CT_FtnEdn)
+register_element_cls('w:endnotes',          CT_Endnotes)
 
 from .text.symbol import CT_Sym
 register_element_cls('w:sym', CT_Sym)

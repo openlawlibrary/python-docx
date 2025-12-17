@@ -188,6 +188,28 @@ class DocumentPart(BaseStoryPart):
             return footnotes_part
 
     @property
+    def endnotes(self):
+        """
+        A |Endnotes| object providing access to the endnotes in the endnotes part
+        of this document.
+        """
+        return self._endnotes_part.endnotes
+
+    @property
+    def _endnotes_part(self):
+        """
+        Instance of |EndnotesPart| for this document. Creates an empty endnotes
+        part if one is not present.
+        """
+        try:
+            return self.part_related_by(RT.ENDNOTES)
+        except KeyError:
+            from ..parts.endnotes import EndnotesPart
+            endnotes_part = EndnotesPart.default(self.package)
+            self.relate_to(endnotes_part, RT.ENDNOTES)
+            return endnotes_part
+
+    @property
     def _settings_part(self):
         """
         A |SettingsPart| object providing access to the document-level

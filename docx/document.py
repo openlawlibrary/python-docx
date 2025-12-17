@@ -136,6 +136,13 @@ class Document(ElementProxy):
         return self._part.footnotes
 
     @property
+    def endnotes(self):
+        """
+        A |Endnotes| object providing access to endnote elements in this document.
+        """
+        return self._part.endnotes
+
+    @property
     def custom_properties(self):
         """
         A |CustomProperties| object providing read/write access to the custom
@@ -230,6 +237,12 @@ class Document(ElementProxy):
         """
         return self._part.footnotes.add_footnote(footnote_reference_ids)
 
+    def _add_endnote(self, endnote_reference_ids):
+        """
+        Inserts a newly created endnote to |Endnotes|.
+        """
+        return self._part.endnotes.add_endnote(endnote_reference_ids)
+
     @property
     def _block_width(self):
         """
@@ -255,7 +268,7 @@ class Document(ElementProxy):
         Return the appropriate footnote reference id number for
         a new footnote added at the end of paragraph `p`.
         """
-        # When adding a footnote it can be inserted 
+        # When adding a footnote it can be inserted
         # in front of some other footnotes, so
         # we need to sort footnotes by `footnote_reference_id`
         # in |Footnotes| and in |Paragraph|
@@ -289,6 +302,46 @@ class Document(ElementProxy):
                 new_fr_id = max(self.paragraphs[p_i]._p.footnote_reference_ids)+1
                 break
         return new_fr_id
+
+    def _calculate_next_endnote_reference_id(self, p):
+        """
+        Return the appropriate endnote reference id number for
+        a new endnote added at the end of paragraph `p`.
+        """
+        # When adding an endnote it can be inserted
+        # in front of some other endnotes, so
+        # we need to sort endnotes by `endnote_reference_id`
+        # in |Endnotes| and in |Paragraph|
+        new_er_id = 1
+        # If paragraph already contains endnotes
+        # append the new endnote and the end with the next reference id.
+        if len(p.endnote_reference_ids) > 0:
+            new_er_id = p.endnote_reference_ids[-1] + 1
+        # Read the paragraphs containing endnotes and find where the
+        # new endnote will be. Keeping in mind that the endnotes are
+        # sorted by id.
+        # The value of the new endnote id is the value of the first paragraph
+        # containing the endnote id that is before the new endnote, incremented by one.
+        # If a paragraph with endnotes is after the new endnote
+        # then increment those endnote ids.
+        has_passed_containing_para = False
+        for p_i in reversed(range(len(self.paragraphs))):
+            # mark when we pass the paragraph containing the endnote
+            if p is self.paragraphs[p_i]._p:
+                has_passed_containing_para = True
+                continue
+            # Skip paragraphs without endnotes (they don't impact new id).
+            if len(self.paragraphs[p_i]._p.endnote_reference_ids) == 0:
+                continue
+            # These endnotes are after the new endnote, so we increment them.
+            if not has_passed_containing_para:
+                self.paragraphs[p_i].increment_containing_endnote_reference_ids()
+            else:
+                # This is the last endnote before the new endnote, so we use its
+                # value to determine the value of the new endnote.
+                new_er_id = max(self.paragraphs[p_i]._p.endnote_reference_ids)+1
+                break
+        return new_er_id
 
 
 class _Body(BlockItemContainer):
