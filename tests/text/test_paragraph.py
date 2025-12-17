@@ -8,6 +8,7 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.text.paragraph import CT_P
 from docx.oxml.text.run import CT_R
+from docx.oxml.text.font import CT_RPr
 from docx.parts.document import DocumentPart
 from docx.text.paragraph import Paragraph
 from docx.text.parfmt import ParagraphFormat
@@ -81,6 +82,26 @@ class DescribeParagraph(object):
         assert run._r is paragraph._p.r_lst[0]
         if style:
             style_prop_.assert_called_once_with(style)
+
+    def it_can_add_an_endnote(self, add_endnote_fixture):
+        paragraph, document_, endnote_, section_endnote, num_format = (
+            add_endnote_fixture
+        )
+        endnote = paragraph.add_endnote(
+            section_endnote=section_endnote, num_format=num_format
+        )
+        document_._calculate_next_endnote_reference_id.assert_called_once_with(
+            paragraph._p
+        )
+        assert endnote is endnote_
+
+    def it_can_add_an_endnote_with_auto_paragraph(self, add_endnote_auto_para_fixture):
+        paragraph, document_, endnote_, p_ = add_endnote_auto_para_fixture
+        endnote = paragraph.add_endnote(auto_paragraph=True)
+        # Verify that a paragraph was added to the endnote
+        endnote_.add_paragraph.assert_called_once_with()
+        # Verify that the paragraph style was set
+        assert p_.style == 'EndnoteText'
 
     def it_can_insert_a_paragraph_before_itself(self, insert_before_fixture):
         text, style, paragraph_, add_run_calls = insert_before_fixture
@@ -300,3 +321,61 @@ class DescribeParagraph(object):
         run_ = instance_mock(request, Run, name='run_')
         run_2_ = instance_mock(request, Run, name='run_2_')
         return run_, run_2_
+
+    # footnote and endnote fixtures ---------------------------------
+
+    @pytest.fixture
+    def document_(self, request):
+        from docx.document import Document
+        return instance_mock(request, Document)
+
+    @pytest.fixture(params=[
+        (False, None),
+        (True, 'lowerLetter'),
+        (False, 'upperRoman')
+    ])
+    def add_endnote_fixture(self, request, document_, endnote_, p_, section_):
+        section_endnote, num_format = request.param
+        paragraph = Paragraph(p_, None)
+        paragraph._parent = document_
+        document_._calculate_next_endnote_reference_id.return_value = 1
+        document_._add_endnote.return_value = endnote_
+        document_.sections = [section_]
+        p_.add_r.return_value = instance_mock(request, CT_R)
+        return paragraph, document_, endnote_, section_endnote, num_format
+
+    @pytest.fixture
+    def add_endnote_auto_para_fixture(self, request, document_, endnote_, p_):
+        from docx.text.paragraph import Paragraph as ParaProxy
+        paragraph = Paragraph(p_, None)
+        paragraph._parent = document_
+        document_._calculate_next_endnote_reference_id.return_value = 1
+        document_._add_endnote.return_value = endnote_
+        p_.add_r.return_value = instance_mock(request, CT_R)
+
+        # Mock the paragraph added to endnote
+        endnote_para_ = instance_mock(request, ParaProxy)
+        endnote_para_p_ = instance_mock(request, CT_P)
+        endnote_para_r_ = instance_mock(request, CT_R)
+        endnote_para_rPr_ = instance_mock(request, CT_RPr)
+
+        endnote_.add_paragraph.return_value = endnote_para_
+        object.__setattr__(endnote_para_, '_p', endnote_para_p_)
+        endnote_para_p_.add_r.return_value = endnote_para_r_
+        endnote_para_r_.get_or_add_rPr.return_value = endnote_para_rPr_
+
+        return paragraph, document_, endnote_, endnote_para_
+
+    @pytest.fixture
+    def endnote_(self, request):
+        from docx.endnotes import Endnote
+        return instance_mock(request, Endnote)
+
+    @pytest.fixture
+    def section_(self, request):
+        from docx.section import Section
+        from docx.oxml.section import CT_SectPr
+        sectPr = instance_mock(request, CT_SectPr)
+        section = instance_mock(request, Section)
+        object.__setattr__(section, '_sectPr', sectPr)
+        return section

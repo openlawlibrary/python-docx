@@ -14,6 +14,7 @@ from docx.opc.parts.customprops import CustomPropertiesPart
 from docx.opc.parts.extendedprops import ExtendedPropertiesPart
 
 from docx.parts.document import DocumentPart
+from docx.parts.endnotes import EndnotesPart
 from docx.parts.footnotes import FootnotesPart
 from docx.parts.hdrftr import FooterPart, HeaderPart
 from docx.parts.image import ImagePart
@@ -33,6 +34,7 @@ PartFactory.part_type_for[CT.OPC_CORE_PROPERTIES] = CorePropertiesPart
 PartFactory.part_type_for[CT.OPC_CUSTOM_PROPERTIES] = CustomPropertiesPart
 PartFactory.part_type_for[CT.OFC_EXTENDED_PROPERTIES] = ExtendedPropertiesPart
 PartFactory.part_type_for[CT.WML_DOCUMENT_MAIN] = DocumentPart
+PartFactory.part_type_for[CT.WML_ENDNOTES] = EndnotesPart
 PartFactory.part_type_for[CT.WML_FOOTER] = FooterPart
 PartFactory.part_type_for[CT.WML_FOOTNOTES] = FootnotesPart
 PartFactory.part_type_for[CT.WML_HEADER] = HeaderPart
@@ -45,6 +47,7 @@ del (
     CorePropertiesPart,
     DocumentPart,
     ExtendedPropertiesPart,
+    EndnotesPart,
     FooterPart,
     FootnotesPart,
     HeaderPart,
