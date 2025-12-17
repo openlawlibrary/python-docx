@@ -8,7 +8,7 @@ from ...enum.text import (
     WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_TAB_ALIGNMENT, WD_TAB_LEADER
 )
 from ...shared import Length
-from ..simpletypes import ST_SignedTwipsMeasure, ST_TwipsMeasure
+from ..simpletypes import ST_SignedTwipsMeasure, ST_TwipsMeasure, ST_DecimalNumber
 from ..xmlchemy import (
     BaseOxmlElement, OneOrMore, OptionalAttribute, RequiredAttribute,
     ZeroOrOne
@@ -30,6 +30,13 @@ class CT_Jc(BaseOxmlElement):
     ``<w:jc>`` element, specifying paragraph justification.
     """
     val = RequiredAttribute('w:val', WD_ALIGN_PARAGRAPH)
+
+
+class CT_OutlineLvl(BaseOxmlElement):
+    """
+    ``<w:outlineLvl>`` element, specifying paragraph outline level.
+    """
+    val = RequiredAttribute('w:val', ST_DecimalNumber)
 
 
 class CT_PPr(BaseOxmlElement):
@@ -57,6 +64,7 @@ class CT_PPr(BaseOxmlElement):
     spacing = ZeroOrOne('w:spacing', successors=_tag_seq[22:])
     ind = ZeroOrOne('w:ind', successors=_tag_seq[23:])
     jc = ZeroOrOne('w:jc', successors=_tag_seq[27:])
+    outlineLvl = ZeroOrOne('w:outlineLvl', successors=_tag_seq[31:])
     sectPr = ZeroOrOne('w:sectPr', successors=_tag_seq[35:])
     del _tag_seq
 
@@ -160,6 +168,23 @@ class CT_PPr(BaseOxmlElement):
             self._remove_jc()
             return
         self.get_or_add_jc().val = value
+
+    @property
+    def outlineLvl_val(self):
+        """
+        The value of the ``<w:outlineLvl>`` child element or |None| if not present.
+        """
+        outlineLvl = self.outlineLvl
+        if outlineLvl is None:
+            return None
+        return outlineLvl.val
+
+    @outlineLvl_val.setter
+    def outlineLvl_val(self, value):
+        if value is None:
+            self._remove_outlineLvl()
+            return
+        self.get_or_add_outlineLvl().val = value
 
     @property
     def keepLines_val(self):
