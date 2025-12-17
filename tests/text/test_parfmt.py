@@ -31,6 +31,15 @@ class DescribeParagraphFormat(object):
         paragraph_format.alignment = value
         assert paragraph_format._element.xml == expected_xml
 
+    def it_knows_its_outline_level(self, outline_level_get_fixture):
+        paragraph_format, expected_value = outline_level_get_fixture
+        assert paragraph_format.outline_level == expected_value
+
+    def it_can_change_its_outline_level(self, outline_level_set_fixture):
+        paragraph_format, value, expected_xml = outline_level_set_fixture
+        paragraph_format.outline_level = value
+        assert paragraph_format._element.xml == expected_xml
+
     def it_knows_its_space_before(self, space_before_get_fixture):
         paragraph_format, expected_value = space_before_get_fixture
         assert paragraph_format.space_before == expected_value
@@ -135,6 +144,36 @@ class DescribeParagraphFormat(object):
          'w:p/w:pPr'),
     ])
     def alignment_set_fixture(self, request):
+        p_cxml, value, expected_cxml = request.param
+        paragraph_format = ParagraphFormat(element(p_cxml))
+        expected_xml = xml(expected_cxml)
+        return paragraph_format, value, expected_xml
+
+    @pytest.fixture(params=[
+        ('w:p',                            None),
+        ('w:p/w:pPr',                      None),
+        ('w:p/w:pPr/w:outlineLvl{w:val=0}', 0),
+        ('w:p/w:pPr/w:outlineLvl{w:val=3}', 3),
+        ('w:p/w:pPr/w:outlineLvl{w:val=9}', 9),
+    ])
+    def outline_level_get_fixture(self, request):
+        p_cxml, expected_value = request.param
+        paragraph_format = ParagraphFormat(element(p_cxml))
+        return paragraph_format, expected_value
+
+    @pytest.fixture(params=[
+        ('w:p',                             0,
+         'w:p/w:pPr/w:outlineLvl{w:val=0}'),
+        ('w:p/w:pPr',                       3,
+         'w:p/w:pPr/w:outlineLvl{w:val=3}'),
+        ('w:p/w:pPr/w:outlineLvl{w:val=0}', 5,
+         'w:p/w:pPr/w:outlineLvl{w:val=5}'),
+        ('w:p/w:pPr/w:outlineLvl{w:val=3}', None,
+         'w:p/w:pPr'),
+        ('w:p',                             None,
+         'w:p/w:pPr'),
+    ])
+    def outline_level_set_fixture(self, request):
         p_cxml, value, expected_cxml = request.param
         paragraph_format = ParagraphFormat(element(p_cxml))
         expected_xml = xml(expected_cxml)
