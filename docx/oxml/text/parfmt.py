@@ -63,6 +63,7 @@ class CT_PPr(BaseOxmlElement):
     tabs = ZeroOrOne('w:tabs', successors=_tag_seq[11:])
     spacing = ZeroOrOne('w:spacing', successors=_tag_seq[22:])
     ind = ZeroOrOne('w:ind', successors=_tag_seq[23:])
+    contextualSpacing = ZeroOrOne('w:contextualSpacing', successors=_tag_seq[24:])
     jc = ZeroOrOne('w:jc', successors=_tag_seq[27:])
     outlineLvl = ZeroOrOne('w:outlineLvl', successors=_tag_seq[31:])
     sectPr = ZeroOrOne('w:sectPr', successors=_tag_seq[35:])
@@ -219,6 +220,23 @@ class CT_PPr(BaseOxmlElement):
             self._remove_keepNext()
         else:
             self.get_or_add_keepNext().val = value
+
+    @property
+    def contextualSpacing_val(self):
+        """
+        The value of `contextualSpacing/@val` or |None| if not present.
+        """
+        contextualSpacing = self.contextualSpacing
+        if contextualSpacing is None:
+            return None
+        return contextualSpacing.val
+
+    @contextualSpacing_val.setter
+    def contextualSpacing_val(self, value):
+        if value is None:
+            self._remove_contextualSpacing()
+        else:
+            self.get_or_add_contextualSpacing().val = value
 
     @property
     def pageBreakBefore_val(self):
