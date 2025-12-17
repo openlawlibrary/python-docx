@@ -110,6 +110,23 @@ class ParagraphFormat(ElementProxy):
         self._element.get_or_add_pPr().keepNext_val = value
 
     @property
+    def contextual_spacing(self):
+        """
+        |True| if spacing before and after this paragraph should be ignored
+        when the preceding and following paragraphs are of the same style.
+        |None| indicates its effective value is inherited from the style
+        hierarchy.
+        """
+        pPr = self._element.pPr
+        if pPr is None:
+            return None
+        return pPr.contextualSpacing_val
+
+    @contextual_spacing.setter
+    def contextual_spacing(self, value):
+        self._element.get_or_add_pPr().contextualSpacing_val = value
+
+    @property
     def left_indent(self):
         """
         |Length| value specifying the space between the left margin and the

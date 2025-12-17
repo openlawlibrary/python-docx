@@ -324,6 +324,9 @@ class DescribeParagraphFormat(object):
         ('w:p',                                  'widow_control',     None),
         ('w:p/w:pPr/w:widowControl{w:val=true}', 'widow_control',     True),
         ('w:p/w:pPr/w:widowControl{w:val=off}',  'widow_control',     False),
+        ('w:p',                                         'contextual_spacing', None),
+        ('w:p/w:pPr/w:contextualSpacing{w:val=1}',      'contextual_spacing', True),
+        ('w:p/w:pPr/w:contextualSpacing{w:val=false}',  'contextual_spacing', False),
     ])
     def on_off_get_fixture(self, request):
         p_cxml, prop_name, expected_value = request.param
@@ -335,6 +338,7 @@ class DescribeParagraphFormat(object):
         ('w:p', 'keep_with_next',    True,  'w:p/w:pPr/w:keepNext'),
         ('w:p', 'page_break_before', True,  'w:p/w:pPr/w:pageBreakBefore'),
         ('w:p', 'widow_control',     True,  'w:p/w:pPr/w:widowControl'),
+        ('w:p', 'contextual_spacing', True,  'w:p/w:pPr/w:contextualSpacing'),
         ('w:p/w:pPr/w:keepLines',                 'keep_together',     False,
          'w:p/w:pPr/w:keepLines{w:val=0}'),
         ('w:p/w:pPr/w:keepNext',                  'keep_with_next',    False,
@@ -343,6 +347,8 @@ class DescribeParagraphFormat(object):
          'w:p/w:pPr/w:pageBreakBefore{w:val=0}'),
         ('w:p/w:pPr/w:widowControl',              'widow_control',     False,
          'w:p/w:pPr/w:widowControl{w:val=0}'),
+        ('w:p/w:pPr/w:contextualSpacing',         'contextual_spacing', False,
+         'w:p/w:pPr/w:contextualSpacing{w:val=0}'),
         ('w:p/w:pPr/w:keepLines{w:val=0}',        'keep_together',     None,
          'w:p/w:pPr'),
         ('w:p/w:pPr/w:keepNext{w:val=0}',         'keep_with_next',    None,
@@ -350,6 +356,8 @@ class DescribeParagraphFormat(object):
         ('w:p/w:pPr/w:pageBreakBefore{w:val=0}',  'page_break_before', None,
          'w:p/w:pPr'),
         ('w:p/w:pPr/w:widowControl{w:val=0}',     'widow_control',     None,
+         'w:p/w:pPr'),
+        ('w:p/w:pPr/w:contextualSpacing{w:val=0}', 'contextual_spacing', None,
          'w:p/w:pPr'),
     ])
     def on_off_set_fixture(self, request):
