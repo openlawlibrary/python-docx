@@ -45,7 +45,8 @@ class CT_Settings(BaseOxmlElement):
         "w:readModeInkLockDown", "w:smartTagType", "sl:schemaLibrary",
         "w:shapeDefaults", "w:doNotEmbedSmartTags", "w:decimalSymbol", "w:listSeparator"
     )
-    evenAndOddHeaders = ZeroOrOne("w:evenAndOddHeaders", successors=_tag_seq[48:])
+    evenAndOddHeaders = ZeroOrOne("w:evenAndOddHeaders", successors=_tag_seq[29:])
+    endnotePr = ZeroOrOne("w:endnotePr", successors=_tag_seq[42:])
     del _tag_seq
 
     @property
@@ -62,3 +63,27 @@ class CT_Settings(BaseOxmlElement):
             self._remove_evenAndOddHeaders()
         else:
             self.get_or_add_evenAndOddHeaders().val = value
+
+    @property
+    def endnote_position(self):
+        """
+        The value of the `w:val` attribute in the `<w:pos>` child
+        element of `<w:endnotePr>` element, or 'sectEnd' if not present.
+        This is the document-level default for endnote positioning.
+        """
+        endnotePr = self.endnotePr
+        if endnotePr is None:
+            return None
+        pos = endnotePr.pos
+        if pos is None:
+            return None
+        return pos.val
+
+    @endnote_position.setter
+    def endnote_position(self, value):
+        """Set document-level endnote position (sectEnd or docEnd)"""
+        if value is None:
+            return
+        ePr = self.get_or_add_endnotePr()
+        pos = ePr.get_or_add_pos()
+        pos.val = value

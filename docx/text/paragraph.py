@@ -60,8 +60,7 @@ class Paragraph(Parented, BookmarkParent):
         # Configure section footnote properties if requested
         if num_format is not None:
             # Find the section containing this paragraph
-            # Get the last section (paragraphs are typically in the last section unless a section break occurs)
-            section = document.sections[-1]
+            section = self._find_containing_section(document)
             sectPr = section._sectPr
 
             # Set custom number format if provided
@@ -90,13 +89,14 @@ class Paragraph(Parented, BookmarkParent):
         # Configure section endnote properties if requested
         if section_endnote or num_format is not None:
             # Find the section containing this paragraph
-            # Get the last section (paragraphs are typically in the last section unless a section break occurs)
-            section = document.sections[-1]
+            section = self._find_containing_section(document)
             sectPr = section._sectPr
 
             # Set endnote position to end of section if requested
             if section_endnote:
                 sectPr.endnote_position = 'sectEnd'
+                # Also set document-level default to enable section positioning
+                document.settings.endnote_position = 'sectEnd'
 
             # Set custom number format if provided
             if num_format is not None:
@@ -682,6 +682,43 @@ class Paragraph(Parented, BookmarkParent):
         """
         from ..sdt import SdtBase
         return [SdtBase(sdt, self) for sdt in self._element.sdt_lst]
+
+    def _find_containing_section(self, document):
+        """
+        Find and return the Section object that contains this paragraph.
+
+        In Word's OOXML format, paragraphs belong to the section whose sectPr
+        comes after them in document order. The last section's sectPr is stored
+        in w:body/w:sectPr, while other sections have sectPr as the last child
+        of the paragraph that ends that section.
+        """
+        # Get all paragraphs in the document
+        all_paragraphs = document.paragraphs
+
+        # Find the index of this paragraph
+        try:
+            para_index = next(i for i, p in enumerate(all_paragraphs) if p._p is self._p)
+        except StopIteration:
+            # Paragraph not found in document, return last section as fallback
+            return document.sections[-1]
+
+        # Iterate through paragraphs starting from this one to find the next section break
+        # Each section break is indicated by a sectPr element in the paragraph
+        for i in range(para_index, len(all_paragraphs)):
+            p_element = all_paragraphs[i]._p
+            # Check if this paragraph has a sectPr (marks end of section)
+            if p_element.pPr is not None and p_element.pPr.sectPr is not None:
+                # This paragraph ends a section, find which section index it is
+                # by counting sectPr elements up to this point
+                section_index = sum(
+                    1 for j in range(i + 1)
+                    if all_paragraphs[j]._p.pPr is not None
+                    and all_paragraphs[j]._p.pPr.sectPr is not None
+                )
+                return document.sections[section_index]
+
+        # No section break found after this paragraph, it's in the last section
+        return document.sections[-1]
 
     def _insert_paragraph_before(self):
         """

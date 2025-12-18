@@ -82,6 +82,26 @@ class DescribeParagraph(object):
         if style:
             style_prop_.assert_called_once_with(style)
 
+    def it_can_add_a_footnote(self, add_footnote_fixture):
+        paragraph, document_, footnote_, num_format = add_footnote_fixture
+        footnote = paragraph.add_footnote(num_format=num_format)
+        document_._calculate_next_footnote_reference_id.assert_called_once_with(
+            paragraph._p
+        )
+        assert footnote is footnote_
+
+    def it_can_add_an_endnote(self, add_endnote_fixture):
+        paragraph, document_, endnote_, section_endnote, num_format = (
+            add_endnote_fixture
+        )
+        endnote = paragraph.add_endnote(
+            section_endnote=section_endnote, num_format=num_format
+        )
+        document_._calculate_next_endnote_reference_id.assert_called_once_with(
+            paragraph._p
+        )
+        assert endnote is endnote_
+
     def it_can_insert_a_paragraph_before_itself(self, insert_before_fixture):
         text, style, paragraph_, add_run_calls = insert_before_fixture
         paragraph = Paragraph(None, None)
@@ -300,3 +320,54 @@ class DescribeParagraph(object):
         run_ = instance_mock(request, Run, name='run_')
         run_2_ = instance_mock(request, Run, name='run_2_')
         return run_, run_2_
+
+    # footnote and endnote fixtures ---------------------------------
+
+    @pytest.fixture
+    def document_(self, request):
+        from docx.document import Document
+        return instance_mock(request, Document)
+
+    @pytest.fixture(params=[None, 'upperRoman'])
+    def add_footnote_fixture(self, request, document_, footnote_, p_):
+        num_format = request.param
+        paragraph = Paragraph(p_, None)
+        paragraph._parent = document_
+        document_._calculate_next_footnote_reference_id.return_value = 1
+        document_._add_footnote.return_value = footnote_
+        p_.add_r.return_value = instance_mock(request, CT_R)
+        return paragraph, document_, footnote_, num_format
+
+    @pytest.fixture(params=[
+        (False, None),
+        (True, 'lowerLetter'),
+        (False, 'upperRoman')
+    ])
+    def add_endnote_fixture(self, request, document_, endnote_, p_, section_):
+        section_endnote, num_format = request.param
+        paragraph = Paragraph(p_, None)
+        paragraph._parent = document_
+        document_._calculate_next_endnote_reference_id.return_value = 1
+        document_._add_endnote.return_value = endnote_
+        document_.sections = [section_]
+        p_.add_r.return_value = instance_mock(request, CT_R)
+        return paragraph, document_, endnote_, section_endnote, num_format
+
+    @pytest.fixture
+    def footnote_(self, request):
+        from docx.footnotes import Footnote
+        return instance_mock(request, Footnote)
+
+    @pytest.fixture
+    def endnote_(self, request):
+        from docx.endnotes import Endnote
+        return instance_mock(request, Endnote)
+
+    @pytest.fixture
+    def section_(self, request):
+        from docx.section import Section
+        from docx.oxml.section import CT_SectPr
+        sectPr = instance_mock(request, CT_SectPr)
+        section = instance_mock(request, Section)
+        object.__setattr__(section, '_sectPr', sectPr)
+        return section
