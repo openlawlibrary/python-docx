@@ -41,7 +41,7 @@ class Paragraph(Parented, BookmarkParent):
         self._lvl_from_para_props = None
         self._lvl_from_style_props = None
 
-    def add_footnote(self, num_format=None):
+    def add_footnote(self, num_format=None, auto_paragraph=True):
         """
         Append a run that contains a ``<w:footnoteReferenceId>`` element.
         The footnotes are kept in order by `footnote_reference_id`, so
@@ -50,12 +50,25 @@ class Paragraph(Parented, BookmarkParent):
         :param num_format: The numbering format for the footnote. Can be 'decimal',
             'upperRoman', 'lowerRoman', 'upperLetter', 'lowerLetter', etc.
             If None, uses the default 'decimal' format.
+        :param auto_paragraph: If True (default), automatically create an initial
+            paragraph in the footnote with the 'FootnoteText' style and insert a
+            footnoteRef element in the first run.
         """
         document = find_containing_document(self)
         new_fr_id = document._calculate_next_footnote_reference_id(self._p)
         r = self._p.add_r()
         r.add_footnoteReference(new_fr_id)
         footnote = document._add_footnote(new_fr_id)
+
+        # Add initial paragraph with footnote reference mark if requested
+        if auto_paragraph:
+            p = footnote.add_paragraph()
+            p.style = 'FootnoteText'
+            # Add the footnote reference mark in the first run
+            r = p._p.add_r()
+            rPr = r.get_or_add_rPr()
+            rPr.style = 'FootnoteReference'
+            r.add_footnoteRef()
 
         # Configure section footnote properties if requested
         if num_format is not None:
@@ -68,7 +81,7 @@ class Paragraph(Parented, BookmarkParent):
 
         return footnote
 
-    def add_endnote(self, section_endnote=False, num_format=None):
+    def add_endnote(self, section_endnote=False, num_format=None, auto_paragraph=True):
         """
         Append a run that contains a ``<w:endnoteReference>`` element.
         The endnotes are kept in order by `endnote_reference_id`, so
@@ -79,12 +92,25 @@ class Paragraph(Parented, BookmarkParent):
         :param num_format: The numbering format for the endnote. Can be 'decimal',
             'upperRoman', 'lowerRoman', 'upperLetter', 'lowerLetter', etc.
             If None, uses the default 'decimal' format.
+        :param auto_paragraph: If True (default), automatically create an initial
+            paragraph in the endnote with the 'EndnoteText' style and insert an
+            endnoteRef element in the first run.
         """
         document = find_containing_document(self)
         new_er_id = document._calculate_next_endnote_reference_id(self._p)
         r = self._p.add_r()
         r.add_endnoteReference(new_er_id)
         endnote = document._add_endnote(new_er_id)
+
+        # Add initial paragraph with endnote reference mark if requested
+        if auto_paragraph:
+            p = endnote.add_paragraph()
+            p.style = 'EndnoteText'
+            # Add the endnote reference mark in the first run
+            r = p._p.add_r()
+            rPr = r.get_or_add_rPr()
+            rPr.style = 'EndnoteReference'
+            r.add_endnoteRef()
 
         # Configure section endnote properties if requested
         if section_endnote or num_format is not None:

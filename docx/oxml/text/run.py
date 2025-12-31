@@ -39,7 +39,9 @@ class CT_R(BaseOxmlElement):
     tab = ZeroOrMore('w:tab')
     drawing = ZeroOrMore('w:drawing')
     footnoteReference = ZeroOrMore('w:footnoteReference')
+    footnoteRef = ZeroOrMore('w:footnoteRef')
     endnoteReference = ZeroOrMore('w:endnoteReference')
+    endnoteRef = ZeroOrMore('w:endnoteRef')
     bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
     fldChar = ZeroOrMore('w:fldChar')
     instrText = ZeroOrMore('w:instrText')
@@ -70,6 +72,20 @@ class CT_R(BaseOxmlElement):
         new_er = self._add_endnoteReference()
         new_er.id = id
         return new_er
+
+    def add_footnoteRef(self):
+        """
+        Return a newly added ``<w:footnoteRef>`` element.
+        This element displays the footnote reference mark within the footnote itself.
+        """
+        return self._add_footnoteRef()
+
+    def add_endnoteRef(self):
+        """
+        Return a newly added ``<w:endnoteRef>`` element.
+        This element displays the endnote reference mark within the endnote itself.
+        """
+        return self._add_endnoteRef()
 
     def add_t(self, text):
         """
