@@ -144,6 +144,14 @@ class Document(ElementProxy):
         return self._part.custom_properties
 
     @property
+    def extended_properties(self):
+        """
+        An |ExtendedProperties| object providing read/write access to the
+        extended properties of this document.
+        """
+        return self._part.extended_properties
+
+    @property
     def inline_shapes(self):
         """
         An |InlineShapes| object providing access to the inline shapes in

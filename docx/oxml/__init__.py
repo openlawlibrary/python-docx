@@ -80,6 +80,9 @@ register_element_cls("w:titlePg", CT_OnOff)
 from .coreprops import CT_CoreProperties  # noqa
 register_element_cls('cp:coreProperties', CT_CoreProperties)
 
+from .extendedprops import CT_ExtendedProperties  # noqa
+register_element_cls_ns('Properties', nsmap['ep'], CT_ExtendedProperties)
+
 from .document import CT_Body, CT_Document  # noqa
 register_element_cls('w:body',     CT_Body)
 register_element_cls('w:document', CT_Document)
@@ -276,22 +279,25 @@ register_element_cls('w:p', CT_P)
 from .text.parfmt import (  # noqa
     CT_Ind,
     CT_Jc,
+    CT_OutlineLvl,
     CT_PPr,
     CT_Spacing,
     CT_TabStop,
     CT_TabStops,
 )
-register_element_cls('w:ind',             CT_Ind)
-register_element_cls('w:jc',              CT_Jc)
-register_element_cls('w:keepLines',       CT_OnOff)
-register_element_cls('w:keepNext',        CT_OnOff)
-register_element_cls('w:pageBreakBefore', CT_OnOff)
-register_element_cls('w:pPr',             CT_PPr)
-register_element_cls('w:pStyle',          CT_String)
-register_element_cls('w:spacing',         CT_Spacing)
-register_element_cls('w:tab',             CT_TabStop)
-register_element_cls('w:tabs',            CT_TabStops)
-register_element_cls('w:widowControl',    CT_OnOff)
+register_element_cls('w:ind',               CT_Ind)
+register_element_cls('w:contextualSpacing', CT_OnOff)
+register_element_cls('w:jc',                CT_Jc)
+register_element_cls('w:outlineLvl',        CT_OutlineLvl)
+register_element_cls('w:keepLines',         CT_OnOff)
+register_element_cls('w:keepNext',          CT_OnOff)
+register_element_cls('w:pageBreakBefore',   CT_OnOff)
+register_element_cls('w:pPr',               CT_PPr)
+register_element_cls('w:pStyle',            CT_String)
+register_element_cls('w:spacing',           CT_Spacing)
+register_element_cls('w:tab',               CT_TabStop)
+register_element_cls('w:tabs',              CT_TabStops)
+register_element_cls('w:widowControl',      CT_OnOff)
 
 from .text.run import CT_Br, CT_Cr, CT_R, CT_Text, CT_FldChar
 register_element_cls('w:br', CT_Br)

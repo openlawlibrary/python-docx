@@ -31,6 +31,15 @@ class DescribeParagraphFormat(object):
         paragraph_format.alignment = value
         assert paragraph_format._element.xml == expected_xml
 
+    def it_knows_its_outline_level(self, outline_level_get_fixture):
+        paragraph_format, expected_value = outline_level_get_fixture
+        assert paragraph_format.outline_level == expected_value
+
+    def it_can_change_its_outline_level(self, outline_level_set_fixture):
+        paragraph_format, value, expected_xml = outline_level_set_fixture
+        paragraph_format.outline_level = value
+        assert paragraph_format._element.xml == expected_xml
+
     def it_knows_its_space_before(self, space_before_get_fixture):
         paragraph_format, expected_value = space_before_get_fixture
         assert paragraph_format.space_before == expected_value
@@ -135,6 +144,36 @@ class DescribeParagraphFormat(object):
          'w:p/w:pPr'),
     ])
     def alignment_set_fixture(self, request):
+        p_cxml, value, expected_cxml = request.param
+        paragraph_format = ParagraphFormat(element(p_cxml))
+        expected_xml = xml(expected_cxml)
+        return paragraph_format, value, expected_xml
+
+    @pytest.fixture(params=[
+        ('w:p',                            None),
+        ('w:p/w:pPr',                      None),
+        ('w:p/w:pPr/w:outlineLvl{w:val=0}', 0),
+        ('w:p/w:pPr/w:outlineLvl{w:val=3}', 3),
+        ('w:p/w:pPr/w:outlineLvl{w:val=9}', 9),
+    ])
+    def outline_level_get_fixture(self, request):
+        p_cxml, expected_value = request.param
+        paragraph_format = ParagraphFormat(element(p_cxml))
+        return paragraph_format, expected_value
+
+    @pytest.fixture(params=[
+        ('w:p',                             0,
+         'w:p/w:pPr/w:outlineLvl{w:val=0}'),
+        ('w:p/w:pPr',                       3,
+         'w:p/w:pPr/w:outlineLvl{w:val=3}'),
+        ('w:p/w:pPr/w:outlineLvl{w:val=0}', 5,
+         'w:p/w:pPr/w:outlineLvl{w:val=5}'),
+        ('w:p/w:pPr/w:outlineLvl{w:val=3}', None,
+         'w:p/w:pPr'),
+        ('w:p',                             None,
+         'w:p/w:pPr'),
+    ])
+    def outline_level_set_fixture(self, request):
         p_cxml, value, expected_cxml = request.param
         paragraph_format = ParagraphFormat(element(p_cxml))
         expected_xml = xml(expected_cxml)
@@ -285,6 +324,9 @@ class DescribeParagraphFormat(object):
         ('w:p',                                  'widow_control',     None),
         ('w:p/w:pPr/w:widowControl{w:val=true}', 'widow_control',     True),
         ('w:p/w:pPr/w:widowControl{w:val=off}',  'widow_control',     False),
+        ('w:p',                                         'contextual_spacing', None),
+        ('w:p/w:pPr/w:contextualSpacing{w:val=1}',      'contextual_spacing', True),
+        ('w:p/w:pPr/w:contextualSpacing{w:val=false}',  'contextual_spacing', False),
     ])
     def on_off_get_fixture(self, request):
         p_cxml, prop_name, expected_value = request.param
@@ -296,6 +338,7 @@ class DescribeParagraphFormat(object):
         ('w:p', 'keep_with_next',    True,  'w:p/w:pPr/w:keepNext'),
         ('w:p', 'page_break_before', True,  'w:p/w:pPr/w:pageBreakBefore'),
         ('w:p', 'widow_control',     True,  'w:p/w:pPr/w:widowControl'),
+        ('w:p', 'contextual_spacing', True,  'w:p/w:pPr/w:contextualSpacing'),
         ('w:p/w:pPr/w:keepLines',                 'keep_together',     False,
          'w:p/w:pPr/w:keepLines{w:val=0}'),
         ('w:p/w:pPr/w:keepNext',                  'keep_with_next',    False,
@@ -304,6 +347,8 @@ class DescribeParagraphFormat(object):
          'w:p/w:pPr/w:pageBreakBefore{w:val=0}'),
         ('w:p/w:pPr/w:widowControl',              'widow_control',     False,
          'w:p/w:pPr/w:widowControl{w:val=0}'),
+        ('w:p/w:pPr/w:contextualSpacing',         'contextual_spacing', False,
+         'w:p/w:pPr/w:contextualSpacing{w:val=0}'),
         ('w:p/w:pPr/w:keepLines{w:val=0}',        'keep_together',     None,
          'w:p/w:pPr'),
         ('w:p/w:pPr/w:keepNext{w:val=0}',         'keep_with_next',    None,
@@ -311,6 +356,8 @@ class DescribeParagraphFormat(object):
         ('w:p/w:pPr/w:pageBreakBefore{w:val=0}',  'page_break_before', None,
          'w:p/w:pPr'),
         ('w:p/w:pPr/w:widowControl{w:val=0}',     'widow_control',     None,
+         'w:p/w:pPr'),
+        ('w:p/w:pPr/w:contextualSpacing{w:val=0}', 'contextual_spacing', None,
          'w:p/w:pPr'),
     ])
     def on_off_set_fixture(self, request):

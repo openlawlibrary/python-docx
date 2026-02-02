@@ -40,6 +40,23 @@ class ParagraphFormat(ElementProxy):
         pPr.jc_val = value
 
     @property
+    def outline_level(self):
+        """
+        An integer value specifying the outline level for this paragraph.
+        A value of |None| indicates the outline level is inherited from the
+        style hierarchy. Valid values are 0-9.
+        """
+        pPr = self._element.pPr
+        if pPr is None:
+            return None
+        return pPr.outlineLvl_val
+
+    @outline_level.setter
+    def outline_level(self, value):
+        pPr = self._element.get_or_add_pPr()
+        pPr.outlineLvl_val = value
+
+    @property
     def first_line_indent(self):
         """
         |Length| value specifying the relative difference in indentation for
@@ -91,6 +108,23 @@ class ParagraphFormat(ElementProxy):
     @keep_with_next.setter
     def keep_with_next(self, value):
         self._element.get_or_add_pPr().keepNext_val = value
+
+    @property
+    def contextual_spacing(self):
+        """
+        |True| if spacing before and after this paragraph should be ignored
+        when the preceding and following paragraphs are of the same style.
+        |None| indicates its effective value is inherited from the style
+        hierarchy.
+        """
+        pPr = self._element.pPr
+        if pPr is None:
+            return None
+        return pPr.contextualSpacing_val
+
+    @contextual_spacing.setter
+    def contextual_spacing(self, value):
+        self._element.get_or_add_pPr().contextualSpacing_val = value
 
     @property
     def left_indent(self):

@@ -9,6 +9,7 @@ from docx.opc.packuri import PACKAGE_URI, PackURI
 from docx.opc.part import PartFactory
 from docx.opc.parts.coreprops import CorePropertiesPart
 from docx.opc.parts.customprops import CustomPropertiesPart
+from docx.opc.parts.extendedprops import ExtendedPropertiesPart
 from docx.opc.pkgreader import PackageReader
 from docx.opc.pkgwriter import PackageWriter
 from docx.opc.rel import Relationships
@@ -49,6 +50,14 @@ class OpcPackage(object):
         Core properties for this document.
         """
         return self._custom_properties_part.custom_properties
+
+    @property
+    def extended_properties(self):
+        """
+        |ExtendedProperties| object providing read/write access to the
+        extended document properties for this document.
+        """
+        return self._extended_properties_part.extended_properties
 
     def iter_rels(self):
         """
@@ -221,6 +230,20 @@ class OpcPackage(object):
             custom_properties_part = CustomPropertiesPart.default(self)
             self.relate_to(custom_properties_part, RT.CUSTOM_PROPERTIES)
             return custom_properties_part
+
+    @property
+    def _extended_properties_part(self):
+        """
+        |ExtendedPropertiesPart| object related to this package. Creates
+        a default extended properties part if one is not present (not common).
+        """
+        try:
+            return self.part_related_by(RT.EXTENDED_PROPERTIES)
+        except KeyError:
+            extended_properties_part = ExtendedPropertiesPart.default(self)
+            self.relate_to(extended_properties_part, RT.EXTENDED_PROPERTIES)
+            return extended_properties_part
+
 
 class Unmarshaller(object):
     """Hosts static methods for unmarshalling a package from a |PackageReader|."""
