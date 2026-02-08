@@ -63,7 +63,7 @@ class Paragraph(Parented, BookmarkParent):
         # Add initial paragraph with footnote reference mark if requested
         if auto_paragraph:
             p = footnote.add_paragraph()
-            p.style = 'FootnoteText'
+            p.style = 'Footnote Text'
             # Add the footnote reference mark in the first run
             r = p._p.add_r()
             rPr = r.get_or_add_rPr()
@@ -105,7 +105,7 @@ class Paragraph(Parented, BookmarkParent):
         # Add initial paragraph with endnote reference mark if requested
         if auto_paragraph:
             p = endnote.add_paragraph()
-            p.style = 'EndnoteText'
+            p.style = 'Endnote Text'
             # Add the endnote reference mark in the first run
             r = p._p.add_r()
             rPr = r.get_or_add_rPr()

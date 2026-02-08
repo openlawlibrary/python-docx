@@ -97,7 +97,7 @@ class DescribeParagraph(object):
         # Verify that a paragraph was added to the footnote
         footnote_.add_paragraph.assert_called_once_with()
         # Verify that the paragraph style was set
-        assert p_.style == 'FootnoteText'
+        assert p_.style == 'Footnote Text'
 
     def it_can_add_an_endnote(self, add_endnote_fixture):
         paragraph, document_, endnote_, section_endnote, num_format = (
@@ -117,7 +117,7 @@ class DescribeParagraph(object):
         # Verify that a paragraph was added to the endnote
         endnote_.add_paragraph.assert_called_once_with()
         # Verify that the paragraph style was set
-        assert p_.style == 'EndnoteText'
+        assert p_.style == 'Endnote Text'
 
     def it_can_insert_a_paragraph_before_itself(self, insert_before_fixture):
         text, style, paragraph_, add_run_calls = insert_before_fixture
