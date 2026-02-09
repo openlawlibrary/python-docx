@@ -189,6 +189,13 @@ class DocumentPart(BaseStoryPart):
         part if one is not present.
         """
         try:
+            # check if in document is used `footnoteReference`.
+            # If not then load the default footnote part.
+            # The footnote part xml remains after all the footnotes are deleted,
+            # so this check is to prevent loading of unused footnotes.
+            refs = self.document.element.xpath('//w:footnoteReference')
+            if len(refs) == 0:
+                raise KeyError
             return self.part_related_by(RT.FOOTNOTES)
         except KeyError:
             footnotes_part = FootnotesPart.default(self.package)
