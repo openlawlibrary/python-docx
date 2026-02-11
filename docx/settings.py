@@ -26,3 +26,29 @@ class Settings(ElementProxy):
     @odd_and_even_pages_header_footer.setter
     def odd_and_even_pages_header_footer(self, value):
         self._element.evenAndOddHeaders_val = value
+
+    @property
+    def footnote_position(self):
+        """The document-level default footnote position.
+
+        Can be 'pageBottom' or 'beneathText'.
+        Returns None if not set. Read/write.
+        """
+        return self._element.footnote_position
+
+    @footnote_position.setter
+    def footnote_position(self, value):
+        self._element.footnote_position = value
+
+    @property
+    def endnote_position(self):
+        """The document-level default endnote position.
+
+        Can be 'sectEnd' (end of section) or 'docEnd' (end of document).
+        Returns None if not set. Read/write.
+        """
+        return self._element.endnote_position
+
+    @endnote_position.setter
+    def endnote_position(self, value):
+        self._element.endnote_position = value

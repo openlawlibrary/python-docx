@@ -39,6 +39,9 @@ class CT_R(BaseOxmlElement):
     tab = ZeroOrMore('w:tab')
     drawing = ZeroOrMore('w:drawing')
     footnoteReference = ZeroOrMore('w:footnoteReference')
+    footnoteRef = ZeroOrMore('w:footnoteRef')
+    endnoteReference = ZeroOrMore('w:endnoteReference')
+    endnoteRef = ZeroOrMore('w:endnoteRef')
     bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
     fldChar = ZeroOrMore('w:fldChar')
     instrText = ZeroOrMore('w:instrText')
@@ -58,6 +61,31 @@ class CT_R(BaseOxmlElement):
         new_fr = self._add_footnoteReference()
         new_fr.id = id
         return new_fr
+
+    def add_endnoteReference(self, id):
+        """
+        Return a newly added ``<w:endnoteReference>`` element containing
+        the endnote reference id.
+        """
+        rPr = self._add_rPr()
+        rPr.style = 'EndnoteReference'
+        new_er = self._add_endnoteReference()
+        new_er.id = id
+        return new_er
+
+    def add_footnoteRef(self):
+        """
+        Return a newly added ``<w:footnoteRef>`` element.
+        This element displays the footnote reference mark within the footnote itself.
+        """
+        return self._add_footnoteRef()
+
+    def add_endnoteRef(self):
+        """
+        Return a newly added ``<w:endnoteRef>`` element.
+        This element displays the endnote reference mark within the endnote itself.
+        """
+        return self._add_endnoteRef()
 
     def add_t(self, text):
         """
@@ -89,13 +117,13 @@ class CT_R(BaseOxmlElement):
 
     def clear_content(self):
         """
-        Remove all child elements except the ``<w:rPr>`` and ``<w:footnoteReference>`` element if present.
+        Remove all child elements except the ``<w:rPr>``, ``<w:footnoteReference>``, and ``<w:endnoteReference>`` elements if present.
         """
         content_child_elms = self[1:] if self.rPr is not None else self[:]
         for child in content_child_elms:
-            # We keep ``w:footnoteReference`` because of the
+            # We keep ``w:footnoteReference`` and ``w:endnoteReference`` because of the
             # platform `replace_special_chars_preprocessor` preprocessor.
-            if child.tag == qn('w:footnoteReference'):
+            if child.tag == qn('w:footnoteReference') or child.tag == qn('w:endnoteReference'):
                 continue
             self.remove(child)
 
@@ -117,6 +145,26 @@ class CT_R(BaseOxmlElement):
             for i in range(len(self.footnoteReference_lst)):
                 self.footnoteReference_lst[i].id += 1
             return self.footnoteReference_lst
+        return None
+
+    @property
+    def endnote_reference_ids(self):
+        """
+        Return all endnote reference ids (``<w:endnoteReference>``).
+        """
+        for child in self:
+            if child.tag == qn('w:endnoteReference'):
+                yield child.id
+
+    def increment_containing_endnote_reference_ids(self):
+        """
+        Increment all endnote reference ids by one if they exist.
+        Return all endnote reference ids (``<w:endnoteReference>``), or |None| if not present.
+        """
+        if self.endnoteReference_lst is not None:
+            for i in range(len(self.endnoteReference_lst)):
+                self.endnoteReference_lst[i].id += 1
+            return self.endnoteReference_lst
         return None
 
     @property

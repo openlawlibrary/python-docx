@@ -41,18 +41,94 @@ class Paragraph(Parented, BookmarkParent):
         self._lvl_from_para_props = None
         self._lvl_from_style_props = None
 
-    def add_footnote(self):
+    def add_footnote(self, num_format=None, auto_paragraph=True):
         """
         Append a run that contains a ``<w:footnoteReferenceId>`` element.
         The footnotes are kept in order by `footnote_reference_id`, so
         the appropriate id is calculated based on the current state.
+
+        :param num_format: The numbering format for the footnote. Can be 'decimal',
+            'upperRoman', 'lowerRoman', 'upperLetter', 'lowerLetter', etc.
+            If None, uses the default 'decimal' format.
+        :param auto_paragraph: If True (default), automatically create an initial
+            paragraph in the footnote with the 'FootnoteText' style and insert a
+            footnoteRef element in the first run.
         """
         document = find_containing_document(self)
         new_fr_id = document._calculate_next_footnote_reference_id(self._p)
         r = self._p.add_r()
         r.add_footnoteReference(new_fr_id)
         footnote = document._add_footnote(new_fr_id)
+
+        # Add initial paragraph with footnote reference mark if requested
+        if auto_paragraph:
+            p = footnote.add_paragraph()
+            p.style = 'Footnote Text'
+            # Add the footnote reference mark in the first run
+            r = p._p.add_r()
+            rPr = r.get_or_add_rPr()
+            rPr.style = 'FootnoteReference'
+            r.add_footnoteRef()
+
+        # Configure section footnote properties if requested
+        if num_format is not None:
+            # Find the section containing this paragraph
+            section = self._find_containing_section(document)
+            sectPr = section._sectPr
+
+            # Set custom number format if provided
+            sectPr.footnote_number_format = num_format
+
         return footnote
+
+    def add_endnote(self, section_endnote=False, num_format=None, auto_paragraph=True):
+        """
+        Append a run that contains a ``<w:endnoteReference>`` element.
+        The endnotes are kept in order by `endnote_reference_id`, so
+        the appropriate id is calculated based on the current state.
+
+        :param section_endnote: If True, configure endnotes to appear at the end of
+            the current section ('sectEnd') instead of the end of the document ('docEnd').
+        :param num_format: The numbering format for the endnote. Can be 'decimal',
+            'upperRoman', 'lowerRoman', 'upperLetter', 'lowerLetter', etc.
+            If None, uses the default 'decimal' format.
+        :param auto_paragraph: If True (default), automatically create an initial
+            paragraph in the endnote with the 'EndnoteText' style and insert an
+            endnoteRef element in the first run.
+        """
+        document = find_containing_document(self)
+        new_er_id = document._calculate_next_endnote_reference_id(self._p)
+        r = self._p.add_r()
+        r.add_endnoteReference(new_er_id)
+        endnote = document._add_endnote(new_er_id)
+
+        # Add initial paragraph with endnote reference mark if requested
+        if auto_paragraph:
+            p = endnote.add_paragraph()
+            p.style = 'Endnote Text'
+            # Add the endnote reference mark in the first run
+            r = p._p.add_r()
+            rPr = r.get_or_add_rPr()
+            rPr.style = 'EndnoteReference'
+            r.add_endnoteRef()
+
+        # Configure section endnote properties if requested
+        if section_endnote or num_format is not None:
+            # Find the section containing this paragraph
+            section = self._find_containing_section(document)
+            sectPr = section._sectPr
+
+            # Set endnote position to end of section if requested
+            if section_endnote:
+                sectPr.endnote_position = 'sectEnd'
+                # Also set document-level default to enable section positioning
+                document.settings.endnote_position = 'sectEnd'
+
+            # Set custom number format if provided
+            if num_format is not None:
+                sectPr.endnote_number_format = num_format
+
+        return endnote
 
     def add_hyperlink(self, text, reference):
         """
@@ -211,6 +287,21 @@ class Paragraph(Parented, BookmarkParent):
         return footnote_list
 
     @property
+    def endnotes(self):
+        """
+        Returns a list of |Endnote| instances that refers to the endnotes in this paragraph.
+        """
+        endnote_list = []
+        reference_ids = self._p.endnote_reference_ids
+        document = find_containing_document(self)
+        if document is None:
+            return endnote_list
+        endnotes = document.endnotes
+        for ref_id in reference_ids:
+            endnote_list.append(endnotes[ref_id])
+        return endnote_list
+
+    @property
     def hyperlinks(self):
         """
         Sequence of |Hyperlink| instances corresponding to the <w:hyperlink>
@@ -237,6 +328,10 @@ class Paragraph(Parented, BookmarkParent):
     def increment_containing_footnote_reference_ids(self):
         for r in self.runs:
             r._r.increment_containing_footnote_reference_ids()
+
+    def increment_containing_endnote_reference_ids(self):
+        for r in self.runs:
+            r._r.increment_containing_endnote_reference_ids()
 
     def split(self, *positions):
         """Splits paragraph at given positions keeping formatting.
@@ -579,7 +674,7 @@ class Paragraph(Parented, BookmarkParent):
         while self.runs:
             run = self.runs[0]
             run.text = run.text.lstrip(chars)
-            if not run.text and len(run.footnote_reference_ids) == 0:
+            if not run.text and len(run.footnote_reference_ids) == 0 and len(run.endnote_reference_ids) == 0:
                 run._r.getparent().remove(run._r)
             else:
                 break
@@ -593,7 +688,7 @@ class Paragraph(Parented, BookmarkParent):
         while self.runs:
             run = self.runs[len(self.runs) - 1]
             run.text = run.text.rstrip(chars)
-            if not run.text and len(run.footnote_reference_ids) == 0:
+            if not run.text and len(run.footnote_reference_ids) == 0 and len(run.endnote_reference_ids) == 0:
                 run._r.getparent().remove(run._r)
             else:
                 break
@@ -613,6 +708,43 @@ class Paragraph(Parented, BookmarkParent):
         """
         from ..sdt import SdtBase
         return [SdtBase(sdt, self) for sdt in self._element.sdt_lst]
+
+    def _find_containing_section(self, document):
+        """
+        Find and return the Section object that contains this paragraph.
+
+        In Word's OOXML format, paragraphs belong to the section whose sectPr
+        comes after them in document order. The last section's sectPr is stored
+        in w:body/w:sectPr, while other sections have sectPr as the last child
+        of the paragraph that ends that section.
+        """
+        # Get all paragraphs in the document
+        all_paragraphs = document.paragraphs
+
+        # Find the index of this paragraph
+        try:
+            para_index = next(i for i, p in enumerate(all_paragraphs) if p._p is self._p)
+        except StopIteration:
+            # Paragraph not found in document, return last section as fallback
+            return document.sections[-1]
+
+        # Iterate through paragraphs starting from this one to find the next section break
+        # Each section break is indicated by a sectPr element in the paragraph
+        for i in range(para_index, len(all_paragraphs)):
+            p_element = all_paragraphs[i]._p
+            # Check if this paragraph has a sectPr (marks end of section)
+            if p_element.pPr is not None and p_element.pPr.sectPr is not None:
+                # This paragraph ends a section, find which section index it is
+                # by counting sectPr elements up to this point
+                section_index = sum(
+                    1 for j in range(i + 1)
+                    if all_paragraphs[j]._p.pPr is not None
+                    and all_paragraphs[j]._p.pPr.sectPr is not None
+                )
+                return document.sections[section_index]
+
+        # No section break found after this paragraph, it's in the last section
+        return document.sections[-1]
 
     def _insert_paragraph_before(self):
         """

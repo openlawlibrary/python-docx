@@ -17,7 +17,11 @@ class BabelFish(object):
 
     style_aliases = (
         ('Caption', 'caption'),
+        ('Endnote Reference', 'endnote reference'),
+        ('Endnote Text', 'endnote text'),
         ('Footer', 'footer'),
+        ('Footnote Reference', 'footnote reference'),
+        ('Footnote Text', 'footnote text'),
         ('Header', 'header'),
         ('Heading 1', 'heading 1'),
         ('Heading 2', 'heading 2'),

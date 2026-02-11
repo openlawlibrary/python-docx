@@ -46,6 +46,8 @@ class CT_Settings(BaseOxmlElement):
         "w:shapeDefaults", "w:doNotEmbedSmartTags", "w:decimalSymbol", "w:listSeparator"
     )
     evenAndOddHeaders = ZeroOrOne("w:evenAndOddHeaders", successors=_tag_seq[48:])
+    footnotePr = ZeroOrOne("w:footnotePr", successors=_tag_seq[79:])
+    endnotePr = ZeroOrOne("w:endnotePr", successors=_tag_seq[80:])
     del _tag_seq
 
     @property
@@ -62,3 +64,51 @@ class CT_Settings(BaseOxmlElement):
             self._remove_evenAndOddHeaders()
         else:
             self.get_or_add_evenAndOddHeaders().val = value
+
+    @property
+    def footnote_position(self):
+        """
+        The value of the `w:val` attribute in the `<w:pos>` child
+        element of `<w:footnotePr>` element, or |None| if not present.
+        This is the document-level default for footnote positioning.
+        """
+        footnotePr = self.footnotePr
+        if footnotePr is None:
+            return None
+        pos = footnotePr.pos
+        if pos is None:
+            return None
+        return pos.val
+
+    @footnote_position.setter
+    def footnote_position(self, value):
+        """Set document-level footnote position (pageBottom or beneathText)"""
+        if value is None:
+            return
+        fPr = self.get_or_add_footnotePr()
+        pos = fPr.get_or_add_pos()
+        pos.val = value
+
+    @property
+    def endnote_position(self):
+        """
+        The value of the `w:val` attribute in the `<w:pos>` child
+        element of `<w:endnotePr>` element, or 'sectEnd' if not present.
+        This is the document-level default for endnote positioning.
+        """
+        endnotePr = self.endnotePr
+        if endnotePr is None:
+            return None
+        pos = endnotePr.pos
+        if pos is None:
+            return None
+        return pos.val
+
+    @endnote_position.setter
+    def endnote_position(self, value):
+        """Set document-level endnote position (sectEnd or docEnd)"""
+        if value is None:
+            return
+        ePr = self.get_or_add_endnotePr()
+        pos = ePr.get_or_add_pos()
+        pos.val = value

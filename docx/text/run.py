@@ -156,6 +156,13 @@ class Run(Parented, BookmarkParent):
         return [ref_id for ref_id in self._r.footnote_reference_ids]
 
     @property
+    def endnote_reference_ids(self):
+        """
+        Returns all endnote reference ids from the run as a list.
+        """
+        return [ref_id for ref_id in self._r.endnote_reference_ids]
+
+    @property
     def italic(self):
         """
         Read/write tri-state value. When |True|, causes the text of the run
