@@ -307,7 +307,7 @@ class Document(ElementProxy):
             else:
                 # This is the last footnote before the new footnote, so we use its
                 # value to determent the value of the new footnote.
-                new_fr_id = max(self.paragraphs[p_i]._p.footnote_reference_ids)+1
+                new_fr_id = max(new_fr_id, max(self.paragraphs[p_i]._p.footnote_reference_ids)+1)
                 break
         return new_fr_id
 
@@ -347,7 +347,7 @@ class Document(ElementProxy):
             else:
                 # This is the last endnote before the new endnote, so we use its
                 # value to determine the value of the new endnote.
-                new_er_id = max(self.paragraphs[p_i]._p.endnote_reference_ids)+1
+                new_er_id = max(new_er_id, max(self.paragraphs[p_i]._p.endnote_reference_ids)+1)
                 break
         return new_er_id
 
