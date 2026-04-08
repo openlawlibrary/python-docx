@@ -14,7 +14,10 @@ from .simpletypes import ST_DecimalNumber
 from .xmlchemy import (
     BaseOxmlElement, OneAndOnlyOne, RequiredAttribute, ZeroOrMore, ZeroOrOne
 )
-from .ns import nsmap
+from .ns import nsmap, qn
+from .text.paragraph import CT_P
+
+_w_p_tag = qn('w:p')
 
 
 class CT_Num(BaseOxmlElement):
@@ -176,6 +179,33 @@ class CT_Numbering(BaseOxmlElement):
             para_ilvl = para_ilvl.val if para_ilvl is not None else 0
             return para_ilvl, para_numId
 
+        def iter_preceding_paragraphs(p):
+            """
+            Yield all paragraphs preceding *p* in document order (reversed),
+            regardless of nesting (table cells, rows, etc.).
+
+            Walks up the XML tree level by level. At each level, iterates
+            preceding siblings and yields any ``<w:p>`` elements found —
+            either directly or nested inside the sibling's descendants.
+            This correctly counts numbered paragraphs across table cells,
+            rows, and between body-level and table-internal contexts.
+            """
+            current = p
+            parent = current.getparent()
+            while parent is not None:
+                for sibling in current.itersiblings(preceding=True):
+                    if isinstance(sibling, CT_P):
+                        yield sibling
+                    else:
+                        # Yield all w:p descendants in reverse document order.
+                        # Use iterdescendants with Clark-notation tag to avoid
+                        # xpath namespace issues on non-BaseOxmlElement nodes.
+                        paras = list(sibling.iterdescendants(_w_p_tag))
+                        for sp in reversed(paras):
+                            yield sp
+                current = parent
+                parent = current.getparent()
+
         def get_preceding_paragraphs_numIds(p, p_ilvl, p_numId):
             """
             Return preceding siblings ``numId`` that are in the same numbered list as the paragraph ``p``.
@@ -185,7 +215,7 @@ class CT_Numbering(BaseOxmlElement):
             Stops on the paragraph that is on the lower level.
             """
             pStyle = p.pPr.pStyle
-            for prev_p in p.itersiblings(preceding=True):
+            for prev_p in iter_preceding_paragraphs(p):
                 try:
                     prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
                     # skip unnumbered paragraphs within numbering list
@@ -215,7 +245,7 @@ class CT_Numbering(BaseOxmlElement):
             Returns the first sibling that has the same numbering format
             """
             pStyle = p.pPr.pStyle
-            for prev_p in p.itersiblings(preceding=True):
+            for prev_p in iter_preceding_paragraphs(p):
                 try:
                     prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
                     # skip unnumbered paragraphs within numbering list
