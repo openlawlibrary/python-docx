@@ -14,7 +14,10 @@ from .simpletypes import ST_DecimalNumber
 from .xmlchemy import (
     BaseOxmlElement, OneAndOnlyOne, RequiredAttribute, ZeroOrMore, ZeroOrOne
 )
-from .ns import nsmap
+from .ns import nsmap, qn
+from .text.paragraph import CT_P
+
+_w_p_tag = qn('w:p')
 
 
 class CT_Num(BaseOxmlElement):
@@ -176,16 +179,63 @@ class CT_Numbering(BaseOxmlElement):
             para_ilvl = para_ilvl.val if para_ilvl is not None else 0
             return para_ilvl, para_numId
 
+        def iter_preceding_paragraphs(p):
+            """
+            Yield all paragraphs preceding *p* in document order (reversed),
+            regardless of nesting (table cells, rows, etc.).
+
+            Walks up the XML tree level by level. At each level, iterates
+            preceding siblings and yields any ``<w:p>`` elements found —
+            either directly or nested inside the sibling's descendants.
+            This correctly counts numbered paragraphs across table cells,
+            rows, and between body-level and table-internal contexts.
+            """
+            current = p
+            parent = current.getparent()
+            while parent is not None:
+                for sibling in current.itersiblings(preceding=True):
+                    if isinstance(sibling, CT_P):
+                        yield sibling
+                    else:
+                        # Yield all w:p descendants in reverse document order.
+                        # Use iterdescendants with Clark-notation tag to avoid
+                        # xpath namespace issues on non-BaseOxmlElement nodes.
+                        paras = list(sibling.iterdescendants(_w_p_tag))
+                        for sp in reversed(paras):
+                            yield sp
+                current = parent
+                parent = current.getparent()
+
+        def same_abstract_num(numId_a, numId_b):
+            """
+            Two numIds belong to the same numbering family if they resolve to
+            the same abstractNumId AND neither carries a startOverride for the
+            current level.  A startOverride signals an intentional restart —
+            a new list instance from the same template — so it must not be
+            counted as a continuation.
+            """
+            if numId_a == numId_b:
+                return True
+            abs_a = self.get_abstractNum(numId_a)
+            abs_b = self.get_abstractNum(numId_b)
+            if abs_a is None or abs_a is not abs_b:
+                return False
+            # A startOverride on either num means "new list instance";
+            # treat as separate even though they share an abstract definition.
+            if get_start_override(numId_a) or get_start_override(numId_b):
+                return False
+            return True
+
         def get_preceding_paragraphs_numIds(p, p_ilvl, p_numId):
             """
             Return preceding siblings ``numId`` that are in the same numbered list as the paragraph ``p``.
             Paragraphs are in the same list if they are on the same level (``p_ilvl``), and either
-            have the same ``p_numId`` or have the same ``pStyle.val``.
+            have the same ``p_numId`` or resolve to the same abstract numbering definition.
             Skips unnumbered paragraphs within the numbering list.
             Stops on the paragraph that is on the lower level.
             """
             pStyle = p.pPr.pStyle
-            for prev_p in p.itersiblings(preceding=True):
+            for prev_p in iter_preceding_paragraphs(p):
                 try:
                     prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
                     # skip unnumbered paragraphs within numbering list
@@ -195,7 +245,7 @@ class CT_Numbering(BaseOxmlElement):
                     if prev_p_ilvl < p_ilvl and (prev_p_numId == p_numId or
                                          (prev_p_pStyle is not None and prev_p_pStyle.val in linked_styles)):
                         break
-                    if prev_p_ilvl == p_ilvl and (prev_p_numId == p_numId or pStyle.val == prev_p_pStyle.val or prev_p_pStyle.val in linked_styles):
+                    if prev_p_ilvl == p_ilvl and (prev_p_numId == p_numId or same_abstract_num(prev_p_numId, p_numId) or prev_p_pStyle.val in linked_styles):
                         yield prev_p_numId
                     # para `p` that has only style defined which is same as the `prev_p` style
                     # should be counted even though they have different `numId`s.
@@ -215,7 +265,7 @@ class CT_Numbering(BaseOxmlElement):
             Returns the first sibling that has the same numbering format
             """
             pStyle = p.pPr.pStyle
-            for prev_p in p.itersiblings(preceding=True):
+            for prev_p in iter_preceding_paragraphs(p):
                 try:
                     prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
                     # skip unnumbered paragraphs within numbering list
@@ -230,11 +280,12 @@ class CT_Numbering(BaseOxmlElement):
 
         def count_same_numIds(preceding_paragraphs_numIds, numId, num):
             """
-            Returns count of the preceding paragraphs having the same ``w:numId``.
+            Returns count of the preceding paragraphs having the same ``w:numId``
+            or the same abstract numbering definition.
             """
             for p_numId in preceding_paragraphs_numIds:
                 try:
-                    if numId == p_numId:
+                    if numId == p_numId or same_abstract_num(p_numId, numId):
                         num += 1
                     else:
                         startOverride = get_start_override(p_numId)
