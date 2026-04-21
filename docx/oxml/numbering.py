@@ -372,9 +372,14 @@ class CT_Numbering(BaseOxmlElement):
         prev_num_mid_text = prev_num.split(mid_num_text)
         prev_num_mid_text[-1] = str(p_num)
         if p_num == 1:
-            # increment the first number
-            # this is specific case for bylaw
-            prev_num_mid_text[0] = str(int(prev_num_mid_text[0])+1)
+            # increment the first number (specific case for bylaw)
+            try:
+                prev_num_mid_text[0] = str(int(prev_num_mid_text[0]) + 1)
+            except ValueError:
+                # prev_num's first segment isn't a plain integer — happens when the
+                # preceding paragraph inherited a formatted prefix (e.g. "(d)") from
+                # a parent level in a different abstractNum. Leave it as-is.
+                pass
         return mid_num_text.join(prev_num_mid_text) + suffix
 
     def num_having_numId(self, numId):
