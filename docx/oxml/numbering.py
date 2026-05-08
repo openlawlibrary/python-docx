@@ -260,24 +260,6 @@ class CT_Numbering(BaseOxmlElement):
                 except AttributeError:
                     continue
 
-        def get_preceding_paragraph(p, p_ilvl):
-            """
-            Returns the first sibling that has the same numbering format
-            """
-            pStyle = p.pPr.pStyle
-            for prev_p in iter_preceding_paragraphs(p):
-                try:
-                    prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
-                    # skip unnumbered paragraphs within numbering list
-                    if prev_p_numId == 0:
-                        continue
-                    prev_p_pStyle = prev_p.pPr.pStyle
-                    if prev_p_ilvl <= p_ilvl and pStyle.val == prev_p_pStyle.val:
-                        return (prev_p, prev_p_ilvl, prev_p_numId)
-                except AttributeError:
-                    continue
-            return None
-
         def count_same_numIds(preceding_paragraphs_numIds, numId, num):
             """
             Returns count of the preceding paragraphs having the same ``w:numId``
@@ -332,7 +314,7 @@ class CT_Numbering(BaseOxmlElement):
 
         try:
             # apply numbering style
-            p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
+            p_num_str = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
         except KeyError:
             return None
 
@@ -341,41 +323,71 @@ class CT_Numbering(BaseOxmlElement):
             suffix = lvl_el.suffix
         lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
         if lvlText.count('%') <= 1:
-            return re.sub(r'%(\d)', str(p_num), lvlText, 1) + suffix
-        # `lvlText` is an custom defined list label that has multiple numbering values
-        # e.g. `1.1.2`, `1.1.3`
-        prev_p_tuple = get_preceding_paragraph(p, ilvl)
-        if prev_p_tuple is None:
-            # set all number parts to default value
-            return re.sub(r'%(\d)', str(p_num), lvlText) + suffix
-        prev_p, prev_p_ilvl, _ = prev_p_tuple
-        prev_num = self.get_num_for_p(prev_p, styles_cache, append_suffix=False)
-        # get text that is before and after every number part of the list text
-        lvl_text_split_by_num = str(re.sub(r'%(\d)', '$', lvlText)).split("$")
-        pre_num_text = lvl_text_split_by_num[0]
-        after_num_text = lvl_text_split_by_num[-1]
-        if prev_p_ilvl < ilvl:
-            # first indented paragraph => on prev para num append new indent number
-            return f"{prev_num}{pre_num_text}{p_num}{after_num_text}{suffix}"
-        # copy the prev list numbers and bump the last number to the correct value
-        if len(after_num_text) > 0:
-            prev_num_after_text = prev_num.split(after_num_text)
-            prev_num_after_text[-2] = pre_num_text + str(p_num)
-            return after_num_text.join(prev_num_after_text) + suffix
-        # the numbering style is something like `#1#1#2`
-        if len(pre_num_text) > 0:
-            prev_num_pre_text = prev_num.split(pre_num_text)
-            prev_num_pre_text[-1] = str(p_num) + after_num_text
-            return pre_num_text.join(prev_num_pre_text) + suffix
-        # the number style is like `1.2`, so no char before or after, only in the middle
-        mid_num_text = lvl_text_split_by_num[1]
-        prev_num_mid_text = prev_num.split(mid_num_text)
-        prev_num_mid_text[-1] = str(p_num)
-        if p_num == 1:
-            # increment the first number
-            # this is specific case for bylaw
-            prev_num_mid_text[0] = str(int(prev_num_mid_text[0])+1)
-        return mid_num_text.join(prev_num_mid_text) + suffix
+            return re.sub(r'%(\d)', str(p_num_str), lvlText, 1) + suffix
+
+        # Multi-component lvlText (e.g. '%1.%2.%3'). Each %N references the
+        # counter at ilvl=N-1 in the same numbering family. Compute each
+        # component independently from per-level counts and <w:start>
+        # values — that is how Word encodes parent-level context (e.g. a
+        # chapter number stored as the start value at ilvl=1).
+
+        def value_at_ilvl(target_ilvl):
+            if target_ilvl == ilvl:
+                return p_num
+            target_lvl_el = abstractNum_el.get_lvl(target_ilvl)
+            if target_lvl_el is None:
+                return 1
+            try:
+                target_start = int(target_lvl_el.start.get('{%s}val' % nsmap['w']))
+            except AttributeError:
+                target_start = 1
+            target_override = 0
+            for lvlOverride in self.num_having_numId(numId).lvlOverride_lst:
+                if lvlOverride.ilvl == target_ilvl:
+                    target_override = lvlOverride.startOverride.val
+                    break
+            base = target_override if target_override else target_start
+            count = 0
+            for prev_p in iter_preceding_paragraphs(p):
+                try:
+                    prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
+                    if prev_p_numId == 0:
+                        continue
+                    prev_p_pStyle = prev_p.pPr.pStyle
+                    same_list = (
+                        prev_p_numId == numId
+                        or same_abstract_num(prev_p_numId, numId)
+                        or (prev_p_pStyle is not None
+                            and prev_p_pStyle.val in linked_styles)
+                    )
+                    if not same_list:
+                        continue
+                    if prev_p_ilvl < target_ilvl:
+                        # paragraph at lower level resets the target counter
+                        break
+                    if prev_p_ilvl == target_ilvl:
+                        count += 1
+                except AttributeError:
+                    continue
+            # No preceding paragraphs at target_ilvl: the counter is at its
+            # initial value. With N preceding, the latest emitted value is
+            # base + N - 1.
+            if count == 0:
+                return base
+            return base + count - 1
+
+        # All %N substitutions inside a single lvlText share the current
+        # level's numFmt. Word does not apply the referenced level's own
+        # format — e.g. an ilvl=0 with upperRoman seen via %1 from an
+        # ilvl=1 lvlText (decimal) renders as decimal "2", not "II".
+        cur_numFmt = lvl_el.numFmt.get('{%s}val' % nsmap['w'])
+        cur_formatter = self.fmt_map[cur_numFmt]
+
+        def replace_token(m):
+            n = int(m.group(1))
+            return str(cur_formatter(value_at_ilvl(n - 1)))
+
+        return re.sub(r'%(\d)', replace_token, lvlText) + suffix
 
     def num_having_numId(self, numId):
         """
