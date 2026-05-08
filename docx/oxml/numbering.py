@@ -262,26 +262,46 @@ class CT_Numbering(BaseOxmlElement):
 
         def count_same_numIds(preceding_paragraphs_numIds, numId, num):
             """
-            Returns count of the preceding paragraphs having the same ``w:numId``
-            or the same abstract numbering definition.
+            Add 1 to ``num`` for each preceding paragraph that belongs to
+            the same numbering family — same ``w:numId`` or same abstract
+            numbering definition.
+
+            On a paragraph from a different list, behavior splits:
+
+            * If our list carries its own ``startOverride > 1``, that is an
+              explicit "new list instance" — stop counting and leave
+              ``num`` at our own start/startOverride. Word treats those
+              as independent counters, so an unrelated list's
+              ``startOverride`` must not bleed into ours.
+            * If only the preceding list carries ``startOverride > 1``,
+              the document is using that list's reset as the continuation
+              point for ours (typical for style-driven section sequences
+              that re-key the numId at each section). Add the
+              ``startOverride`` to advance ``num`` to match.
+            * Otherwise the unrelated paragraph is an interleaved short
+              list with no real reset — skip past it and inspect the next
+              yield, so we can continue our own list across the gap.
             """
             for p_numId in preceding_paragraphs_numIds:
                 try:
                     if numId == p_numId or same_abstract_num(p_numId, numId):
                         num += 1
-                    else:
-                        startOverride = get_start_override(p_numId)
-                        if startOverride > 1:
-                            num += startOverride
-                        else:
-                            prev_numId = next(preceding_paragraphs_numIds)
-                            if prev_numId == numId:
-                                num += 1
+                        continue
+                    if get_start_override(numId) > 1:
                         break
+                    prev_startOverride = get_start_override(p_numId)
+                    if prev_startOverride > 1:
+                        num += prev_startOverride
+                        break
+                    try:
+                        next_p_numId = next(preceding_paragraphs_numIds)
+                    except StopIteration:
+                        break
+                    if next_p_numId == numId or same_abstract_num(next_p_numId, numId):
+                        num += 1
+                    break
                 except AttributeError:
                     continue
-                except StopIteration:
-                    break
             return num
 
         def get_start_override(for_numId):
