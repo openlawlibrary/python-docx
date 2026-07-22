@@ -128,23 +128,83 @@ class CT_Numbering(BaseOxmlElement):
         """
         next_num_id = self._next_numId
         num = CT_Num.new(next_num_id, abstractNum_id)
+        self._invalidate_num_caches()
         return self._insert_num(num)
+
+    @property
+    def _num_caches(self):
+        """
+        Per-instance lookup caches: ``abstractNum`` maps numId to its
+        |CT_AbstractNum| (or None), ``startOverride`` maps (numId, ilvl) to
+        the startOverride value. Numbering definitions are immutable during a
+        document read; any mutation must go through ``add_num``, which
+        invalidates. The cache lives on the lxml proxy, so it survives only
+        while the element is referenced from Python (e.g. via NumberingPart)
+        and is silently rebuilt otherwise.
+        """
+        try:
+            return self._num_caches_dict
+        except AttributeError:
+            caches = {'abstractNum': {}, 'startOverride': {}}
+            self._num_caches_dict = caches
+            return caches
+
+    def _invalidate_num_caches(self):
+        try:
+            del self._num_caches_dict
+        except AttributeError:
+            pass
 
     def get_abstractNum(self, numId):
         """
         Returns |CT_AbstractNum| instance with corresponding
         paragraph ``pPr.numPr.numId`` if any
         """
+        cache = self._num_caches['abstractNum']
+        try:
+            return cache[numId]
+        except KeyError:
+            pass
+
+        abstractNum = None
         try:
             num_el = self.num_having_numId(numId)
         except KeyError:
-            return None
+            num_el = None
 
-        abstractNum_id = num_el.abstractNumId.val
+        if num_el is not None:
+            abstractNum_id = num_el.abstractNumId.val
+            for el in self.abstractNum_lst:
+                if el.abstractNumId == abstractNum_id:
+                    abstractNum = el
+                    break
 
-        for el in self.abstractNum_lst:
-            if el.abstractNumId == abstractNum_id:
-                return el
+        cache[numId] = abstractNum
+        return abstractNum
+
+    def get_startOverride(self, numId, ilvl):
+        """
+        Returns the ``w:startOverride`` value of the ``<w:num>`` having
+        *numId* for level *ilvl*, or 0 if there is none. Raises |KeyError|
+        if no ``<w:num>`` has *numId*, |AttributeError| if the matching
+        ``<w:lvlOverride>`` has no ``<w:startOverride>`` child.
+        """
+        cache = self._num_caches['startOverride']
+        key = (numId, ilvl)
+        try:
+            return cache[key]
+        except KeyError:
+            pass
+
+        val = 0
+        w_num = self.num_having_numId(numId)
+        for lvlOverride in w_num.lvlOverride_lst:
+            if lvlOverride.ilvl == ilvl:
+                val = lvlOverride.startOverride.val
+                break
+
+        cache[key] = val
+        return val
 
     def get_lvl_from_props(self, p, styles_cache=None):
         """
@@ -305,11 +365,7 @@ class CT_Numbering(BaseOxmlElement):
             return num
 
         def get_start_override(for_numId):
-            w_num = self.num_having_numId(for_numId)
-            for lvlOverride in w_num.lvlOverride_lst:
-                if lvlOverride.ilvl == ilvl:
-                    return lvlOverride.startOverride.val
-            return 0
+            return self.get_startOverride(for_numId, ilvl)
 
         ilvl, numId = get_ilvl_and_numId(p)
 
