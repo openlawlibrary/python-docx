@@ -136,16 +136,25 @@ class CT_Numbering(BaseOxmlElement):
         """
         Per-instance lookup caches: ``abstractNum`` maps numId to its
         |CT_AbstractNum| (or None), ``startOverride`` maps (numId, ilvl) to
-        the startOverride value. Numbering definitions are immutable during a
-        document read; any mutation must go through ``add_num``, which
-        invalidates. The cache lives on the lxml proxy, so it survives only
-        while the element is referenced from Python (e.g. via NumberingPart)
-        and is silently rebuilt otherwise.
+        the startOverride value, ``para_props`` maps a paragraph element to
+        its resolved (ilvl, numId) — or None where resolution raises
+        AttributeError — and ``para_pStyle`` maps a paragraph element to its
+        ``pPr/pStyle`` element. Numbering definitions, paragraph properties
+        and styles are treated as immutable during a document read (the same
+        assumption Paragraph._number and the text cache already make);
+        ``add_num`` and ``set_li_lvl`` invalidate. Holding paragraph elements
+        as keys keeps their lxml proxies alive, which keeps identity-based
+        lookups stable. The cache itself lives on this element's proxy, so it
+        survives only while the element is referenced from Python (e.g. via
+        NumberingPart) and is silently rebuilt otherwise.
         """
         try:
             return self._num_caches_dict
         except AttributeError:
-            caches = {'abstractNum': {}, 'startOverride': {}}
+            caches = {
+                'abstractNum': {}, 'startOverride': {},
+                'para_props': {}, 'para_pStyle': {},
+            }
             self._num_caches_dict = caches
             return caches
 
@@ -230,14 +239,46 @@ class CT_Numbering(BaseOxmlElement):
         (usually blank spaces between the number and the text of numbered paragraph).
         """
 
+        para_props_cache = self._num_caches['para_props']
+        para_pStyle_cache = self._num_caches['para_pStyle']
+        _no_pPr = para_pStyle_cache  # sentinel distinct from any pStyle element
+
         def get_ilvl_and_numId(paragraph):
             """
             Return ``ilvl`` and ``numId`` for the given ``paragraph``.
+            Raises AttributeError if the paragraph has no resolvable
+            numbering properties, as the un-cached lookup did.
             """
-            para_numPr = paragraph.pPr.get_numPr(styles_cache)
-            para_ilvl, para_numId = para_numPr.ilvl, para_numPr.numId.val
-            para_ilvl = para_ilvl.val if para_ilvl is not None else 0
-            return para_ilvl, para_numId
+            try:
+                props = para_props_cache[paragraph]
+            except KeyError:
+                try:
+                    para_numPr = paragraph.pPr.get_numPr(styles_cache)
+                    para_ilvl, para_numId = para_numPr.ilvl, para_numPr.numId.val
+                    para_ilvl = para_ilvl.val if para_ilvl is not None else 0
+                    props = (para_ilvl, para_numId)
+                except AttributeError:
+                    props = None
+                para_props_cache[paragraph] = props
+            if props is None:
+                raise AttributeError('paragraph has no numbering properties')
+            return props
+
+        def get_pStyle(paragraph):
+            """
+            Return the ``pPr/pStyle`` element of *paragraph*, or None if pPr
+            has no pStyle. Raises AttributeError if the paragraph has no pPr,
+            as the direct ``paragraph.pPr.pStyle`` access did.
+            """
+            try:
+                pStyle = para_pStyle_cache[paragraph]
+            except KeyError:
+                pPr = paragraph.pPr
+                pStyle = _no_pPr if pPr is None else pPr.pStyle
+                para_pStyle_cache[paragraph] = pStyle
+            if pStyle is _no_pPr:
+                raise AttributeError('paragraph has no pPr')
+            return pStyle
 
         def iter_preceding_paragraphs(p):
             """
@@ -301,7 +342,7 @@ class CT_Numbering(BaseOxmlElement):
                     # skip unnumbered paragraphs within numbering list
                     if prev_p_numId == 0:
                         continue
-                    prev_p_pStyle = prev_p.pPr.pStyle
+                    prev_p_pStyle = get_pStyle(prev_p)
                     if prev_p_ilvl < p_ilvl and (prev_p_numId == p_numId or
                                          (prev_p_pStyle is not None and prev_p_pStyle.val in linked_styles)):
                         break
@@ -310,7 +351,7 @@ class CT_Numbering(BaseOxmlElement):
                     # para `p` that has only style defined which is same as the `prev_p` style
                     # should be counted even though they have different `numId`s.
                     if prev_p_ilvl == p_ilvl and prev_p_numId != p_numId:
-                        if p.pPr.numPr is None and prev_p.pPr.pStyle.val == pStyle.val:
+                        if p.pPr.numPr is None and get_pStyle(prev_p).val == pStyle.val:
                             startOverride = get_start_override(prev_p_numId)
                             if startOverride > 1:
                                 yield prev_p_numId
@@ -518,6 +559,7 @@ class CT_Numbering(BaseOxmlElement):
             num = prev_p.pPr.numPr.numId.val
         para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_numId().val = num
         para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_ilvl().val = ilvl
+        self._invalidate_num_caches()
 
 class CT_AbstractNum(BaseOxmlElement):
     """
