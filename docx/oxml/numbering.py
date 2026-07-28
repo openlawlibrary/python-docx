@@ -458,11 +458,7 @@ class CT_Numbering(BaseOxmlElement):
                 target_start = int(target_lvl_el.start.get('{%s}val' % nsmap['w']))
             except AttributeError:
                 target_start = 1
-            target_override = 0
-            for lvlOverride in self.num_having_numId(numId).lvlOverride_lst:
-                if lvlOverride.ilvl == target_ilvl:
-                    target_override = lvlOverride.startOverride.val
-                    break
+            target_override = self.get_startOverride(numId, target_ilvl)
             base = target_override if target_override else target_start
             count = 0
             for prev_p in iter_preceding_paragraphs(p):
@@ -470,7 +466,7 @@ class CT_Numbering(BaseOxmlElement):
                     prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
                     if prev_p_numId == 0:
                         continue
-                    prev_p_pStyle = prev_p.pPr.pStyle
+                    prev_p_pStyle = get_pStyle(prev_p)
                     same_list = (
                         prev_p_numId == numId
                         or same_abstract_num(prev_p_numId, numId)
