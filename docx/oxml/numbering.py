@@ -128,23 +128,92 @@ class CT_Numbering(BaseOxmlElement):
         """
         next_num_id = self._next_numId
         num = CT_Num.new(next_num_id, abstractNum_id)
+        self._invalidate_num_caches()
         return self._insert_num(num)
+
+    @property
+    def _num_caches(self):
+        """
+        Per-instance lookup caches: ``abstractNum`` maps numId to its
+        |CT_AbstractNum| (or None), ``startOverride`` maps (numId, ilvl) to
+        the startOverride value, ``para_props`` maps a paragraph element to
+        its resolved (ilvl, numId) — or None where resolution raises
+        AttributeError — and ``para_pStyle`` maps a paragraph element to its
+        ``pPr/pStyle`` element. Numbering definitions, paragraph properties
+        and styles are treated as immutable during a document read (the same
+        assumption Paragraph._number and the text cache already make);
+        ``add_num`` and ``set_li_lvl`` invalidate. Holding paragraph elements
+        as keys keeps their lxml proxies alive, which keeps identity-based
+        lookups stable. The cache itself lives on this element's proxy, so it
+        survives only while the element is referenced from Python (e.g. via
+        NumberingPart) and is silently rebuilt otherwise.
+        """
+        try:
+            return self._num_caches_dict
+        except AttributeError:
+            caches = {
+                'abstractNum': {}, 'startOverride': {},
+                'para_props': {}, 'para_pStyle': {},
+            }
+            self._num_caches_dict = caches
+            return caches
+
+    def _invalidate_num_caches(self):
+        try:
+            del self._num_caches_dict
+        except AttributeError:
+            pass
 
     def get_abstractNum(self, numId):
         """
         Returns |CT_AbstractNum| instance with corresponding
         paragraph ``pPr.numPr.numId`` if any
         """
+        cache = self._num_caches['abstractNum']
+        try:
+            return cache[numId]
+        except KeyError:
+            pass
+
+        abstractNum = None
         try:
             num_el = self.num_having_numId(numId)
         except KeyError:
-            return None
+            num_el = None
 
-        abstractNum_id = num_el.abstractNumId.val
+        if num_el is not None:
+            abstractNum_id = num_el.abstractNumId.val
+            for el in self.abstractNum_lst:
+                if el.abstractNumId == abstractNum_id:
+                    abstractNum = el
+                    break
 
-        for el in self.abstractNum_lst:
-            if el.abstractNumId == abstractNum_id:
-                return el
+        cache[numId] = abstractNum
+        return abstractNum
+
+    def get_startOverride(self, numId, ilvl):
+        """
+        Returns the ``w:startOverride`` value of the ``<w:num>`` having
+        *numId* for level *ilvl*, or 0 if there is none. Raises |KeyError|
+        if no ``<w:num>`` has *numId*, |AttributeError| if the matching
+        ``<w:lvlOverride>`` has no ``<w:startOverride>`` child.
+        """
+        cache = self._num_caches['startOverride']
+        key = (numId, ilvl)
+        try:
+            return cache[key]
+        except KeyError:
+            pass
+
+        val = 0
+        w_num = self.num_having_numId(numId)
+        for lvlOverride in w_num.lvlOverride_lst:
+            if lvlOverride.ilvl == ilvl:
+                val = lvlOverride.startOverride.val
+                break
+
+        cache[key] = val
+        return val
 
     def get_lvl_from_props(self, p, styles_cache=None):
         """
@@ -170,14 +239,46 @@ class CT_Numbering(BaseOxmlElement):
         (usually blank spaces between the number and the text of numbered paragraph).
         """
 
+        para_props_cache = self._num_caches['para_props']
+        para_pStyle_cache = self._num_caches['para_pStyle']
+        _no_pPr = para_pStyle_cache  # sentinel distinct from any pStyle element
+
         def get_ilvl_and_numId(paragraph):
             """
             Return ``ilvl`` and ``numId`` for the given ``paragraph``.
+            Raises AttributeError if the paragraph has no resolvable
+            numbering properties, as the un-cached lookup did.
             """
-            para_numPr = paragraph.pPr.get_numPr(styles_cache)
-            para_ilvl, para_numId = para_numPr.ilvl, para_numPr.numId.val
-            para_ilvl = para_ilvl.val if para_ilvl is not None else 0
-            return para_ilvl, para_numId
+            try:
+                props = para_props_cache[paragraph]
+            except KeyError:
+                try:
+                    para_numPr = paragraph.pPr.get_numPr(styles_cache)
+                    para_ilvl, para_numId = para_numPr.ilvl, para_numPr.numId.val
+                    para_ilvl = para_ilvl.val if para_ilvl is not None else 0
+                    props = (para_ilvl, para_numId)
+                except AttributeError:
+                    props = None
+                para_props_cache[paragraph] = props
+            if props is None:
+                raise AttributeError('paragraph has no numbering properties')
+            return props
+
+        def get_pStyle(paragraph):
+            """
+            Return the ``pPr/pStyle`` element of *paragraph*, or None if pPr
+            has no pStyle. Raises AttributeError if the paragraph has no pPr,
+            as the direct ``paragraph.pPr.pStyle`` access did.
+            """
+            try:
+                pStyle = para_pStyle_cache[paragraph]
+            except KeyError:
+                pPr = paragraph.pPr
+                pStyle = _no_pPr if pPr is None else pPr.pStyle
+                para_pStyle_cache[paragraph] = pStyle
+            if pStyle is _no_pPr:
+                raise AttributeError('paragraph has no pPr')
+            return pStyle
 
         def iter_preceding_paragraphs(p):
             """
@@ -241,7 +342,7 @@ class CT_Numbering(BaseOxmlElement):
                     # skip unnumbered paragraphs within numbering list
                     if prev_p_numId == 0:
                         continue
-                    prev_p_pStyle = prev_p.pPr.pStyle
+                    prev_p_pStyle = get_pStyle(prev_p)
                     if prev_p_ilvl < p_ilvl and (prev_p_numId == p_numId or
                                          (prev_p_pStyle is not None and prev_p_pStyle.val in linked_styles)):
                         break
@@ -250,7 +351,7 @@ class CT_Numbering(BaseOxmlElement):
                     # para `p` that has only style defined which is same as the `prev_p` style
                     # should be counted even though they have different `numId`s.
                     if prev_p_ilvl == p_ilvl and prev_p_numId != p_numId:
-                        if p.pPr.numPr is None and prev_p.pPr.pStyle.val == pStyle.val:
+                        if p.pPr.numPr is None and get_pStyle(prev_p).val == pStyle.val:
                             startOverride = get_start_override(prev_p_numId)
                             if startOverride > 1:
                                 yield prev_p_numId
@@ -260,54 +361,52 @@ class CT_Numbering(BaseOxmlElement):
                 except AttributeError:
                     continue
 
-        def get_preceding_paragraph(p, p_ilvl):
-            """
-            Returns the first sibling that has the same numbering format
-            """
-            pStyle = p.pPr.pStyle
-            for prev_p in iter_preceding_paragraphs(p):
-                try:
-                    prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
-                    # skip unnumbered paragraphs within numbering list
-                    if prev_p_numId == 0:
-                        continue
-                    prev_p_pStyle = prev_p.pPr.pStyle
-                    if prev_p_ilvl <= p_ilvl and pStyle.val == prev_p_pStyle.val:
-                        return (prev_p, prev_p_ilvl, prev_p_numId)
-                except AttributeError:
-                    continue
-            return None
-
         def count_same_numIds(preceding_paragraphs_numIds, numId, num):
             """
-            Returns count of the preceding paragraphs having the same ``w:numId``
-            or the same abstract numbering definition.
+            Add 1 to ``num`` for each preceding paragraph that belongs to
+            the same numbering family — same ``w:numId`` or same abstract
+            numbering definition.
+
+            On a paragraph from a different list, behavior splits:
+
+            * If our list carries its own ``startOverride > 1``, that is an
+              explicit "new list instance" — stop counting and leave
+              ``num`` at our own start/startOverride. Word treats those
+              as independent counters, so an unrelated list's
+              ``startOverride`` must not bleed into ours.
+            * If only the preceding list carries ``startOverride > 1``,
+              the document is using that list's reset as the continuation
+              point for ours (typical for style-driven section sequences
+              that re-key the numId at each section). Add the
+              ``startOverride`` to advance ``num`` to match.
+            * Otherwise the unrelated paragraph is an interleaved short
+              list with no real reset — skip past it and inspect the next
+              yield, so we can continue our own list across the gap.
             """
             for p_numId in preceding_paragraphs_numIds:
                 try:
                     if numId == p_numId or same_abstract_num(p_numId, numId):
                         num += 1
-                    else:
-                        startOverride = get_start_override(p_numId)
-                        if startOverride > 1:
-                            num += startOverride
-                        else:
-                            prev_numId = next(preceding_paragraphs_numIds)
-                            if prev_numId == numId:
-                                num += 1
+                        continue
+                    if get_start_override(numId) > 1:
                         break
+                    prev_startOverride = get_start_override(p_numId)
+                    if prev_startOverride > 1:
+                        num += prev_startOverride
+                        break
+                    try:
+                        next_p_numId = next(preceding_paragraphs_numIds)
+                    except StopIteration:
+                        break
+                    if next_p_numId == numId or same_abstract_num(next_p_numId, numId):
+                        num += 1
+                    break
                 except AttributeError:
                     continue
-                except StopIteration:
-                    break
             return num
 
         def get_start_override(for_numId):
-            w_num = self.num_having_numId(for_numId)
-            for lvlOverride in w_num.lvlOverride_lst:
-                if lvlOverride.ilvl == ilvl:
-                    return lvlOverride.startOverride.val
-            return 0
+            return self.get_startOverride(for_numId, ilvl)
 
         ilvl, numId = get_ilvl_and_numId(p)
 
@@ -332,7 +431,7 @@ class CT_Numbering(BaseOxmlElement):
 
         try:
             # apply numbering style
-            p_num = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
+            p_num_str = self.fmt_map[lvl_el.numFmt.get('{%s}val' % nsmap['w'])](p_num)
         except KeyError:
             return None
 
@@ -341,41 +440,67 @@ class CT_Numbering(BaseOxmlElement):
             suffix = lvl_el.suffix
         lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
         if lvlText.count('%') <= 1:
-            return re.sub(r'%(\d)', str(p_num), lvlText, 1) + suffix
-        # `lvlText` is an custom defined list label that has multiple numbering values
-        # e.g. `1.1.2`, `1.1.3`
-        prev_p_tuple = get_preceding_paragraph(p, ilvl)
-        if prev_p_tuple is None:
-            # set all number parts to default value
-            return re.sub(r'%(\d)', str(p_num), lvlText) + suffix
-        prev_p, prev_p_ilvl, _ = prev_p_tuple
-        prev_num = self.get_num_for_p(prev_p, styles_cache, append_suffix=False)
-        # get text that is before and after every number part of the list text
-        lvl_text_split_by_num = str(re.sub(r'%(\d)', '$', lvlText)).split("$")
-        pre_num_text = lvl_text_split_by_num[0]
-        after_num_text = lvl_text_split_by_num[-1]
-        if prev_p_ilvl < ilvl:
-            # first indented paragraph => on prev para num append new indent number
-            return f"{prev_num}{pre_num_text}{p_num}{after_num_text}{suffix}"
-        # copy the prev list numbers and bump the last number to the correct value
-        if len(after_num_text) > 0:
-            prev_num_after_text = prev_num.split(after_num_text)
-            prev_num_after_text[-2] = pre_num_text + str(p_num)
-            return after_num_text.join(prev_num_after_text) + suffix
-        # the numbering style is something like `#1#1#2`
-        if len(pre_num_text) > 0:
-            prev_num_pre_text = prev_num.split(pre_num_text)
-            prev_num_pre_text[-1] = str(p_num) + after_num_text
-            return pre_num_text.join(prev_num_pre_text) + suffix
-        # the number style is like `1.2`, so no char before or after, only in the middle
-        mid_num_text = lvl_text_split_by_num[1]
-        prev_num_mid_text = prev_num.split(mid_num_text)
-        prev_num_mid_text[-1] = str(p_num)
-        if p_num == 1:
-            # increment the first number
-            # this is specific case for bylaw
-            prev_num_mid_text[0] = str(int(prev_num_mid_text[0])+1)
-        return mid_num_text.join(prev_num_mid_text) + suffix
+            return re.sub(r'%(\d)', str(p_num_str), lvlText, 1) + suffix
+
+        # Multi-component lvlText (e.g. '%1.%2.%3'). Each %N references the
+        # counter at ilvl=N-1 in the same numbering family. Compute each
+        # component independently from per-level counts and <w:start>
+        # values — that is how Word encodes parent-level context (e.g. a
+        # chapter number stored as the start value at ilvl=1).
+
+        def value_at_ilvl(target_ilvl):
+            if target_ilvl == ilvl:
+                return p_num
+            target_lvl_el = abstractNum_el.get_lvl(target_ilvl)
+            if target_lvl_el is None:
+                return 1
+            try:
+                target_start = int(target_lvl_el.start.get('{%s}val' % nsmap['w']))
+            except AttributeError:
+                target_start = 1
+            target_override = self.get_startOverride(numId, target_ilvl)
+            base = target_override if target_override else target_start
+            count = 0
+            for prev_p in iter_preceding_paragraphs(p):
+                try:
+                    prev_p_ilvl, prev_p_numId = get_ilvl_and_numId(prev_p)
+                    if prev_p_numId == 0:
+                        continue
+                    prev_p_pStyle = get_pStyle(prev_p)
+                    same_list = (
+                        prev_p_numId == numId
+                        or same_abstract_num(prev_p_numId, numId)
+                        or (prev_p_pStyle is not None
+                            and prev_p_pStyle.val in linked_styles)
+                    )
+                    if not same_list:
+                        continue
+                    if prev_p_ilvl < target_ilvl:
+                        # paragraph at lower level resets the target counter
+                        break
+                    if prev_p_ilvl == target_ilvl:
+                        count += 1
+                except AttributeError:
+                    continue
+            # No preceding paragraphs at target_ilvl: the counter is at its
+            # initial value. With N preceding, the latest emitted value is
+            # base + N - 1.
+            if count == 0:
+                return base
+            return base + count - 1
+
+        # All %N substitutions inside a single lvlText share the current
+        # level's numFmt. Word does not apply the referenced level's own
+        # format — e.g. an ilvl=0 with upperRoman seen via %1 from an
+        # ilvl=1 lvlText (decimal) renders as decimal "2", not "II".
+        cur_numFmt = lvl_el.numFmt.get('{%s}val' % nsmap['w'])
+        cur_formatter = self.fmt_map[cur_numFmt]
+
+        def replace_token(m):
+            n = int(m.group(1))
+            return str(cur_formatter(value_at_ilvl(n - 1)))
+
+        return re.sub(r'%(\d)', replace_token, lvlText) + suffix
 
     def num_having_numId(self, numId):
         """
@@ -430,6 +555,7 @@ class CT_Numbering(BaseOxmlElement):
             num = prev_p.pPr.numPr.numId.val
         para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_numId().val = num
         para_el.get_or_add_pPr().get_or_add_numPr().get_or_add_ilvl().val = ilvl
+        self._invalidate_num_caches()
 
 class CT_AbstractNum(BaseOxmlElement):
     """
