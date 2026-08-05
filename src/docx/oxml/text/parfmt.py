@@ -23,7 +23,7 @@ from docx.shared import Length
 
 if TYPE_CHECKING:
     from docx.oxml.section import CT_SectPr
-    from docx.oxml.shared import CT_String
+    from docx.oxml.shared import CT_OnOff, CT_String
 
 
 class CT_Ind(BaseOxmlElement):
@@ -57,7 +57,11 @@ class CT_PPr(BaseOxmlElement):
     get_or_add_ind: Callable[[], CT_Ind]
     get_or_add_pStyle: Callable[[], CT_String]
     get_or_add_sectPr: Callable[[], CT_SectPr]
+    get_or_add_contextualSpacing: Callable[[], CT_OnOff]
+    get_or_add_outlineLvl: Callable[[], CT_DecimalNumber]
     _insert_sectPr: Callable[[CT_SectPr], None]
+    _remove_contextualSpacing: Callable[[], None]
+    _remove_outlineLvl: Callable[[], None]
     _remove_pStyle: Callable[[], None]
     _remove_sectPr: Callable[[], None]
 
@@ -112,6 +116,7 @@ class CT_PPr(BaseOxmlElement):
     ind: CT_Ind | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "w:ind", successors=_tag_seq[23:]
     )
+    contextualSpacing = ZeroOrOne("w:contextualSpacing", successors=_tag_seq[24:])
     jc = ZeroOrOne("w:jc", successors=_tag_seq[27:])
     outlineLvl: CT_DecimalNumber = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "w:outlineLvl", successors=_tag_seq[31:]
@@ -191,6 +196,36 @@ class CT_PPr(BaseOxmlElement):
             self._remove_jc()
             return
         self.get_or_add_jc().val = value
+
+    @property
+    def contextualSpacing_val(self) -> bool | None:
+        """The value of `contextualSpacing/@val` or |None| if not present."""
+        contextualSpacing = self.contextualSpacing
+        if contextualSpacing is None:
+            return None
+        return contextualSpacing.val
+
+    @contextualSpacing_val.setter
+    def contextualSpacing_val(self, value: bool | None):
+        if value is None:
+            self._remove_contextualSpacing()
+        else:
+            self.get_or_add_contextualSpacing().val = value
+
+    @property
+    def outlineLvl_val(self) -> int | None:
+        """The value of the `<w:outlineLvl>` child element or |None| if not present."""
+        outlineLvl = self.outlineLvl
+        if outlineLvl is None:
+            return None
+        return outlineLvl.val
+
+    @outlineLvl_val.setter
+    def outlineLvl_val(self, value: int | None):
+        if value is None:
+            self._remove_outlineLvl()
+            return
+        self.get_or_add_outlineLvl().val = value
 
     @property
     def keepLines_val(self):
