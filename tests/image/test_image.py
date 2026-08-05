@@ -5,6 +5,7 @@ import io
 import pytest
 
 from docx.image.bmp import Bmp
+from docx.image.emf import Emf
 from docx.image.exceptions import UnrecognizedImageError
 from docx.image.gif import Gif
 from docx.image.image import BaseImageHeader, Image, _ImageHeaderFactory
@@ -174,7 +175,7 @@ class DescribeImage:
             filename_out,
         )
 
-    @pytest.fixture(params=[0, 1, 2, 3, 4, 5, 6, 7, 8])
+    @pytest.fixture(params=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     def known_image_fixture(self, request):
         cases = (
             ("python.bmp", ("bmp", CT.BMP, 211, 71, 96, 96)),
@@ -186,6 +187,7 @@ class DescribeImage:
             ("300-dpi.png", ("png", CT.PNG, 860, 579, 300, 300)),
             ("72-dpi.tiff", ("tiff", CT.TIFF, 48, 48, 72, 72)),
             ("300-dpi.TIF", ("tiff", CT.TIFF, 2464, 3248, 300, 300)),
+            ("python.emf", ("emf", CT.X_EMF, 3206, 4120, 300, 300)),
             # ('CVS_LOGO.WMF',     ('wmf',  CT.X_WMF, 149,   59,  72,  72)),
         )
         image_filename, characteristics = cases[request.param]
@@ -284,6 +286,7 @@ class Describe_ImageHeaderFactory:
             ("72-dpi.tiff", Tiff),
             ("little-endian.tif", Tiff),
             ("python.bmp", Bmp),
+            ("python.emf", Emf),
         ]
     )
     def call_fixture(self, request):
