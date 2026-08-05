@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 from docx.enum.text import (
     WD_ALIGN_PARAGRAPH,
@@ -22,6 +22,7 @@ from docx.oxml.xmlchemy import (
 from docx.shared import Length
 
 if TYPE_CHECKING:
+    from docx.oxml.numbering import CT_NumPr
     from docx.oxml.section import CT_SectPr
     from docx.oxml.shared import CT_String
 
@@ -55,6 +56,7 @@ class CT_PPr(BaseOxmlElement):
     """``<w:pPr>`` element, containing the properties for a paragraph."""
 
     get_or_add_ind: Callable[[], CT_Ind]
+    get_or_add_numPr: Callable[[], CT_NumPr]
     get_or_add_pStyle: Callable[[], CT_String]
     get_or_add_sectPr: Callable[[], CT_SectPr]
     _insert_sectPr: Callable[[CT_SectPr], None]
@@ -149,6 +151,34 @@ class CT_PPr(BaseOxmlElement):
             ind.hanging = -value
         else:
             ind.firstLine = value
+
+    def get_numPr(self, styles_cache: dict[str, Any] | None) -> CT_NumPr | None:
+        """The `w:numPr` that governs this paragraph's numbering.
+
+        Returns this paragraph's own `w:numPr` if present. Otherwise, when
+        `styles_cache` (a `{style_id: CT_Style}` mapping) is provided, falls back to
+        the `w:numPr` declared on this paragraph's style. Returns |None| when neither
+        resolves.
+        """
+        numPr = cast("CT_NumPr | None", self.numPr)
+        if numPr is not None:
+            return numPr
+        if not styles_cache:
+            return None
+        return self.get_style_numPr(styles_cache)
+
+    def get_style_numPr(self, styles_cache: dict[str, Any] | None) -> CT_NumPr | None:
+        """The `w:numPr` declared on this paragraph's style, or |None| if this
+        paragraph has no style, the style isn't found in `styles_cache`, or the style
+        has no `w:numPr`."""
+        pStyle = self.pStyle
+        if pStyle is None or not styles_cache:
+            return None
+        try:
+            style_pPr = cast("CT_PPr | None", styles_cache[pStyle.val].pPr)
+        except (KeyError, AttributeError):
+            return None
+        return None if style_pPr is None else cast("CT_NumPr | None", style_pPr.numPr)
 
     @property
     def ind_left(self) -> Length | None:

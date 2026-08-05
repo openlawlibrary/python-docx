@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from docx.comments import Comments
     from docx.enum.style import WD_STYLE_TYPE
     from docx.opc.coreprops import CoreProperties
+    from docx.oxml.xmlchemy import BaseOxmlElement
     from docx.settings import Settings
     from docx.styles.style import BaseStyle
 
@@ -43,6 +44,21 @@ class DocumentPart(StoryPart):
         header_part = HeaderPart.new(self.package)
         rId = self.relate_to(header_part, RT.HEADER)
         return header_part, rId
+
+    @lazyproperty
+    def cached_styles(self) -> dict[str, BaseOxmlElement]:
+        """A `{style_id: w:style-element}` mapping for every style in this document.
+
+        Building the |Styles| collection constructs a new proxy object for every
+        style on each access, which is too expensive to repeat for every paragraph
+        queried during numbering resolution -- this lazy, one-shot cache avoids that.
+        Like the numbering part's own resolution caches, this assumes styles are not
+        added or changed during a single read of the document.
+        """
+        return {
+            s.style_id: cast("BaseOxmlElement", s._element)  # pyright: ignore[reportPrivateUsage]
+            for s in self.styles
+        }
 
     @property
     def comments(self) -> Comments:

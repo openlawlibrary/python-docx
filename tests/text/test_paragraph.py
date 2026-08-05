@@ -1,5 +1,6 @@
 """Unit test suite for the docx.text.paragraph module."""
 
+from types import SimpleNamespace
 from typing import List, cast
 
 import pytest
@@ -398,3 +399,64 @@ class DescribeParagraph:
         run_ = instance_mock(request, Run, name="run_")
         run_2_ = instance_mock(request, Run, name="run_2_")
         return run_, run_2_
+
+
+class DescribeParagraphNumbering:
+    """Unit-test suite for `Paragraph.number` and the write-path numbering methods.
+
+    Uses a real numbering-part element (built from cxml) behind a mocked `part`, since
+    numbering resolution needs a genuine `w:numbering` tree to walk but doesn't need a
+    full `Document`/package.
+    """
+
+    def it_knows_its_list_item_label(self, numbering_part_):
+        body = element(
+            "w:body/("
+            "w:p/w:pPr/w:numPr/(w:ilvl{w:val=0},w:numId{w:val=1}),"
+            "w:p/w:pPr/w:numPr/(w:ilvl{w:val=0},w:numId{w:val=1})"
+            ")"
+        )
+        p0, p1 = body[0], body[1]
+        paragraph0, paragraph1 = Paragraph(p0, None), Paragraph(p1, None)
+
+        assert paragraph0.number == "1.\t"
+        assert paragraph1.number == "2.\t"
+
+    def it_is_None_for_a_paragraph_that_is_not_in_a_numbered_list(self):
+        paragraph = Paragraph(cast(CT_P, element('w:p/w:r/w:t"foobar"')), None)
+        assert paragraph.number is None
+
+    def it_can_start_a_new_numbered_list_via_add_paragraph(self, numbering_part_):
+        body = element("w:body/w:p/w:pPr/w:numPr/(w:ilvl{w:val=0},w:numId{w:val=1})")
+        seed_paragraph = Paragraph(body[0], None)
+
+        seed_paragraph.set_li_lvl(prev=None, ilvl=0)
+
+        assert seed_paragraph.number == "1.\t"
+
+    def it_can_join_an_existing_list_from_a_previous_paragraph(self, numbering_part_):
+        body = element("w:body/(w:p/w:pPr/w:numPr/(w:ilvl{w:val=0},w:numId{w:val=1}),w:p)")
+        p0, p1 = Paragraph(body[0], None), Paragraph(body[1], None)
+
+        p1.set_li_lvl(prev=p0, ilvl=None)
+
+        assert p0.number == "1.\t"
+        assert p1.number == "2.\t"
+
+    # -- fixtures --------------------------------------------------------------------------------
+
+    @pytest.fixture(autouse=True)
+    def numbering_part_(self, request):
+        """Wires `Paragraph.part` to a mock whose `.numbering_part._element` is a real,
+        single-decimal-list `w:numbering` tree, and whose `.cached_styles` is empty."""
+        numbering_el = element(
+            "w:numbering/("
+            "w:abstractNum{w:abstractNumId=0}/w:lvl{w:ilvl=0}/(w:start{w:val=1},"
+            "w:numFmt{w:val=decimal},w:lvlText{w:val=%1.}),"
+            "w:num{w:numId=1}/w:abstractNumId{w:val=0}"
+            ")"
+        )
+        document_part_ = instance_mock(request, DocumentPart)
+        document_part_.numbering_part = SimpleNamespace(_element=numbering_el)
+        document_part_.cached_styles = {}
+        return property_mock(request, Paragraph, "part", return_value=document_part_)
