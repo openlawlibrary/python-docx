@@ -31,6 +31,7 @@ from docx.shared import Emu, Length, Twips
 if TYPE_CHECKING:
     from docx.enum.table import WD_TABLE_ALIGNMENT
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.bookmark import CT_BookmarkEnd, CT_BookmarkStart
     from docx.oxml.shared import CT_OnOff, CT_String
     from docx.oxml.text.parfmt import CT_Jc
 
@@ -148,10 +149,14 @@ class CT_Tbl(BaseOxmlElement):
 
     add_tr: Callable[[], CT_Row]
     tr_lst: list[CT_Row]
+    bookmarkStart_lst: list[CT_BookmarkStart]
+    bookmarkEnd_lst: list[CT_BookmarkEnd]
 
+    bookmarkStart = ZeroOrMore("w:bookmarkStart", successors=("w:tblPr", "w:tblGrid", "w:tr"))
     tblPr: CT_TblPr = OneAndOnlyOne("w:tblPr")  # pyright: ignore[reportAssignmentType]
     tblGrid: CT_TblGrid = OneAndOnlyOne("w:tblGrid")  # pyright: ignore[reportAssignmentType]
     tr = ZeroOrMore("w:tr")
+    bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
 
     @property
     def bidiVisual_val(self) -> bool | None:

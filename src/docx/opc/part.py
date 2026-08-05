@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Type, cast
+from typing import TYPE_CHECKING, Callable, Container, Iterator, Type, cast
 
 from docx.opc.oxml import serialize_part_xml
 from docx.opc.packuri import PackURI
@@ -80,6 +80,14 @@ class Part:
         """
         if self._rel_ref_count(rId) < 2:
             del self.rels[rId]
+
+    def iter_parts_related_by(self, reltypes: Container[str]) -> Iterator[Part]:
+        """Generate each part related to this part by one of `reltypes`.
+
+        `reltypes` must be a container; `set` is convenient but list or other sequence
+        types work fine.
+        """
+        return (rel.target_part for rel in self.rels.values() if rel.reltype in reltypes)
 
     @classmethod
     def load(cls, partname: PackURI, content_type: str, blob: bytes, package: Package):

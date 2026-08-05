@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import IO, TYPE_CHECKING, cast
+from itertools import chain
+from typing import IO, TYPE_CHECKING, Iterator, cast
 
 from docx.document import Document
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from docx.comments import Comments
     from docx.enum.style import WD_STYLE_TYPE
     from docx.opc.coreprops import CoreProperties
+    from docx.opc.part import Part
     from docx.settings import Settings
     from docx.styles.style import BaseStyle
 
@@ -94,6 +96,20 @@ class DocumentPart(StoryPart):
     def inline_shapes(self):
         """The |InlineShapes| instance containing the inline shapes in the document."""
         return InlineShapes(self._element.body, self)
+
+    def iter_story_parts(self) -> Iterator[Part]:
+        """Generate each story part of this document.
+
+        A story is a sequence of block-level items (paragraphs and tables). Story parts
+        include this main document part, headers, footers, footnotes, comments, and
+        endnotes.
+        """
+        return chain(
+            (self,),
+            self.iter_parts_related_by(
+                {RT.COMMENTS, RT.ENDNOTES, RT.FOOTER, RT.FOOTNOTES, RT.HEADER}
+            ),
+        )
 
     @lazyproperty
     def numbering_part(self) -> NumberingPart:

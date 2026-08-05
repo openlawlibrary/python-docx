@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Iterator
 
 from typing_extensions import TypeAlias
 
+from docx.bookmark import BookmarkParent
 from docx.oxml.table import CT_Tbl
 from docx.oxml.text.paragraph import CT_P
 from docx.shared import StoryChild
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
 BlockItemElement: TypeAlias = "CT_Body | CT_Comment | CT_HdrFtr | CT_Tc"
 
 
-class BlockItemContainer(StoryChild):
+class BlockItemContainer(StoryChild, BookmarkParent):
     """Base class for proxy objects that can contain block items.
 
     These containers include _Body, _Cell, header, footer, footnote, endnote, comment,

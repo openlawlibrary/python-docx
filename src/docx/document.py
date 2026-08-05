@@ -8,14 +8,16 @@ from __future__ import annotations
 from typing import IO, TYPE_CHECKING, Iterator, List, Sequence
 
 from docx.blkcntnr import BlockItemContainer
+from docx.bookmark import Bookmarks
 from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_BREAK
 from docx.section import Section, Sections
-from docx.shared import ElementProxy, Emu, Inches, Length
+from docx.shared import ElementProxy, Emu, Inches, Length, lazyproperty
 from docx.text.run import Run
 
 if TYPE_CHECKING:
     import docx.types as t
+    from docx.bookmark import _Bookmark
     from docx.comments import Comment, Comments
     from docx.oxml.document import CT_Body, CT_Document
     from docx.parts.document import DocumentPart
@@ -157,6 +159,16 @@ class Document(ElementProxy):
         table.style = style
         return table
 
+    @lazyproperty
+    def bookmarks(self) -> Bookmarks:
+        """|Bookmarks| object providing access to |Bookmark| objects.
+
+        A bookmark may exist in the main document story, but also in headers, footers,
+        footnotes, or endnotes. This collection contains all bookmarks defined in any of
+        these parts.
+        """
+        return Bookmarks(self._part)
+
     @property
     def comments(self) -> Comments:
         """A |Comments| object providing access to comments added to the document."""
@@ -166,6 +178,10 @@ class Document(ElementProxy):
     def core_properties(self):
         """A |CoreProperties| object providing Dublin Core properties of document."""
         return self._part.core_properties
+
+    def end_bookmark(self, bookmark: _Bookmark) -> _Bookmark:
+        """Close `bookmark` at the end of the document body."""
+        return self._body.end_bookmark(bookmark)
 
     @property
     def inline_shapes(self):
@@ -212,6 +228,10 @@ class Document(ElementProxy):
     def settings(self) -> Settings:
         """A |Settings| object providing access to the document-level settings."""
         return self._part.settings
+
+    def start_bookmark(self, name: str) -> _Bookmark:
+        """Start a bookmark named `name` at the start of the document body."""
+        return self._body.start_bookmark(name)
 
     @property
     def styles(self):
