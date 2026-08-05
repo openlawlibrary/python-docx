@@ -201,6 +201,170 @@ class DescribeParagraph:
         assert paragraph._p.xml == expected_xml
         assert _paragraph is paragraph
 
+    def it_can_be_cloned(self):
+        paragraph = Paragraph(element('w:p/w:r/w:t"foobar"'), "parent")
+
+        clone = paragraph.clone()
+
+        assert clone is not paragraph
+        assert clone._p is not paragraph._p
+        assert clone.text == "foobar"
+        assert clone._parent == "parent"
+
+    def it_can_be_pickled_and_unpickled(self):
+        paragraph = Paragraph(element('w:p/w:r/w:t"foobar"'), "parent")
+
+        state = paragraph.__getstate__()
+
+        assert "_parent" not in state
+
+        restored = Paragraph.__new__(Paragraph)
+        restored.__setstate__(state)
+
+        assert restored.text == "foobar"
+
+    @pytest.mark.parametrize(
+        ("p_cxml", "expected_repr"),
+        [
+            ('w:p/w:r/w:t"foobar"', '<p:"foobar">'),
+            (
+                'w:p/w:r/w:t"01234567890123456789tail"',
+                '<p:"01234567890123456789...">',
+            ),
+            ("w:p", '<p:"EMPTY PARAGRAPH">'),
+        ],
+    )
+    def it_has_a_repr_useful_for_debugging(self, p_cxml: str, expected_repr: str):
+        paragraph = Paragraph(element(p_cxml), None)
+        assert repr(paragraph) == expected_repr
+
+    def it_can_remove_itself_from_its_container(self):
+        body = element('w:body/(w:p/w:r/w:t"foo", w:p/w:r/w:t"bar")')
+        paragraph = Paragraph(body[0], None)
+
+        paragraph.remove()
+
+        assert body.xml == xml('w:body/w:p/w:r/w:t"bar"')
+
+    @pytest.mark.parametrize(
+        ("p_cxml", "chars", "expected_text"),
+        [
+            ('w:p/w:r/w:t"  foobar  "', None, "foobar  "),
+            ('w:p/w:r/w:t"--foobar--"', "-", "foobar--"),
+        ],
+    )
+    def it_can_lstrip_its_text(self, p_cxml, chars, expected_text):
+        paragraph = Paragraph(element(p_cxml), None)
+        result = paragraph.lstrip(chars)
+        assert paragraph.text == expected_text
+        assert result is paragraph
+
+    @pytest.mark.parametrize(
+        ("p_cxml", "chars", "expected_text"),
+        [
+            ('w:p/w:r/w:t"  foobar  "', None, "  foobar"),
+            ('w:p/w:r/w:t"--foobar--"', "-", "--foobar"),
+        ],
+    )
+    def it_can_rstrip_its_text(self, p_cxml, chars, expected_text):
+        paragraph = Paragraph(element(p_cxml), None)
+        result = paragraph.rstrip(chars)
+        assert paragraph.text == expected_text
+        assert result is paragraph
+
+    def it_can_strip_its_text(self):
+        paragraph = Paragraph(element('w:p/w:r/w:t"  foobar  "'), None)
+        result = paragraph.strip()
+        assert paragraph.text == "foobar"
+        assert result is paragraph
+
+    def it_removes_a_run_left_empty_by_stripping(self):
+        paragraph = Paragraph(element('w:p/(w:r/w:t"   ", w:r/w:t"foobar")'), None)
+        paragraph.lstrip()
+        assert paragraph.text == "foobar"
+        assert len(paragraph.runs) == 1
+
+    def it_can_replace_a_character_throughout_its_text(self):
+        paragraph = Paragraph(element('w:p/w:r/w:t"a-b-c"'), None)
+        result = paragraph.replace_char("-", "_")
+        assert paragraph.text == "a_b_c"
+        assert result is paragraph
+
+    def it_can_replace_multiple_characters_throughout_its_text(self):
+        paragraph = Paragraph(element('w:p/w:r/w:t"a-b_c"'), None)
+        result = paragraph.replace_chars(("-", "+"), ("_", "+"))
+        assert paragraph.text == "a+b+c"
+        assert result is paragraph
+
+    def it_can_insert_text_at_a_position(self):
+        paragraph = Paragraph(element('w:p/w:r/w:t"foobar"'), None)
+        result = paragraph.insert_text(3, "-X-")
+        assert paragraph.text == "foo-X-bar"
+        assert result is paragraph
+
+    @pytest.mark.parametrize(
+        ("p_cxml", "old_text", "new_text", "expected_text"),
+        [
+            ('w:p/w:r/w:t"foobar"', "oob", "XYZ", "fXYZar"),
+            (
+                'w:p/(w:r/w:t"foo", w:r/w:t"bar")',
+                "oob",
+                "XYZ",
+                "fXYZar",
+            ),
+        ],
+    )
+    def it_can_replace_text_spanning_runs(
+        self, p_cxml: str, old_text: str, new_text: str, expected_text: str
+    ):
+        paragraph = Paragraph(element(p_cxml), None)
+        result = paragraph.replace_text(old_text, new_text)
+        assert paragraph.text == expected_text
+        assert result is paragraph
+
+    def it_can_remove_a_range_of_text_within_a_single_run(self):
+        paragraph = Paragraph(element('w:p/w:r/w:t"foobar"'), None)
+        result = paragraph.remove_text(1, 4)
+        assert paragraph.text == "far"
+        assert result is paragraph
+
+    def it_can_remove_a_range_of_text_spanning_runs(self):
+        paragraph = Paragraph(element('w:p/(w:r/w:t"foo", w:r/w:t"bar")'), None)
+        result = paragraph.remove_text(1, 5)
+        assert paragraph.text == "fr"
+        assert result is paragraph
+
+    def it_removes_a_run_left_empty_by_removing_its_text(self):
+        paragraph = Paragraph(element('w:p/(w:r/w:t"foo", w:r/w:t"bar")'), None)
+        paragraph.remove_text(0, 3)
+        assert paragraph.text == "bar"
+        assert len(paragraph.runs) == 1
+
+    def it_can_replace_line_breaks_with_spaces(self):
+        paragraph = Paragraph(element('w:p/w:r/(w:t"foo", w:br, w:t"bar")'), None)
+        assert paragraph.text == "foo\nbar"
+        paragraph.remove_new_line_breaks
+        assert paragraph.text == "foo bar"
+
+    def it_can_split_itself_at_a_position(self):
+        body = element('w:body/w:p/w:r/w:t"foobar"')
+        paragraph = Paragraph(body[0], None)
+
+        paras = paragraph.split(3)
+
+        assert len(paras) == 2
+        assert paras[0].text == "foo"
+        assert paras[1].text == "bar"
+        assert body.xml == xml('w:body/(w:p/w:r/w:t"foo", w:p/w:r/w:t"bar")')
+
+    def it_can_split_itself_at_multiple_positions(self):
+        body = element('w:body/w:p/w:r/w:t"foobarbaz"')
+        paragraph = Paragraph(body[0], None)
+
+        paras = paragraph.split(3, 6)
+
+        assert [p.text for p in paras] == ["foo", "bar", "baz"]
+
     def it_inserts_a_paragraph_before_to_help(self, _insert_before_fixture):
         paragraph, body, expected_xml = _insert_before_fixture
         new_paragraph = paragraph._insert_paragraph_before()

@@ -373,6 +373,65 @@ class DescribeRun:
 
         assert run._r.xml == xml(expected_cxml)
 
+    def it_can_be_cloned(self, paragraph_: Mock):
+        run = Run(cast(CT_R, element('w:r/w:t"foobar"')), paragraph_)
+
+        clone = run.clone()
+
+        assert clone is not run
+        assert clone._r is not run._r
+        assert clone.text == "foobar"
+        assert clone._parent is paragraph_
+
+    def it_can_be_pickled_and_unpickled(self, paragraph_: Mock):
+        run = Run(cast(CT_R, element('w:r/w:t"foobar"')), paragraph_)
+
+        state = run.__getstate__()
+
+        assert "_parent" not in state
+
+        restored = Run.__new__(Run)
+        restored.__setstate__(state)
+
+        assert restored.text == "foobar"
+
+    @pytest.mark.parametrize(
+        ("r_cxml", "expected_repr"),
+        [
+            ('w:r/w:t"foobar"', '<r:"foobar">'),
+            ('w:r/w:t"01234567890123456789tail"', '<r:"01234567890123456789...">'),
+            ("w:r", '<r:"EMPTY RUN">'),
+        ],
+    )
+    def it_has_a_repr_useful_for_debugging(self, r_cxml: str, expected_repr: str, paragraph_: Mock):
+        run = Run(cast(CT_R, element(r_cxml)), paragraph_)
+        assert repr(run) == expected_repr
+
+    @pytest.mark.parametrize(
+        ("pos", "expected_left_text", "expected_right_text"),
+        [
+            (0, None, "foobar"),
+            (6, "foobar", None),
+            (3, "foo", "bar"),
+        ],
+    )
+    def it_can_split_itself_at_a_position(
+        self,
+        pos: int,
+        expected_left_text: str | None,
+        expected_right_text: str | None,
+        paragraph_: Mock,
+    ):
+        p = element('w:p/w:r/w:t"foobar"')
+        run = Run(cast(CT_R, p[0]), paragraph_)
+
+        left, right = run.split(pos)
+
+        assert (left.text if left is not None else None) == expected_left_text
+        assert (right.text if right is not None else None) == expected_right_text
+        if left is not None and right is not None:
+            assert left._r.getnext() is right._r
+
     # -- fixtures --------------------------------------------------------------------------------
 
     @pytest.fixture

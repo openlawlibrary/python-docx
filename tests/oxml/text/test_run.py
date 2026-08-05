@@ -39,3 +39,10 @@ class DescribeCT_R:
         r = cast(CT_R, element(cxml))
 
         assert r.text == "\n\n-\tfoobar\t"
+
+    def it_can_convert_its_br_children_to_spaces(self):
+        r = cast(CT_R, element('w:r/(w:t"foo", w:br, w:t"bar")'))
+
+        r.remove_br_tag_childrens()
+
+        assert r.xml == xml('w:r/(w:t"foo", w:t" ", w:t"bar")')

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator, List, cast
+import copy
+from typing import TYPE_CHECKING, Any, Iterator, List, cast
 
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.text.run import CT_R
@@ -26,6 +27,23 @@ class Paragraph(StoryChild):
     def __init__(self, p: CT_P, parent: t.ProvidesStoryPart):
         super(Paragraph, self).__init__(parent)
         self._p = self._element = p
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_parent", None)
+        return state
+
+    def __repr__(self):
+        text_stripped = self.text.strip()
+        text = text_stripped[:20]
+        if len(text_stripped) > len(text):
+            text += "..."
+        if not text:
+            text = "EMPTY PARAGRAPH"
+        return f'<p:"{text}">'
+
+    def __setstate__(self, state: dict[str, Any]):
+        self.__dict__ = state
 
     def add_run(self, text: str | None = None, style: str | CharacterStyle | None = None) -> Run:
         """Append run containing `text` and having character-style `style`.
@@ -66,6 +84,16 @@ class Paragraph(StoryChild):
         self._p.clear_content()
         return self
 
+    def clone(self) -> Paragraph:
+        """Return a copy of this paragraph, cloned by selective deep copying.
+
+        The clone is not attached to a document body; the caller is responsible for
+        inserting it into the document tree.
+        """
+        c = copy.deepcopy(self)
+        c._parent = self._parent
+        return c
+
     @property
     def contains_page_break(self) -> bool:
         """`True` when one or more rendered page-breaks occur in this paragraph."""
@@ -91,6 +119,21 @@ class Paragraph(StoryChild):
             paragraph.style = style
         return paragraph
 
+    def insert_text(self, position: int, new_text: str) -> Paragraph:
+        """Insert `new_text` at `position` in this paragraph's text, retaining runs and
+        their formatting."""
+        runend = 0
+        runstart = 0
+        for run in self.runs:
+            runstart = runend
+            runend += len(run.text)
+            if runend >= position:
+                run.text = (
+                    run.text[: position - runstart] + new_text + run.text[position - runstart :]
+                )
+                break
+        return self
+
     def iter_inner_content(self) -> Iterator[Run | Hyperlink]:
         """Generate the runs and hyperlinks in this paragraph, in the order they appear.
 
@@ -106,11 +149,83 @@ class Paragraph(StoryChild):
                 else Hyperlink(r_or_hlink, self)
             )
 
+    def lstrip(self, chars: str | None = None) -> Paragraph:
+        """Left-strip whitespace (or `chars` if given) from this paragraph's text."""
+        while self.runs:
+            run = self.runs[0]
+            run.text = run.text.lstrip(chars)
+            if not run.text:
+                run._r.getparent().remove(run._r)  # pyright: ignore[reportPrivateUsage, reportOptionalMemberAccess]
+            else:
+                break
+        return self
+
     @property
     def paragraph_format(self):
         """The |ParagraphFormat| object providing access to the formatting properties
         for this paragraph, such as line spacing and indentation."""
         return ParagraphFormat(self._element)
+
+    @property
+    def remove_new_line_breaks(self) -> None:
+        """Replace each line-break (`w:br`) in this paragraph's runs with a space."""
+        for run in self.runs:
+            run._r.remove_br_tag_childrens()  # pyright: ignore[reportPrivateUsage]
+
+    def remove(self) -> None:
+        """Remove this paragraph from its containing document body."""
+        parent = self._p.getparent()
+        assert parent is not None
+        parent.remove(self._p)
+
+    def remove_text(self, start: int = 0, end: int = -1) -> Paragraph:
+        """Remove the text in `[start, end)`, retaining the surrounding runs and their
+        formatting."""
+        if end == -1:
+            end = len(self.text)
+        assert end > start
+        assert end <= len(self.text)
+
+        # -- special case: both start and end fall within a single run --
+        runstart = 0
+        for run in self.runs:
+            runend = runstart + len(run.text)
+            if runstart <= start and end <= runend:
+                run.text = run.text[: start - runstart] + run.text[end - runstart :]
+                if not run.text:
+                    run._r.getparent().remove(run._r)  # pyright: ignore[reportPrivateUsage, reportOptionalMemberAccess]
+                return self
+            runstart = runend
+
+        # -- general case: the removed range spans multiple runs --
+        runstart = 0
+        runidx = 0
+        while runidx < len(self.runs) and end > start:
+            run = self.runs[runidx]
+            runend = runstart + len(run.text)
+            to_del = None
+            if start <= runstart and runend <= end:
+                to_del = run
+            else:
+                if runstart <= start < runend:
+                    _, to_del = run.split(start - runstart)
+                if runstart < end <= runend:
+                    if to_del:
+                        run = to_del
+                        split_pos = end - start
+                        runidx += 1
+                    else:
+                        split_pos = end - runstart
+                    to_del, _ = run.split(split_pos)
+                else:
+                    runidx += 1
+            if to_del:
+                runstart = runend - len(to_del.text)
+                end -= len(to_del.text)
+                to_del._r.getparent().remove(to_del._r)  # pyright: ignore[reportPrivateUsage, reportOptionalMemberAccess]
+            else:
+                runstart = runend
+        return self
 
     @property
     def rendered_page_breaks(self) -> List[RenderedPageBreak]:
@@ -121,11 +236,109 @@ class Paragraph(StoryChild):
         """
         return [RenderedPageBreak(lrpb, self) for lrpb in self._p.lastRenderedPageBreaks]
 
+    def replace_char(self, oldch: str, newch: str) -> Paragraph:
+        """Replace all occurrences of `oldch` with `newch` in this paragraph's text."""
+        for run in self.runs:
+            run.text = run.text.replace(oldch, newch)
+        return self
+
+    def replace_chars(self, *replacement_pairs: tuple[str, str]) -> Paragraph:
+        """Replace, for each `(oldch, newch)` pair in `replacement_pairs`, all
+        occurrences of `oldch` with `newch` in this paragraph's text."""
+        for run in self.runs:
+            new_text = run.text
+            for oldch, newch in replacement_pairs:
+                new_text = new_text.replace(oldch, newch)
+            run.text = new_text
+        return self
+
+    def replace_text(self, old_text: str, new_text: str) -> Paragraph:
+        """Replace all occurrences of `old_text` with `new_text`, retaining run
+        formatting. `old_text` can span multiple runs; `new_text` is added to the run
+        where `old_text` starts."""
+        assert new_text
+        assert old_text
+        startpos = 0
+        while startpos < len(self.text):
+            try:
+                old_start = startpos + self.text[startpos:].index(old_text)
+                startpos = old_start + len(old_text)
+            except ValueError:
+                break
+            self.remove_text(start=old_start, end=startpos).insert_text(old_start, new_text)
+        return self
+
+    def rstrip(self, chars: str | None = None) -> Paragraph:
+        """Right-strip whitespace (or `chars` if given) from this paragraph's text."""
+        while self.runs:
+            run = self.runs[-1]
+            run.text = run.text.rstrip(chars)
+            if not run.text:
+                run._r.getparent().remove(run._r)  # pyright: ignore[reportPrivateUsage, reportOptionalMemberAccess]
+            else:
+                break
+        return self
+
     @property
     def runs(self) -> List[Run]:
         """Sequence of |Run| instances corresponding to the <w:r> elements in this
         paragraph."""
         return [Run(r, self) for r in self._p.r_lst]
+
+    def split(self, *positions: int) -> List[Paragraph]:
+        """Split this paragraph at each offset in `positions`, keeping formatting.
+
+        This paragraph is replaced in the document by the returned paragraphs: the
+        original `w:p` element (retaining its runs up to the first split position) is
+        kept and reused as the first returned paragraph, while a new `w:p` element is
+        inserted immediately after it for each subsequent segment.
+        """
+        remaining = list(positions)
+        for p in remaining:
+            assert 0 < p < len(self.text)
+        paras: List[Paragraph] = []
+        splitpos = remaining.pop(0)
+        curpos = 0
+        runidx = 0
+        curpara = self
+        next_para = curpara
+        while runidx < len(curpara.runs):
+            run = curpara.runs[runidx]
+            endpos = curpos + len(run.text)
+            if curpos <= splitpos < endpos:
+                run_split_pos = splitpos - curpos
+                lrun, _ = run.split(run_split_pos)
+                idx_cor = 0 if lrun is None else 1
+                next_para = curpara.clone()
+                for crunidx, crun in enumerate(curpara.runs):
+                    if crunidx >= runidx + idx_cor:
+                        parent = crun._r.getparent()  # pyright: ignore[reportPrivateUsage]
+                        assert parent is not None
+                        parent.remove(crun._r)  # pyright: ignore[reportPrivateUsage]
+                for crunidx, crun in enumerate(next_para.runs):
+                    if crunidx < runidx + idx_cor:
+                        parent = crun._r.getparent()  # pyright: ignore[reportPrivateUsage]
+                        assert parent is not None
+                        parent.remove(crun._r)  # pyright: ignore[reportPrivateUsage]
+                curpara._p.addnext(next_para._p)
+                paras.append(curpara)
+                if not remaining:
+                    break
+                curpos = splitpos
+                splitpos = remaining.pop(0)
+                curpara = next_para
+                runidx = 0
+            else:
+                runidx += 1
+                curpos = endpos
+
+        paras.append(next_para)
+        return paras
+
+    def strip(self, chars: str | None = None) -> Paragraph:
+        """Strip whitespace (or `chars` if given) from both ends of this paragraph's
+        text."""
+        return self.lstrip(chars).rstrip(chars)
 
     @property
     def style(self) -> ParagraphStyle | None:
