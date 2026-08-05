@@ -172,6 +172,64 @@ class DescribeTable:
         table.autofit = new_value
         assert table._tbl.xml == xml(expected_cxml)
 
+    @pytest.mark.parametrize(
+        ("tbl_cxml", "expected_value"),
+        [
+            ("w:tbl/w:tblPr", None),
+            ("w:tbl/w:tblPr/w:tblW{w:w=25%,w:type=pct}", None),
+            ("w:tbl/w:tblPr/w:tblW{w:w=1440,w:type=dxa}", Inches(1)),
+        ],
+    )
+    def it_knows_its_width(self, tbl_cxml: str, expected_value: Length | None, document_: Mock):
+        table = Table(cast(CT_Tbl, element(tbl_cxml)), document_)
+        assert table.width == expected_value
+
+    @pytest.mark.parametrize(
+        ("tbl_cxml", "new_value", "expected_cxml"),
+        [
+            ("w:tbl/w:tblPr", Inches(1), "w:tbl/w:tblPr/w:tblW{w:w=1440,w:type=dxa}"),
+            (
+                "w:tbl/w:tblPr/w:tblW{w:w=720,w:type=dxa}",
+                Inches(2),
+                "w:tbl/w:tblPr/w:tblW{w:w=2880,w:type=dxa}",
+            ),
+        ],
+    )
+    def it_can_change_its_width(
+        self, tbl_cxml: str, new_value: Length, expected_cxml: str, document_: Mock
+    ):
+        table = Table(cast(CT_Tbl, element(tbl_cxml)), document_)
+        table.width = new_value
+        assert table._tbl.xml == xml(expected_cxml)
+
+    def it_knows_its_borders(self, document_: Mock):
+        table = Table(cast(CT_Tbl, element("w:tbl/w:tblPr")), document_)
+        assert table.borders == ["none", "none", "none", "none"]
+
+    def it_can_change_its_borders(self, document_: Mock):
+        table = Table(cast(CT_Tbl, element("w:tbl/w:tblPr")), document_)
+        table.borders = ["single", "dotted", "dotted", "none"]
+        assert table.borders == ["single", "dotted", "dotted", "none"]
+
+    def it_raises_on_setting_borders_to_other_than_4_elements(self, document_: Mock):
+        table = Table(cast(CT_Tbl, element("w:tbl/w:tblPr")), document_)
+        with pytest.raises(ValueError, match="Borders are set with list of 4 elements"):
+            table.borders = ["single", "single", "single"]
+
+    def it_knows_its_margins(self, document_: Mock):
+        table = Table(cast(CT_Tbl, element("w:tbl/w:tblPr")), document_)
+        assert table.margins == [None, None, None, None]
+
+    def it_can_change_its_margins(self, document_: Mock):
+        table = Table(cast(CT_Tbl, element("w:tbl/w:tblPr")), document_)
+        table.margins = [Inches(1), Inches(1), Inches(1), Inches(1)]
+        assert table.margins == [Inches(1), Inches(1), Inches(1), Inches(1)]
+
+    def it_raises_on_setting_margins_to_other_than_4_elements(self, document_: Mock):
+        table = Table(cast(CT_Tbl, element("w:tbl/w:tblPr")), document_)
+        with pytest.raises(ValueError, match="Margins are set with list of 4 elements"):
+            table.margins = [Inches(1), Inches(1)]
+
     def it_knows_it_is_the_table_its_children_belong_to(self, table: Table):
         assert table.table is table
 
@@ -449,6 +507,38 @@ class Describe_Cell:
         cell.width = new_value
         assert cell.width == new_value
         assert cell._tc.xml == xml(expected_cxml)
+
+    def it_knows_its_borders(self, parent_: Mock):
+        cell = _Cell(cast(CT_Tc, element("w:tc")), parent_)
+        assert cell.borders == ["none", "none", "none", "none"]
+
+    def it_can_change_its_borders(self, parent_: Mock):
+        cell = _Cell(cast(CT_Tc, element("w:tc")), parent_)
+        cell.borders = ["single", "dotted", "dotted", "none"]
+        assert cell.borders == ["single", "dotted", "dotted", "none"]
+
+    def it_raises_on_setting_borders_to_other_than_4_elements(self, parent_: Mock):
+        cell = _Cell(cast(CT_Tc, element("w:tc")), parent_)
+        with pytest.raises(ValueError, match="Borders are set with list of 4 elements"):
+            cell.borders = ["single", "single", "single"]
+
+    @pytest.mark.parametrize(
+        ("tc_cxml", "expected_value"),
+        [
+            ("w:tc", None),
+            ("w:tc/w:tcPr", None),
+            ("w:tc/w:tcPr/w:textDirection{w:val=tbRl}", "tbRl"),
+        ],
+    )
+    def it_knows_its_text_direction(self, tc_cxml: str, expected_value: str | None, parent_: Mock):
+        cell = _Cell(cast(CT_Tc, element(tc_cxml)), parent_)
+        assert cell.text_direction == expected_value
+
+    def it_can_change_its_text_direction(self, parent_: Mock):
+        cell = _Cell(cast(CT_Tc, element("w:tc")), parent_)
+        cell.text_direction = "btLr"
+        assert cell.text_direction == "btLr"
+        assert cell._tc.xml == xml("w:tc/w:tcPr/w:textDirection{w:val=btLr}")
 
     def it_provides_access_to_the_paragraphs_it_contains(self, parent_: Mock):
         cell = _Cell(cast(CT_Tc, element("w:tc/(w:p, w:p)")), parent_)
@@ -780,6 +870,35 @@ class Describe_Row:
     ):
         row = _Row(cast(CT_Row, element(tr_cxml)), parent_)
         row.height_rule = new_value
+        assert row._tr.xml == xml(expected_cxml)
+
+    @pytest.mark.parametrize(
+        ("tr_cxml", "expected_value"),
+        [
+            ("w:tr", False),
+            ("w:tr/w:trPr", False),
+            ("w:tr/w:trPr/w:tblHeader", True),
+            ("w:tr/w:trPr/w:tblHeader{w:val=0}", False),
+        ],
+    )
+    def it_knows_whether_it_repeats_as_a_header_row(
+        self, tr_cxml: str, expected_value: bool, parent_: Mock
+    ):
+        row = _Row(cast(CT_Row, element(tr_cxml)), parent_)
+        assert row.repeat_header_row is expected_value
+
+    @pytest.mark.parametrize(
+        ("tr_cxml", "new_value", "expected_cxml"),
+        [
+            ("w:tr", True, "w:tr/w:trPr/w:tblHeader"),
+            ("w:tr/w:trPr/w:tblHeader", False, "w:tr/w:trPr"),
+        ],
+    )
+    def it_can_change_whether_it_repeats_as_a_header_row(
+        self, tr_cxml: str, new_value: bool, expected_cxml: str, parent_: Mock
+    ):
+        row = _Row(cast(CT_Row, element(tr_cxml)), parent_)
+        row.repeat_header_row = new_value
         assert row._tr.xml == xml(expected_cxml)
 
     @pytest.mark.parametrize(
