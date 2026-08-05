@@ -106,6 +106,8 @@ class DescribeParagraphFormat:
             ("w:p", None),
             ("w:p/w:pPr", None),
             ("w:p/w:pPr/w:jc{w:val=center}", WD_ALIGN_PARAGRAPH.CENTER),
+            ("w:p/w:pPr/w:jc{w:val=start}", WD_ALIGN_PARAGRAPH.LEFT),
+            ("w:p/w:pPr/w:jc{w:val=end}", WD_ALIGN_PARAGRAPH.RIGHT),
         ]
     )
     def alignment_get_fixture(self, request):
