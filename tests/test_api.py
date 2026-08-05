@@ -41,6 +41,26 @@ class DescribeDocument:
         with pytest.raises(ValueError, match="file 'foobar.xlsx' is not a Word file,"):
             DocumentFactoryFn("foobar.xlsx")
 
+    def it_opens_a_flat_opc_xml_string(self, Package_: Mock, document_: Mock):
+        document_part = Package_.open.return_value.main_document_part
+        document_part.document = document_
+        document_part.content_type = CT.WML_DOCUMENT_MAIN
+
+        document = DocumentFactoryFn(word_open_xml="<pkg:package/>")
+
+        Package_.open.assert_called_once_with("<pkg:package/>", is_from_file=False)
+        assert document is document_
+
+    def it_raises_on_not_a_Word_document_from_flat_opc(self, Package_: Mock):
+        Package_.open.return_value.main_document_part.content_type = "BOGUS"
+
+        with pytest.raises(ValueError, match="string '<pkg:package/>' is not a Word document,"):
+            DocumentFactoryFn(word_open_xml="<pkg:package/>")
+
+    def it_raises_when_both_docx_and_word_open_xml_are_specified(self):
+        with pytest.raises(ValueError, match="Must either specify docx or word_open_xml"):
+            DocumentFactoryFn("foobar.docx", word_open_xml="<pkg:package/>")
+
     # -- fixtures --------------------------------------------------------------------------------
 
     @pytest.fixture
