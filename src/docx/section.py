@@ -59,6 +59,59 @@ class Section:
         self._sectPr.titlePg_val = value
 
     @property
+    def endnote_number_format(self) -> str:
+        """The numbering format used for endnotes in this section, e.g. `'decimal'`.
+
+        Read/write. Defaults to `'decimal'` when not explicitly set.
+        """
+        return self._sectPr.endnote_number_format
+
+    @endnote_number_format.setter
+    def endnote_number_format(self, value: str):
+        self._sectPr.endnote_number_format = value
+
+    @property
+    def endnote_numbering_restart_location(self) -> str:
+        """When endnote numbering restarts in this section: one of `'continuous'`,
+        `'eachSect'`, or `'eachPage'`.
+
+        Read/write. Defaults to `'continuous'` when not explicitly set. Raises
+        |XmlchemyError| when set to a value other than `'continuous'` while
+        :attr:`.endnote_numbering_start_value` is not `1`.
+        """
+        return self._sectPr.endnote_numbering_restart_location
+
+    @endnote_numbering_restart_location.setter
+    def endnote_numbering_restart_location(self, value: str):
+        self._sectPr.endnote_numbering_restart_location = value
+
+    @property
+    def endnote_numbering_start_value(self) -> int:
+        """The number at which endnote numbering starts in this section.
+
+        Read/write. Defaults to `1` when not explicitly set. Raises |XmlchemyError|
+        when set to a value other than `1` while
+        :attr:`.endnote_numbering_restart_location` is not `'continuous'`.
+        """
+        return self._sectPr.endnote_numbering_start_value
+
+    @endnote_numbering_start_value.setter
+    def endnote_numbering_start_value(self, value: int):
+        self._sectPr.endnote_numbering_start_value = value
+
+    @property
+    def endnote_position(self) -> str:
+        """Where endnotes appear in this section: one of `'docEnd'` or `'sectEnd'`.
+
+        Read/write. Defaults to `'docEnd'` when not explicitly set.
+        """
+        return self._sectPr.endnote_position
+
+    @endnote_position.setter
+    def endnote_position(self, value: str):
+        self._sectPr.endnote_position = value
+
+    @property
     def even_page_footer(self) -> _Footer:
         """|_Footer| object defining footer content for even pages.
 
@@ -114,6 +167,61 @@ class Section:
     @footer_distance.setter
     def footer_distance(self, value: int | Length | None):
         self._sectPr.footer = value
+
+    @property
+    def footnote_number_format(self) -> str:
+        """The numbering format used for footnotes in this section, e.g.
+        `'decimal'`.
+
+        Read/write. Defaults to `'decimal'` when not explicitly set.
+        """
+        return self._sectPr.footnote_number_format
+
+    @footnote_number_format.setter
+    def footnote_number_format(self, value: str):
+        self._sectPr.footnote_number_format = value
+
+    @property
+    def footnote_numbering_restart_location(self) -> str:
+        """When footnote numbering restarts in this section: one of `'continuous'`,
+        `'eachSect'`, or `'eachPage'`.
+
+        Read/write. Defaults to `'continuous'` when not explicitly set. Raises
+        |XmlchemyError| when set to a value other than `'continuous'` while
+        :attr:`.footnote_numbering_start_value` is not `1`.
+        """
+        return self._sectPr.footnote_numbering_restart_location
+
+    @footnote_numbering_restart_location.setter
+    def footnote_numbering_restart_location(self, value: str):
+        self._sectPr.footnote_numbering_restart_location = value
+
+    @property
+    def footnote_numbering_start_value(self) -> int:
+        """The number at which footnote numbering starts in this section.
+
+        Read/write. Defaults to `1` when not explicitly set. Raises |XmlchemyError|
+        when set to a value other than `1` while
+        :attr:`.footnote_numbering_restart_location` is not `'continuous'`.
+        """
+        return self._sectPr.footnote_numbering_start_value
+
+    @footnote_numbering_start_value.setter
+    def footnote_numbering_start_value(self, value: int):
+        self._sectPr.footnote_numbering_start_value = value
+
+    @property
+    def footnote_position(self) -> str:
+        """Where footnotes appear in this section: one of `'pageBottom'` or
+        `'beneathText'`.
+
+        Read/write. Defaults to `'pageBottom'` when not explicitly set.
+        """
+        return self._sectPr.footnote_position
+
+    @footnote_position.setter
+    def footnote_position(self, value: str):
+        self._sectPr.footnote_position = value
 
     @property
     def gutter(self) -> Length | None:

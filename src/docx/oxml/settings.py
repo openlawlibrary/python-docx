@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable
 from docx.oxml.xmlchemy import BaseOxmlElement, ZeroOrOne
 
 if TYPE_CHECKING:
+    from docx.oxml.section import CT_FtnEdnProps
     from docx.oxml.shared import CT_OnOff
 
 
@@ -14,6 +15,8 @@ class CT_Settings(BaseOxmlElement):
     """`w:settings` element, root element for the settings part."""
 
     get_or_add_evenAndOddHeaders: Callable[[], CT_OnOff]
+    get_or_add_footnotePr: Callable[[], CT_FtnEdnProps]
+    get_or_add_endnotePr: Callable[[], CT_FtnEdnProps]
     _remove_evenAndOddHeaders: Callable[[], None]
 
     _tag_seq = (
@@ -119,7 +122,26 @@ class CT_Settings(BaseOxmlElement):
     evenAndOddHeaders: CT_OnOff | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "w:evenAndOddHeaders", successors=_tag_seq[48:]
     )
+    footnotePr: CT_FtnEdnProps | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:footnotePr", successors=_tag_seq[79:]
+    )
+    endnotePr: CT_FtnEdnProps | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:endnotePr", successors=_tag_seq[80:]
+    )
     del _tag_seq
+
+    @property
+    def endnote_position(self) -> str | None:
+        """Document-level default endnote position: value of
+        `./w:endnotePr/w:pos/@w:val`, or |None| if not present."""
+        endnotePr = self.endnotePr
+        return None if endnotePr is None else endnotePr.pos_val
+
+    @endnote_position.setter
+    def endnote_position(self, value: str | None):
+        if value is None:
+            return
+        self.get_or_add_endnotePr().pos_val = value
 
     @property
     def evenAndOddHeaders_val(self) -> bool:
@@ -136,3 +158,16 @@ class CT_Settings(BaseOxmlElement):
             return
 
         self.get_or_add_evenAndOddHeaders().val = value
+
+    @property
+    def footnote_position(self) -> str | None:
+        """Document-level default footnote position: value of
+        `./w:footnotePr/w:pos/@w:val`, or |None| if not present."""
+        footnotePr = self.footnotePr
+        return None if footnotePr is None else footnotePr.pos_val
+
+    @footnote_position.setter
+    def footnote_position(self, value: str | None):
+        if value is None:
+            return
+        self.get_or_add_footnotePr().pos_val = value

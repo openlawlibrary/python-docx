@@ -274,6 +274,12 @@ class ST_DrawingElementId(XsdUnsignedInt):
     pass
 
 
+class ST_FtnPos(XsdStringEnumeration):
+    """Valid values for `w:footnotePr/w:pos/@w:val` and `w:endnotePr/w:pos/@w:val`."""
+
+    _members = ("pageBottom", "beneathText", "sectEnd", "docEnd")
+
+
 class ST_HexColor(BaseStringType):
     @classmethod
     def convert_from_xml(  # pyright: ignore[reportIncompatibleMethodOverride]
@@ -333,6 +339,14 @@ class ST_Merge(XsdStringEnumeration):
     _members = (CONTINUE, RESTART)
 
 
+class ST_NumberFormat(XsdString):
+    """Valid values for `w:numFmt/@w:val`.
+
+    Deliberately unvalidated (`XsdString`, not an enumeration) since Word supports a
+    large and growing set of numbering-format values here.
+    """
+
+
 class ST_OnOff(XsdBoolean):
     @classmethod
     def convert_from_xml(cls, str_value: str) -> bool:
@@ -356,6 +370,12 @@ class ST_PositiveCoordinate(XsdLong):
 
 class ST_RelationshipId(XsdString):
     pass
+
+
+class ST_RestartNumber(XsdStringEnumeration):
+    """Valid values for `w:numRestart/@w:val`."""
+
+    _members = ("continuous", "eachSect", "eachPage")
 
 
 class ST_SignedTwipsMeasure(XsdInt):

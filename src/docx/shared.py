@@ -17,6 +17,7 @@ from typing import (
 
 if TYPE_CHECKING:
     import docx.types as t
+    from docx.document import Document
     from docx.opc.part import XmlPart
     from docx.oxml.xmlchemy import BaseOxmlElement
     from docx.parts.story import StoryPart
@@ -351,6 +352,17 @@ class StoryChild:
     def part(self) -> StoryPart:
         """The package part containing this object."""
         return self._parent.part
+
+
+def find_containing_document(story_child: StoryChild) -> Document:
+    """The |Document| that ultimately contains `story_child`.
+
+    Works for a `story_child` located anywhere in the document -- directly in the
+    document body, or nested in a header, footer, comment, footnote, or endnote --
+    since every story part resolves its own `._document_part` back to the main
+    document part.
+    """
+    return story_child.part._document_part.document  # pyright: ignore[reportPrivateUsage]
 
 
 class TextAccumulator:

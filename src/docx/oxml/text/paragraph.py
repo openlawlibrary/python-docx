@@ -55,6 +55,16 @@ class CT_P(BaseOxmlElement):
             self.remove(child)
 
     @property
+    def endnote_reference_ids(self) -> List[int]:
+        """The `@w:id` of each `w:endnoteReference` in this paragraph's runs."""
+        return [id for r in self.r_lst for id in r.endnote_reference_ids]
+
+    @property
+    def footnote_reference_ids(self) -> List[int]:
+        """The `@w:id` of each `w:footnoteReference` in this paragraph's runs."""
+        return [id for r in self.r_lst for id in r.footnote_reference_ids]
+
+    @property
     def inner_content_elements(self) -> List[CT_R | CT_Hyperlink]:
         """Run and hyperlink children of the `w:p` element, in document order."""
         return self.xpath("./w:r | ./w:hyperlink")

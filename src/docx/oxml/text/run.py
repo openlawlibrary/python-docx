@@ -14,6 +14,7 @@ from docx.shared import TextAccumulator
 
 if TYPE_CHECKING:
     from docx.oxml.shape import CT_Anchor, CT_Inline
+    from docx.oxml.text.footnote_reference import CT_FtnEdnRef
     from docx.oxml.text.pagebreak import CT_LastRenderedPageBreak
     from docx.oxml.text.parfmt import CT_TabStop
 
@@ -29,6 +30,12 @@ class CT_R(BaseOxmlElement):
     get_or_add_rPr: Callable[[], CT_RPr]
     _add_drawing: Callable[[], CT_Drawing]
     _add_t: Callable[..., CT_Text]
+    _add_footnoteReference: Callable[[], CT_FtnEdnRef]
+    _add_endnoteReference: Callable[[], CT_FtnEdnRef]
+    _add_footnoteRef: Callable[[], CT_FtnEdnRef]
+    _add_endnoteRef: Callable[[], CT_FtnEdnRef]
+    footnoteReference_lst: List[CT_FtnEdnRef]
+    endnoteReference_lst: List[CT_FtnEdnRef]
 
     rPr: CT_RPr | None = ZeroOrOne("w:rPr")  # pyright: ignore[reportAssignmentType]
     br = ZeroOrMore("w:br")
@@ -36,6 +43,40 @@ class CT_R(BaseOxmlElement):
     drawing = ZeroOrMore("w:drawing")
     t = ZeroOrMore("w:t")
     tab = ZeroOrMore("w:tab")
+    footnoteReference = ZeroOrMore("w:footnoteReference")
+    footnoteRef = ZeroOrMore("w:footnoteRef")
+    endnoteReference = ZeroOrMore("w:endnoteReference")
+    endnoteRef = ZeroOrMore("w:endnoteRef")
+
+    def add_footnoteReference(self, id: int) -> CT_FtnEdnRef:
+        """Return a newly added `w:footnoteReference` element containing `id`."""
+        rPr = self.get_or_add_rPr()
+        rPr.style = "FootnoteReference"
+        new_fr = self._add_footnoteReference()
+        new_fr.id = id
+        return new_fr
+
+    def add_endnoteReference(self, id: int) -> CT_FtnEdnRef:
+        """Return a newly added `w:endnoteReference` element containing `id`."""
+        rPr = self.get_or_add_rPr()
+        rPr.style = "EndnoteReference"
+        new_er = self._add_endnoteReference()
+        new_er.id = id
+        return new_er
+
+    def add_footnoteRef(self) -> CT_FtnEdnRef:
+        """Return a newly added `w:footnoteRef` element.
+
+        This element displays the footnote reference mark within the footnote itself.
+        """
+        return self._add_footnoteRef()
+
+    def add_endnoteRef(self) -> CT_FtnEdnRef:
+        """Return a newly added `w:endnoteRef` element.
+
+        This element displays the endnote reference mark within the endnote itself.
+        """
+        return self._add_endnoteRef()
 
     def add_t(self, text: str) -> CT_Text:
         """Return a newly added `<w:t>` element containing `text`."""
@@ -54,10 +95,43 @@ class CT_R(BaseOxmlElement):
         return drawing
 
     def clear_content(self) -> None:
-        """Remove all child elements except a `w:rPr` element if present."""
-        # -- remove all run inner-content except a `w:rPr` when present. --
-        for e in self.xpath("./*[not(self::w:rPr)]"):
+        """Remove all child elements except a `w:rPr`, `w:footnoteReference`, or
+        `w:endnoteReference` element if present."""
+        # -- remove all run inner-content except a `w:rPr` when present, and keep any
+        # -- footnote/endnote reference since those anchor content elsewhere in the
+        # -- document that would otherwise become orphaned.
+        for e in self.xpath(
+            "./*[not(self::w:rPr)"
+            " and not(self::w:footnoteReference)"
+            " and not(self::w:endnoteReference)]"
+        ):
             self.remove(e)
+
+    @property
+    def endnote_reference_ids(self) -> Iterator[int]:
+        """Generate the `@w:id` of each `w:endnoteReference` child of this run."""
+        for child in self:
+            if child.tag == qn("w:endnoteReference"):
+                yield cast("CT_FtnEdnRef", child).id
+
+    @property
+    def footnote_reference_ids(self) -> Iterator[int]:
+        """Generate the `@w:id` of each `w:footnoteReference` child of this run."""
+        for child in self:
+            if child.tag == qn("w:footnoteReference"):
+                yield cast("CT_FtnEdnRef", child).id
+
+    def increment_containing_endnote_reference_ids(self) -> None:
+        """Increment the `@w:id` of each `w:endnoteReference` child of this run by
+        one."""
+        for endnoteReference in self.endnoteReference_lst:
+            endnoteReference.id += 1
+
+    def increment_containing_footnote_reference_ids(self) -> None:
+        """Increment the `@w:id` of each `w:footnoteReference` child of this run by
+        one."""
+        for footnoteReference in self.footnoteReference_lst:
+            footnoteReference.id += 1
 
     @property
     def inner_content_items(self) -> List[str | CT_Drawing | CT_LastRenderedPageBreak]:
