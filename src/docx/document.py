@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from docx.comments import Comment, Comments
     from docx.oxml.document import CT_Body, CT_Document
     from docx.parts.document import DocumentPart
+    from docx.sdt import SdtBase
     from docx.settings import Settings
     from docx.styles.style import ParagraphStyle, _TableStyle
     from docx.table import Table
@@ -137,6 +138,11 @@ class Document(ElementProxy):
         run = self.add_paragraph().add_run()
         return run.add_picture(image_path_or_stream, width, height)
 
+    def add_sdt(self, tag_name: str, alias_name: str = "") -> SdtBase:
+        """Return a content control (structured document tag) newly added to the end
+        of the document body, tagged `tag_name`."""
+        return self._body.add_sdt(tag_name, alias_name)
+
     def add_section(self, start_type: WD_SECTION = WD_SECTION.NEW_PAGE):
         """Return a |Section| object newly added at the end of the document.
 
@@ -202,6 +208,18 @@ class Document(ElementProxy):
         file-like object.
         """
         self._part.save(path_or_stream)
+
+    @property
+    def sdts(self) -> dict[str | None, SdtBase]:
+        """The content controls directly contained in the document body, keyed by tag
+        name."""
+        return self._body.sdts
+
+    @property
+    def sdts_all(self) -> dict[str | None, SdtBase]:
+        """The content controls contained anywhere in the document, including in its
+        headers and footers, keyed by tag name."""
+        return self._body.sdts_all
 
     @property
     def sections(self) -> Sections:

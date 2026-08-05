@@ -8,6 +8,7 @@ from docx.oxml.section import CT_SectPr
 from docx.oxml.xmlchemy import BaseOxmlElement, ZeroOrMore, ZeroOrOne
 
 if TYPE_CHECKING:
+    from docx.oxml.sdts import CT_SdtBase
     from docx.oxml.table import CT_Tbl
     from docx.oxml.text.paragraph import CT_P
 
@@ -39,9 +40,12 @@ class CT_Body(BaseOxmlElement):
     get_or_add_sectPr: Callable[[], CT_SectPr]
     p_lst: List[CT_P]
     tbl_lst: List[CT_Tbl]
+    sdt_lst: List[CT_SdtBase]
+    _new_sdt: Callable[[], CT_SdtBase]
 
     _insert_tbl: Callable[[CT_Tbl], CT_Tbl]
 
+    sdt = ZeroOrMore("w:sdt", successors=("w:p", "w:tbl", "w:sectPr"))
     p = ZeroOrMore("w:p", successors=("w:sectPr",))
     tbl = ZeroOrMore("w:tbl", successors=("w:sectPr",))
     sectPr: CT_SectPr | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]

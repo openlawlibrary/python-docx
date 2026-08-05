@@ -16,7 +16,9 @@ from docx.text.run import Run
 if TYPE_CHECKING:
     import docx.types as t
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    from docx.oxml.text.font import CT_RPr
     from docx.oxml.text.paragraph import CT_P
+    from docx.sdt import SdtBase
     from docx.styles.style import CharacterStyle
 
 
@@ -42,6 +44,49 @@ class Paragraph(StoryChild):
         if style:
             run.style = style
         return run
+
+    def add_sdt(
+        self,
+        tag_name: str,
+        text: str = "",
+        alias_name: str = "",
+        placeholder_txt: str | None = None,
+        style: str = "Normal",
+        bold: bool = False,
+        italic: bool = False,
+    ) -> SdtBase:
+        """Return a new inline content control (structured document tag) appended to
+        the end of this paragraph, tagged `tag_name`.
+
+        When `text` is not provided, the content control displays `placeholder_txt`
+        (or a default prompt) as its placeholder text. `alias_name` defaults to
+        `tag_name` when not provided. `style`, `bold`, and `italic` apply character
+        formatting to the content control's default and, when `text` is provided, its
+        actual content.
+        """
+        from docx.sdt import SdtBase
+
+        sdt = self._p._new_sdt()  # pyright: ignore[reportPrivateUsage]
+        sdtPr = sdt.get_or_add_sdtPr()
+        sdtPr.name = tag_name
+        sdtPr.alias_val = alias_name or tag_name
+        _apply_run_formatting(sdtPr.get_or_add_rPr(), style, bold, italic)
+
+        sdtContent = sdt.get_or_add_sdtContent()
+        r = sdtContent._add_r()  # pyright: ignore[reportPrivateUsage]
+        if text:
+            _apply_run_formatting(r.get_or_add_rPr(), style, bold, italic)
+            r.text = text
+        else:
+            rPr = r.get_or_add_rPr()
+            rPr.get_or_add_rStyle().val = "PlaceholderText"
+            rPr.get_or_add_b()
+            rPr.get_or_add_bCs()
+            r.text = placeholder_txt or "Click or tap here to enter text"
+            sdtPr.active_placeholder = True
+
+        self._p.append(sdt)
+        return SdtBase(sdt, self)
 
     @property
     def alignment(self) -> WD_PARAGRAPH_ALIGNMENT | None:
@@ -128,6 +173,14 @@ class Paragraph(StoryChild):
         return [Run(r, self) for r in self._p.r_lst]
 
     @property
+    def sdts(self) -> List[SdtBase]:
+        """The inline content controls (structured document tags) directly contained
+        in this paragraph, in document order."""
+        from docx.sdt import SdtBase
+
+        return [SdtBase(sdt, self) for sdt in self._p.sdt_lst]
+
+    @property
     def style(self) -> ParagraphStyle | None:
         """Read/Write.
 
@@ -171,3 +224,16 @@ class Paragraph(StoryChild):
         """Return a newly created paragraph, inserted directly before this paragraph."""
         p = self._p.add_p_before()
         return Paragraph(p, self._parent)
+
+
+def _apply_run_formatting(rPr: CT_RPr, style: str, bold: bool, italic: bool) -> None:
+    """Apply `style`, `bold`, and `italic` to `rPr`, a run-properties element not
+    otherwise attached to a `Run` proxy object (such as a content control's default
+    `w:sdtPr/w:rPr`)."""
+    if style != "Normal":
+        rPr.get_or_add_rStyle().val = style
+    if bold:
+        rPr.get_or_add_b()
+        rPr.get_or_add_bCs()
+    if italic:
+        rPr.get_or_add_i()

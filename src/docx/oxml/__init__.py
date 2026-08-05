@@ -24,6 +24,7 @@ from docx.oxml.shape import (
     CT_ShapeProperties,
     CT_Transform2D,
 )
+from docx.oxml.sdts import CT_SdtBase, CT_SdtContentBase, CT_SdtPr
 from docx.oxml.shared import CT_DecimalNumber, CT_OnOff, CT_String
 from docx.oxml.text.hyperlink import CT_Hyperlink
 from docx.oxml.text.pagebreak import CT_LastRenderedPageBreak
@@ -65,6 +66,16 @@ register_element_cls("wp:inline", CT_Inline)
 # hyperlink-related elements
 
 register_element_cls("w:hyperlink", CT_Hyperlink)
+
+# ---------------------------------------------------------------------------
+# content-control (structured-document-tag) elements
+
+register_element_cls("w:alias", CT_String)
+register_element_cls("w:sdt", CT_SdtBase)
+register_element_cls("w:sdtContent", CT_SdtContentBase)
+register_element_cls("w:sdtPr", CT_SdtPr)
+register_element_cls("w:showingPlcHdr", CT_OnOff)
+register_element_cls("w:tag", CT_String)
 
 # ---------------------------------------------------------------------------
 # text-related elements
