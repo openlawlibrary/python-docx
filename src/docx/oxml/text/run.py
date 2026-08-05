@@ -9,6 +9,7 @@ from docx.oxml.ns import qn
 from docx.oxml.parser import OxmlElement
 from docx.oxml.simpletypes import ST_BrClear, ST_BrType
 from docx.oxml.text.font import CT_RPr
+from docx.oxml.text.symbol import CT_Sym
 from docx.oxml.xmlchemy import BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne
 from docx.shared import TextAccumulator
 
@@ -28,12 +29,14 @@ class CT_R(BaseOxmlElement):
     add_tab: Callable[[], CT_TabStop]
     get_or_add_rPr: Callable[[], CT_RPr]
     _add_drawing: Callable[[], CT_Drawing]
+    _add_sym: Callable[[], CT_Sym]
     _add_t: Callable[..., CT_Text]
 
     rPr: CT_RPr | None = ZeroOrOne("w:rPr")  # pyright: ignore[reportAssignmentType]
     br = ZeroOrMore("w:br")
     cr = ZeroOrMore("w:cr")
     drawing = ZeroOrMore("w:drawing")
+    sym = ZeroOrMore("w:sym")
     t = ZeroOrMore("w:t")
     tab = ZeroOrMore("w:tab")
 
@@ -43,6 +46,15 @@ class CT_R(BaseOxmlElement):
         if len(text.strip()) < len(text):
             t.set(qn("xml:space"), "preserve")
         return t
+
+    def add_symbol(self, char: str | None, font: str | None) -> CT_Sym:
+        """Return a newly added `<w:sym>` element with `char`/`font` attributes."""
+        sym = self._add_sym()
+        if char is not None:
+            sym.char = char
+        if font is not None:
+            sym.font = font
+        return sym
 
     def add_drawing(self, inline_or_anchor: CT_Inline | CT_Anchor) -> CT_Drawing:
         """Return newly appended `CT_Drawing` (`w:drawing`) child element.
@@ -74,6 +86,7 @@ class CT_R(BaseOxmlElement):
                 " | w:lastRenderedPageBreak"
                 " | w:noBreakHyphen"
                 " | w:ptab"
+                " | w:sym"
                 " | w:t"
                 " | w:tab"
             ):
@@ -134,7 +147,8 @@ class CT_R(BaseOxmlElement):
         equivalent.
         """
         return "".join(
-            str(e) for e in self.xpath("w:br | w:cr | w:noBreakHyphen | w:ptab | w:t | w:tab")
+            str(e)
+            for e in self.xpath("w:br | w:cr | w:noBreakHyphen | w:ptab | w:sym | w:t | w:tab")
         )
 
     @text.setter

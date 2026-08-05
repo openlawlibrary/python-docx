@@ -35,6 +35,7 @@ from docx.oxml.text.run import (
     CT_PTab,
     CT_Text,
 )
+from docx.oxml.text.symbol import CT_Sym
 
 # -- `OxmlElement` and `parse_xml()` are not used in this module but several downstream
 # -- "extension" packages expect to find them here and there's no compelling reason
@@ -75,6 +76,7 @@ register_element_cls("w:lastRenderedPageBreak", CT_LastRenderedPageBreak)
 register_element_cls("w:noBreakHyphen", CT_NoBreakHyphen)
 register_element_cls("w:ptab", CT_PTab)
 register_element_cls("w:r", CT_R)
+register_element_cls("w:sym", CT_Sym)
 register_element_cls("w:t", CT_Text)
 
 # ---------------------------------------------------------------------------
