@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     import docx.types as t
     from docx.bookmark import _Bookmark
     from docx.comments import Comment, Comments
+    from docx.opc.customprops import CustomProperties
+    from docx.opc.extendedprops import ExtendedProperties
     from docx.oxml.document import CT_Body, CT_Document
     from docx.parts.document import DocumentPart
     from docx.sdt import SdtBase
@@ -188,6 +190,18 @@ class Document(ElementProxy):
     def end_bookmark(self, bookmark: _Bookmark) -> _Bookmark:
         """Close `bookmark` at the end of the document body."""
         return self._body.end_bookmark(bookmark)
+
+    @property
+    def custom_properties(self) -> CustomProperties:
+        """A |CustomProperties| object providing read/write access to the custom
+        properties of this document."""
+        return self._part.custom_properties
+
+    @property
+    def extended_properties(self) -> ExtendedProperties:
+        """An |ExtendedProperties| object providing read/write access to the extended
+        properties of this document."""
+        return self._part.extended_properties
 
     @property
     def inline_shapes(self):

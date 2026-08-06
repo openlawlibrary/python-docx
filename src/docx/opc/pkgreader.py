@@ -1,6 +1,7 @@
 """Low-level, read-only API to a serialized Open Packaging Convention (OPC) package."""
 
 from docx.opc.constants import RELATIONSHIP_TARGET_MODE as RTM
+from docx.opc.non_phys_pkg import StrPkgReader
 from docx.opc.oxml import parse_xml
 from docx.opc.packuri import PACKAGE_URI, PackURI
 from docx.opc.phys_pkg import PhysPkgReader
@@ -20,6 +21,17 @@ class PackageReader:
     def from_file(pkg_file):
         """Return a |PackageReader| instance loaded with contents of `pkg_file`."""
         phys_reader = PhysPkgReader(pkg_file)
+        content_types = _ContentTypeMap.from_xml(phys_reader.content_types_xml)
+        pkg_srels = PackageReader._srels_for(phys_reader, PACKAGE_URI)
+        sparts = PackageReader._load_serialized_parts(phys_reader, pkg_srels, content_types)
+        phys_reader.close()
+        return PackageReader(content_types, pkg_srels, sparts)
+
+    @staticmethod
+    def from_str(pkg_str):
+        """Return a |PackageReader| instance loaded with contents of `pkg_str`, a
+        "flat OPC" XML string."""
+        phys_reader = StrPkgReader(pkg_str)
         content_types = _ContentTypeMap.from_xml(phys_reader.content_types_xml)
         pkg_srels = PackageReader._srels_for(phys_reader, PACKAGE_URI)
         sparts = PackageReader._load_serialized_parts(phys_reader, pkg_srels, content_types)

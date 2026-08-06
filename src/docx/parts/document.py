@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from docx.comments import Comments
     from docx.enum.style import WD_STYLE_TYPE
     from docx.opc.coreprops import CoreProperties
+    from docx.opc.customprops import CustomProperties
+    from docx.opc.extendedprops import ExtendedProperties
     from docx.opc.part import Part
     from docx.settings import Settings
     from docx.styles.style import BaseStyle
@@ -58,9 +60,21 @@ class DocumentPart(StoryPart):
         return self.package.core_properties
 
     @property
+    def custom_properties(self) -> CustomProperties:
+        """A |CustomProperties| object providing read/write access to the custom
+        properties of this document."""
+        return self.package.custom_properties
+
+    @property
     def document(self):
         """A |Document| object providing access to the content of this document."""
         return Document(self._element, self)
+
+    @property
+    def extended_properties(self) -> ExtendedProperties:
+        """An |ExtendedProperties| object providing read/write access to the extended
+        properties of this document."""
+        return self.package.extended_properties
 
     def drop_header_part(self, rId: str) -> None:
         """Remove related header part identified by `rId`."""
