@@ -11,9 +11,11 @@ import docx
 from docx import types as t
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.oxml.text.paragraph import CT_P
 from docx.oxml.text.run import CT_R
 from docx.parts.document import DocumentPart
+from docx.text.hyperlink import Hyperlink
 from docx.text.paragraph import Paragraph
 from docx.text.parfmt import ParagraphFormat
 from docx.text.run import Run
@@ -192,6 +194,32 @@ class DescribeParagraph:
         assert runs == [run_, run_2_]
 
     @pytest.mark.parametrize(
+        ("p_cxml", "expected"),
+        [
+            ("w:p/(w:r,w:hyperlink/(w:r,w:r),w:r)", ["Run", "Run", "Run", "Run"]),
+        ],
+    )
+    def it_flattens_hyperlink_runs_into_the_runs_it_contains(
+        self, p_cxml: str, expected: List[str], fake_parent: t.ProvidesStoryPart
+    ):
+        paragraph = Paragraph(cast(CT_P, element(p_cxml)), fake_parent)
+
+        actual = [type(item).__name__ for item in paragraph.runs]
+
+        assert actual == expected
+
+    def it_provides_access_to_its_runs_and_hyperlinks_without_flattening(
+        self, fake_parent: t.ProvidesStoryPart
+    ):
+        paragraph = Paragraph(
+            cast(CT_P, element("w:p/(w:r,w:hyperlink/(w:r,w:r),w:r)")), fake_parent
+        )
+
+        actual = [type(item).__name__ for item in paragraph.runs_and_hyperlinks]
+
+        assert actual == ["Run", "Hyperlink", "Run"]
+
+    @pytest.mark.parametrize(
         ("instrText", "expected_cxml"),
         [
             (
@@ -220,6 +248,28 @@ class DescribeParagraph:
         assert run._r is paragraph._p.r_lst[0]
         if style:
             style_prop_.assert_called_once_with(style)
+
+    def it_can_add_a_hyperlink_from_a_url(self, part_prop_, document_part_):
+        document_part_.relate_to.return_value = "rId9"
+        paragraph = Paragraph(cast(CT_P, element("w:p")), None)
+
+        hyperlink = paragraph.add_hyperlink("open oll", "https://openlawlib.org/")
+
+        document_part_.relate_to.assert_called_once_with(
+            "https://openlawlib.org/", RT.HYPERLINK, is_external=True
+        )
+        assert isinstance(hyperlink, Hyperlink)
+        assert paragraph._p.hyperlink_lst[0].rId == "rId9"
+        assert paragraph._p.hyperlink_lst[0].r_lst[0].text == "open oll"
+
+    def it_can_add_a_hyperlink_from_a_bookmark_name(self, part_prop_, document_part_):
+        paragraph = Paragraph(cast(CT_P, element("w:p")), None)
+
+        paragraph.add_hyperlink("see bookmark", "bmk1")
+
+        document_part_.relate_to.assert_not_called()
+        assert paragraph._p.hyperlink_lst[0].anchor == "bmk1"
+        assert paragraph._p.hyperlink_lst[0].r_lst[0].text == "see bookmark"
 
     def it_can_insert_a_paragraph_before_itself(self, insert_before_fixture):
         text, style, paragraph_, add_run_calls = insert_before_fixture
@@ -559,7 +609,7 @@ class DescribeParagraph:
 
     @pytest.fixture
     def p_(self, request, r_, r_2_):
-        return instance_mock(request, CT_P, r_lst=(r_, r_2_))
+        return instance_mock(request, CT_P, all_runs=(r_, r_2_))
 
     @pytest.fixture
     def ParagraphFormat_(self, request, paragraph_format_):

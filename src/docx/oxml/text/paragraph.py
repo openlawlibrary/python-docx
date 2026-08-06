@@ -35,6 +35,7 @@ class CT_P(BaseOxmlElement):
     r_lst: List[CT_R]
     sdt_lst: List[CT_SdtBase]
     _new_sdt: Callable[[], CT_SdtBase]
+    _add_hyperlink: Callable[[], CT_Hyperlink]
 
     bookmarkStart = ZeroOrMore("w:bookmarkStart", successors=("w:pPr", "w:hyperlink", "w:r"))
     pPr: CT_PPr | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
@@ -45,11 +46,40 @@ class CT_P(BaseOxmlElement):
     sdt = ZeroOrMore("w:sdt", successors=("w:bookmarkEnd",))
     bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
 
+    def add_hyperlink(
+        self, text: str, rId: str | None = None, anchor: str | None = None
+    ) -> CT_Hyperlink:
+        """Return a newly added `<w:hyperlink>` element containing `text` in a single
+        run styled "Hyperlink".
+
+        Exactly one of `rId` (an external relationship id, for a URL) or `anchor` (a
+        bookmark name, for an internal "jump") should be provided.
+        """
+        hyperlink = self._add_hyperlink()
+        if rId is not None:
+            hyperlink.rId = rId
+        if anchor is not None:
+            hyperlink.anchor = anchor
+        r = hyperlink._add_r()
+        r.text = text
+        r.style = "Hyperlink"
+        return hyperlink
+
     def add_p_before(self) -> CT_P:
         """Return a new `<w:p>` element inserted directly prior to this one."""
         new_p = cast(CT_P, OxmlElement("w:p"))
         self.addprevious(new_p)
         return new_p
+
+    @property
+    def all_runs(self) -> List[CT_R]:
+        """Every `w:r` in this paragraph, in document order, including those nested
+        inside a `w:hyperlink`.
+
+        Compare with `r_lst`, which includes only this paragraph's direct-child runs,
+        excluding any nested inside a hyperlink.
+        """
+        return self.xpath("./w:r | ./w:hyperlink/w:r")
 
     @property
     def alignment(self) -> WD_PARAGRAPH_ALIGNMENT | None:

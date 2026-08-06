@@ -112,6 +112,22 @@ class DescribeHyperlink:
     @pytest.mark.parametrize(
         ("hlink_cxml", "expected_value"),
         [
+            ('w:hyperlink{r:id=rId6}/w:r/w:t"post"', "https://google.com/"),
+            ("w:hyperlink{w:anchor=_Toc147925734}", "_Toc147925734"),
+            ("w:hyperlink", ""),
+        ],
+    )
+    def it_knows_its_link(
+        self, hlink_cxml: str, expected_value: str, fake_parent: t.ProvidesStoryPart
+    ):
+        hlink = cast(CT_Hyperlink, element(hlink_cxml))
+        hyperlink = Hyperlink(hlink, fake_parent)
+
+        assert hyperlink.link == expected_value
+
+    @pytest.mark.parametrize(
+        ("hlink_cxml", "expected_value"),
+        [
             ("w:hyperlink", ""),
             ("w:hyperlink{w:anchor=_Toc147925734}", ""),
             ('w:hyperlink{r:id=rId6}/w:r/w:t"post"', "https://google.com/"),
