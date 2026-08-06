@@ -10,6 +10,7 @@ from typing_extensions import TypeAlias
 
 from docx.enum.section import WD_HEADER_FOOTER, WD_ORIENTATION, WD_SECTION_START
 from docx.oxml.ns import nsmap
+from docx.oxml.sdts import CT_SdtBase
 from docx.oxml.shared import CT_OnOff
 from docx.oxml.simpletypes import ST_SignedTwipsMeasure, ST_TwipsMeasure, XsdString
 from docx.oxml.table import CT_Tbl
@@ -32,9 +33,12 @@ class CT_HdrFtr(BaseOxmlElement):
     add_p: Callable[[], CT_P]
     p_lst: List[CT_P]
     tbl_lst: List[CT_Tbl]
+    sdt_lst: List[CT_SdtBase]
+    _new_sdt: Callable[[], CT_SdtBase]
 
     _insert_tbl: Callable[[CT_Tbl], CT_Tbl]
 
+    sdt = ZeroOrMore("w:sdt", successors=("w:p", "w:tbl"))
     p = ZeroOrMore("w:p", successors=())
     tbl = ZeroOrMore("w:tbl", successors=())
 

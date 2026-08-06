@@ -12,6 +12,7 @@ from docx.oxml.xmlchemy import BaseOxmlElement, ZeroOrMore, ZeroOrOne
 if TYPE_CHECKING:
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
     from docx.oxml.bookmark import CT_BookmarkEnd, CT_BookmarkStart
+    from docx.oxml.sdts import CT_SdtBase
     from docx.oxml.section import CT_SectPr
     from docx.oxml.text.hyperlink import CT_Hyperlink
     from docx.oxml.text.pagebreak import CT_LastRenderedPageBreak
@@ -28,6 +29,8 @@ class CT_P(BaseOxmlElement):
     bookmarkEnd_lst: List[CT_BookmarkEnd]
     hyperlink_lst: List[CT_Hyperlink]
     r_lst: List[CT_R]
+    sdt_lst: List[CT_SdtBase]
+    _new_sdt: Callable[[], CT_SdtBase]
 
     bookmarkStart = ZeroOrMore("w:bookmarkStart", successors=("w:pPr", "w:hyperlink", "w:r"))
     pPr: CT_PPr | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
@@ -35,6 +38,7 @@ class CT_P(BaseOxmlElement):
     )
     hyperlink = ZeroOrMore("w:hyperlink", successors=("w:bookmarkEnd",))
     r = ZeroOrMore("w:r", successors=("w:bookmarkEnd",))
+    sdt = ZeroOrMore("w:sdt", successors=("w:bookmarkEnd",))
     bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
 
     def add_p_before(self) -> CT_P:
@@ -106,7 +110,7 @@ class CT_P(BaseOxmlElement):
         Inner-content child elements like `w:r` and `w:hyperlink` are translated to
         their text equivalent.
         """
-        return "".join(e.text for e in self.xpath("w:r | w:hyperlink"))
+        return "".join(e.text for e in self.xpath("w:r | w:hyperlink | w:sdt"))
 
     def _insert_pPr(self, pPr: CT_PPr) -> CT_PPr:
         self.insert(0, pPr)

@@ -61,9 +61,13 @@ class CT_HpsMeasure(BaseOxmlElement):
 class CT_RPr(BaseOxmlElement):
     """`<w:rPr>` element, containing the properties for a run."""
 
+    get_or_add_b: Callable[[], CT_OnOff]
+    get_or_add_bCs: Callable[[], CT_OnOff]
     get_or_add_color: Callable[[], CT_Color]
     get_or_add_highlight: Callable[[], CT_Highlight]
+    get_or_add_i: Callable[[], CT_OnOff]
     get_or_add_rFonts: Callable[[], CT_Fonts]
+    get_or_add_rStyle: Callable[[], CT_String]
     get_or_add_sz: Callable[[], CT_HpsMeasure]
     get_or_add_vertAlign: Callable[[], CT_VerticalAlignRun]
     _add_rStyle: Callable[..., CT_String]
