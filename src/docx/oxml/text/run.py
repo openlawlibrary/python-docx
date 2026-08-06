@@ -7,10 +7,16 @@ from typing import TYPE_CHECKING, Callable, Iterator, List, cast
 from docx.oxml.drawing import CT_Drawing
 from docx.oxml.ns import qn
 from docx.oxml.parser import OxmlElement
-from docx.oxml.simpletypes import ST_BrClear, ST_BrType
+from docx.oxml.simpletypes import ST_BrClear, ST_BrType, ST_FldCharType
 from docx.oxml.text.font import CT_RPr
 from docx.oxml.text.symbol import CT_Sym
-from docx.oxml.xmlchemy import BaseOxmlElement, OptionalAttribute, ZeroOrMore, ZeroOrOne
+from docx.oxml.xmlchemy import (
+    BaseOxmlElement,
+    OptionalAttribute,
+    RequiredAttribute,
+    ZeroOrMore,
+    ZeroOrOne,
+)
 from docx.shared import TextAccumulator
 
 if TYPE_CHECKING:
@@ -27,6 +33,8 @@ class CT_R(BaseOxmlElement):
     """`<w:r>` element, containing the properties and text for a run."""
 
     add_br: Callable[[], CT_Br]
+    add_fldChar: Callable[[], CT_FldChar]
+    add_instrText: Callable[[], BaseOxmlElement]
     add_tab: Callable[[], CT_TabStop]
     get_or_add_rPr: Callable[[], CT_RPr]
     _add_drawing: Callable[[], CT_Drawing]
@@ -47,6 +55,8 @@ class CT_R(BaseOxmlElement):
     cr = ZeroOrMore("w:cr")
     drawing = ZeroOrMore("w:drawing")
     sym = ZeroOrMore("w:sym")
+    fldChar = ZeroOrMore("w:fldChar")
+    instrText = ZeroOrMore("w:instrText")
     t = ZeroOrMore("w:t")
     tab = ZeroOrMore("w:tab")
     bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
@@ -306,6 +316,19 @@ class CT_Cr(BaseOxmlElement):
     def __str__(self) -> str:
         """Text equivalent of this element, a single newline ("\n")."""
         return "\n"
+
+
+class CT_FldChar(BaseOxmlElement):
+    """`<w:fldChar>` element, marking a boundary in a complex-field sequence.
+
+    A complex field (table of contents, cross-reference, computed date, and the
+    like) is represented as a `begin`/`separate`/`end` sequence of these elements
+    spread across sibling runs, bracketing the field-code and cached-result content.
+    """
+
+    fldCharType: str = RequiredAttribute(  # pyright: ignore[reportAssignmentType]
+        "w:fldCharType", ST_FldCharType
+    )
 
 
 class CT_NoBreakHyphen(BaseOxmlElement):

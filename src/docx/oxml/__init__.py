@@ -33,6 +33,7 @@ from docx.oxml.text.run import (
     CT_R,
     CT_Br,
     CT_Cr,
+    CT_FldChar,
     CT_NoBreakHyphen,
     CT_PTab,
     CT_Text,
@@ -86,6 +87,7 @@ register_element_cls("w:bookmarkEnd", CT_BookmarkEnd)
 register_element_cls("w:bookmarkStart", CT_BookmarkStart)
 register_element_cls("w:br", CT_Br)
 register_element_cls("w:cr", CT_Cr)
+register_element_cls("w:fldChar", CT_FldChar)
 register_element_cls("w:lastRenderedPageBreak", CT_LastRenderedPageBreak)
 register_element_cls("w:noBreakHyphen", CT_NoBreakHyphen)
 register_element_cls("w:ptab", CT_PTab)

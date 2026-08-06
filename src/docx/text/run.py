@@ -20,7 +20,8 @@ from docx.text.pagebreak import RenderedPageBreak
 if TYPE_CHECKING:
     import docx.types as t
     from docx.enum.text import WD_UNDERLINE
-    from docx.oxml.text.run import CT_R, CT_Text
+    from docx.oxml.text.run import CT_R, CT_FldChar, CT_Text
+    from docx.oxml.xmlchemy import BaseOxmlElement
     from docx.shared import Length
 
 
@@ -74,6 +75,26 @@ class Run(StoryChild, BookmarkParent):
             br.type = type_
         if clear is not None:
             br.clear = clear
+
+    def add_fldChar(self, fldCharType: str = "begin") -> CT_FldChar:
+        """Add a `<w:fldChar>` element of `fldCharType` to this run.
+
+        `fldCharType` is one of `"begin"`, `"separate"`, or `"end"`, marking this run's
+        position in a complex-field sequence (see :meth:`.Paragraph.add_field`).
+        """
+        fldChar = self._r.add_fldChar()
+        fldChar.fldCharType = fldCharType
+        return fldChar
+
+    def add_instrText(self, instruction_text: str) -> BaseOxmlElement:
+        """Add a `<w:instrText>` element containing `instruction_text` to this run.
+
+        This holds the field-code instruction for the complex field this run is part
+        of; see :meth:`.Paragraph.add_field`.
+        """
+        instrText = self._r.add_instrText()
+        instrText.text = instruction_text
+        return instrText
 
     def add_picture(
         self,

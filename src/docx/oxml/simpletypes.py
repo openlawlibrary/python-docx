@@ -395,6 +395,15 @@ class ST_BrType(XsdString):
             raise ValueError("must be one of %s, got '%s'" % (valid_values, value))
 
 
+class ST_FldCharType(XsdString):
+    @classmethod
+    def validate(cls, value: Any) -> None:
+        cls.validate_string(value)
+        valid_values = ("begin", "separate", "end")
+        if value not in valid_values:
+            raise ValueError("must be one of %s, got '%s'" % (valid_values, value))
+
+
 class ST_Coordinate(BaseIntType):
     @classmethod
     def convert_from_xml(cls, str_value: str) -> Length:

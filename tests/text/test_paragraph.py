@@ -1,5 +1,7 @@
 """Unit test suite for the docx.text.paragraph module."""
 
+from __future__ import annotations
+
 from types import SimpleNamespace
 from typing import List, cast
 
@@ -144,6 +146,18 @@ class DescribeParagraph:
                 'w:p/(w:r/w:t"click ",w:hyperlink{r:id=rId6}/w:r/w:t"here",w:r/w:t" for more")',
                 "click here for more",
             ),
+            (
+                'w:p/(w:r/w:t"before ",w:r/w:fldChar{w:fldCharType=begin},'
+                'w:r/w:instrText"DATE",w:r/w:fldChar{w:fldCharType=end},'
+                'w:r/w:t" after")',
+                "before  after",
+            ),
+            (
+                'w:p/(w:r/w:fldChar{w:fldCharType=begin},w:r/w:instrText"DATE",'
+                'w:r/w:fldChar{w:fldCharType=separate},w:r/w:t"12/5/2023",'
+                "w:r/w:fldChar{w:fldCharType=end})",
+                "12/5/2023",
+            ),
         ],
     )
     def it_knows_the_text_it_contains(self, p_cxml: str, expected_value: str):
@@ -176,6 +190,27 @@ class DescribeParagraph:
         runs = paragraph.runs
         assert Run_.mock_calls == [call(r_, paragraph), call(r_2_, paragraph)]
         assert runs == [run_, run_2_]
+
+    @pytest.mark.parametrize(
+        ("instrText", "expected_cxml"),
+        [
+            (
+                None,
+                "w:p/(w:r/w:fldChar{w:fldCharType=begin},w:r/w:fldChar{w:fldCharType=end})",
+            ),
+            (
+                "DATE",
+                'w:p/(w:r/w:fldChar{w:fldCharType=begin},w:r/w:instrText"DATE",'
+                "w:r/w:fldChar{w:fldCharType=end})",
+            ),
+        ],
+    )
+    def it_can_add_a_field(self, instrText: str | None, expected_cxml: str):
+        paragraph = Paragraph(cast(CT_P, element("w:p")), None)
+
+        paragraph.add_field(instrText)
+
+        assert paragraph._p.xml == xml(expected_cxml)
 
     def it_can_add_a_run_to_itself(self, add_run_fixture):
         paragraph, text, style, style_prop_, expected_xml = add_run_fixture

@@ -160,6 +160,23 @@ class Paragraph(StoryChild, BookmarkParent):
             run.style = style
         return run
 
+    def add_field(self, instrText: str | None = None) -> None:
+        """Append a complex field to this paragraph.
+
+        A complex field is a `begin`/`end` pair of `<w:fldChar>` elements, each in
+        their own run, optionally bracketing an `<w:instrText>`-bearing run holding the
+        field-code instruction (e.g. `"DATE"`, `"TOC \\o '1-3'"`) when `instrText` is
+        given.
+
+        Word computes and caches the field's displayed *result* the next time it
+        opens or updates fields in this document; until then the field displays
+        nothing, matching Word's own behavior for a field with no cached result yet.
+        """
+        self.add_run().add_fldChar()
+        if instrText:
+            self.add_run().add_instrText(instrText)
+        self.add_run().add_fldChar(fldCharType="end")
+
     def add_sdt(
         self,
         tag_name: str,
@@ -267,6 +284,7 @@ class Paragraph(StoryChild, BookmarkParent):
     @property
     def hyperlinks(self) -> List[Hyperlink]:
         """A |Hyperlink| instance for each hyperlink in this paragraph."""
+        self._p.strip_hidden_fld_char_content()
         return [Hyperlink(hyperlink, self) for hyperlink in self._p.hyperlink_lst]
 
     def increment_containing_endnote_reference_ids(self) -> None:
@@ -667,6 +685,7 @@ class Paragraph(StoryChild, BookmarkParent):
     def runs(self) -> List[Run]:
         """Sequence of |Run| instances corresponding to the <w:r> elements in this
         paragraph."""
+        self._p.strip_hidden_fld_char_content()
         return [Run(r, self) for r in self._p.r_lst]
 
     def split(self, *positions: int) -> List[Paragraph]:

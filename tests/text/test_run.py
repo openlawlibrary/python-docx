@@ -287,6 +287,28 @@ class DescribeRun:
         assert run._r.xml == xml(expected_cxml)
 
     @pytest.mark.parametrize(
+        ("fldCharType", "expected_cxml"),
+        [
+            ("begin", "w:r/w:fldChar{w:fldCharType=begin}"),
+            ("separate", "w:r/w:fldChar{w:fldCharType=separate}"),
+            ("end", "w:r/w:fldChar{w:fldCharType=end}"),
+        ],
+    )
+    def it_can_add_a_fldChar(self, fldCharType: str, expected_cxml: str, paragraph_: Mock):
+        run = Run(cast(CT_R, element("w:r")), paragraph_)
+
+        run.add_fldChar(fldCharType)
+
+        assert run._r.xml == xml(expected_cxml)
+
+    def it_can_add_an_instrText(self, paragraph_: Mock):
+        run = Run(cast(CT_R, element("w:r")), paragraph_)
+
+        run.add_instrText("DATE")
+
+        assert run._r.xml == xml('w:r/w:instrText"DATE"')
+
+    @pytest.mark.parametrize(
         ("r_cxml", "expected_cxml"), [('w:r/w:t"foo"', 'w:r/(w:t"foo", w:tab)')]
     )
     def it_can_add_a_tab(self, r_cxml: str, expected_cxml: str, paragraph_: Mock):
