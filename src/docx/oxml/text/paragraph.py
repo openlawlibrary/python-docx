@@ -6,8 +6,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, List, cast
 
+from docx.oxml.ns import qn
 from docx.oxml.parser import OxmlElement
 from docx.oxml.xmlchemy import BaseOxmlElement, ZeroOrMore, ZeroOrOne
+
+_FLD_CHAR_CONTAINER_TAGS = (qn("w:hyperlink"), qn("w:sdt"), qn("w:sdtContent"), qn("w:smartTag"))
 
 if TYPE_CHECKING:
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
@@ -57,6 +60,7 @@ class CT_P(BaseOxmlElement):
     @property
     def inner_content_elements(self) -> List[CT_R | CT_Hyperlink]:
         """Run and hyperlink children of the `w:p` element, in document order."""
+        self.strip_hidden_fld_char_content()
         return self.xpath("./w:r | ./w:hyperlink")
 
     @property
@@ -75,6 +79,54 @@ class CT_P(BaseOxmlElement):
         pPr = self.get_or_add_pPr()
         pPr._remove_sectPr()
         pPr._insert_sectPr(sectPr)
+
+    def strip_hidden_fld_char_content(self, container: BaseOxmlElement | None = None) -> None:
+        """Remove markup Word hides inside a complex-field (`w:fldChar`) sequence.
+
+        A complex field -- used for a table of contents, cross-reference, computed
+        date, and the like -- is represented as a run sequence: a `begin` marker, the
+        field-code runs (an `instrText` element, not meant to be visible), optionally a
+        `separate` marker followed by the cached field *result* (the only part meant to
+        be visible), and an `end` marker. This walks this paragraph's own runs, and
+        those nested in each of its hyperlinks/content-controls, removing every run
+        child that falls inside a hidden span along with the now-redundant `w:fldChar`
+        markers themselves, dropping any run left empty as a result.
+
+        This mutates the paragraph tree permanently and is idempotent -- once run, no
+        `w:fldChar` markers remain to process on a later call. This matches Word's own
+        model of a field's cached "result" as the authoritative value on open, but it
+        does mean a round-tripped save will no longer contain the original field code.
+        """
+        container = self if container is None else container
+        ignore_depth = 0
+        has_separate = False
+        for child in list(container):
+            if child.tag == qn("w:r"):
+                mutated = False
+                for grandchild in list(child):
+                    if ignore_depth != 0:
+                        child.remove(grandchild)
+                        mutated = True
+                    if grandchild.tag == qn("w:fldChar"):
+                        mutated = True
+                        fldCharType = grandchild.get(qn("w:fldCharType"))
+                        if fldCharType == "begin":
+                            ignore_depth += 1
+                        elif fldCharType == "separate":
+                            ignore_depth -= 1
+                            has_separate = True
+                        elif not has_separate:
+                            ignore_depth -= 1
+                        else:
+                            has_separate = False
+                for fldChar in child.findall(qn("w:fldChar")):
+                    child.remove(fldChar)
+                # -- only drop a run left empty BY this scrub -- a run that was
+                # -- already empty (no fldChar involvement) is left as-is.
+                if mutated and len(child) == 0:
+                    container.remove(child)
+            elif child.tag in _FLD_CHAR_CONTAINER_TAGS:
+                self.strip_hidden_fld_char_content(cast(BaseOxmlElement, child))
 
     @property
     def style(self) -> str | None:
@@ -99,6 +151,7 @@ class CT_P(BaseOxmlElement):
         Inner-content child elements like `w:r` and `w:hyperlink` are translated to
         their text equivalent.
         """
+        self.strip_hidden_fld_char_content()
         return "".join(e.text for e in self.xpath("w:r | w:hyperlink"))
 
     def _insert_pPr(self, pPr: CT_PPr) -> CT_PPr:

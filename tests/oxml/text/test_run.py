@@ -39,3 +39,19 @@ class DescribeCT_R:
         r = cast(CT_R, element(cxml))
 
         assert r.text == "\n\n-\tfoobar\t"
+
+    def it_can_add_a_fldChar(self):
+        r = cast(CT_R, element("w:r"))
+
+        fldChar = r.add_fldChar()
+        fldChar.fldCharType = "begin"
+
+        assert r.xml == xml("w:r/w:fldChar{w:fldCharType=begin}")
+
+    def it_can_add_an_instrText(self):
+        r = cast(CT_R, element("w:r"))
+
+        instrText = r.add_instrText()
+        instrText.text = "DATE"
+
+        assert r.xml == xml('w:r/w:instrText"DATE"')
