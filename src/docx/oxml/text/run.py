@@ -123,6 +123,16 @@ class CT_R(BaseOxmlElement):
         """All `w:lastRenderedPageBreaks` descendants of this run."""
         return self.xpath("./w:lastRenderedPageBreak")
 
+    def remove_br_tag_childrens(self) -> None:
+        """Convert each `w:br` child of this run into a `w:t` containing a single space.
+
+        Used to collapse line breaks to whitespace when normalizing run text.
+        """
+        for child in self:
+            if child.tag == qn("w:br"):
+                child.tag = qn("w:t")
+                child.text = " "
+
     @property
     def style(self) -> str | None:
         """String contained in `w:val` attribute of `w:rStyle` grandchild.

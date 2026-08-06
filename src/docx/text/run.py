@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import IO, TYPE_CHECKING, Iterator, cast
+import copy
+from typing import IO, TYPE_CHECKING, Any, Iterator, cast
 
 from docx.bookmark import BookmarkParent
 from docx.drawing import Drawing
@@ -35,6 +36,23 @@ class Run(StoryChild, BookmarkParent):
     def __init__(self, r: CT_R, parent: t.ProvidesStoryPart):
         super().__init__(parent)
         self._r = self._element = self.element = r
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_parent", None)
+        return state
+
+    def __repr__(self):
+        text_stripped = self.text.strip()
+        text = text_stripped[:20]
+        if len(text_stripped) > len(text):
+            text += "..."
+        if not text:
+            text = "EMPTY RUN"
+        return f'<r:"{text}">'
+
+    def __setstate__(self, state: dict[str, Any]):
+        self.__dict__ = state
 
     def add_break(self, break_type: WD_BREAK = WD_BREAK.LINE):
         """Add a break element of `break_type` to this run.
@@ -123,6 +141,16 @@ class Run(StoryChild, BookmarkParent):
         self._r.clear_content()
         return self
 
+    def clone(self) -> Run:
+        """Return a copy of this run, cloned by selective deep copying.
+
+        The clone is not attached to a paragraph; the caller is responsible for
+        inserting it into the document tree.
+        """
+        c = copy.deepcopy(self)
+        c._parent = self._parent
+        return c
+
     @property
     def contains_page_break(self) -> bool:
         """`True` when one or more rendered page-breaks occur in this run.
@@ -190,6 +218,25 @@ class Run(StoryChild, BookmarkParent):
         # -- insert `w:commentRangeEnd` and `w:commentReference` run with `comment_id` after
         # -- `last_run`
         last_run._r.insert_comment_range_end_and_reference_below(comment_id)
+
+    def split(self, pos: int) -> tuple[Run | None, Run | None]:
+        """Split this run's text at `pos`, retaining formatting in both parts.
+
+        Returns a `(left, right)` pair of runs. `left` is |None| when `pos` is 0 (all
+        text moves to `right`, which is this same run). `right` is |None| when `pos` is
+        at or beyond the end of this run's text (all text stays in `left`, this same
+        run). Otherwise, a new run is inserted immediately after this one to hold the
+        text from `pos` onward, and `(self, new_run)` is returned.
+        """
+        if pos == 0:
+            return None, self
+        if pos >= len(self.text):
+            return self, None
+        next_run = self.clone()
+        next_run.text = self.text[pos:]
+        self.text = self.text[:pos]
+        self._r.addnext(next_run._r)
+        return self, next_run
 
     @property
     def style(self) -> CharacterStyle:
