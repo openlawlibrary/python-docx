@@ -169,11 +169,14 @@ def _ImageHeaderFactory(stream: IO[bytes]):
     """A |BaseImageHeader| subclass instance that can parse headers of image in `stream`."""
     from docx.image import SIGNATURES
 
-    def read_32(stream: IO[bytes]):
+    def read_64(stream: IO[bytes]):
+        # -- 64 bytes covers every signature offset currently registered, including
+        # -- EMF's `dSignature` field at offset 40 (32 was enough before EMF support
+        # -- was added).
         stream.seek(0)
-        return stream.read(32)
+        return stream.read(64)
 
-    header = read_32(stream)
+    header = read_64(stream)
     for cls, offset, signature_bytes in SIGNATURES:
         end = offset + len(signature_bytes)
         found_bytes = header[offset:end]
