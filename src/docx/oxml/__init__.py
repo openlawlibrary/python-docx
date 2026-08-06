@@ -271,6 +271,7 @@ from .text.parfmt import (
     CT_TabStops,
 )
 
+register_element_cls("w:contextualSpacing", CT_OnOff)
 register_element_cls("w:ind", CT_Ind)
 register_element_cls("w:jc", CT_Jc)
 register_element_cls("w:keepLines", CT_OnOff)

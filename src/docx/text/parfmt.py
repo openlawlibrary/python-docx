@@ -28,6 +28,22 @@ class ParagraphFormat(ElementProxy):
         pPr.jc_val = value
 
     @property
+    def contextual_spacing(self):
+        """|True| if spacing before and after this paragraph should be ignored when the
+        preceding and following paragraphs are of the same style.
+
+        |None| indicates its effective value is inherited from the style hierarchy.
+        """
+        pPr = self._element.pPr
+        if pPr is None:
+            return None
+        return pPr.contextualSpacing_val
+
+    @contextual_spacing.setter
+    def contextual_spacing(self, value):
+        self._element.get_or_add_pPr().contextualSpacing_val = value
+
+    @property
     def first_line_indent(self):
         """|Length| value specifying the relative difference in indentation for the
         first line of the paragraph.
@@ -158,6 +174,24 @@ class ParagraphFormat(ElementProxy):
             pPr.spacing_lineRule = WD_LINE_SPACING.MULTIPLE
         else:
             pPr.spacing_lineRule = value
+
+    @property
+    def outline_level(self):
+        """An integer value specifying the outline level for this paragraph, in range
+        0-9.
+
+        A value of |None| indicates the outline level is inherited from the style
+        hierarchy.
+        """
+        pPr = self._element.pPr
+        if pPr is None:
+            return None
+        return pPr.outlineLvl_val
+
+    @outline_level.setter
+    def outline_level(self, value):
+        pPr = self._element.get_or_add_pPr()
+        pPr.outlineLvl_val = value
 
     @property
     def page_break_before(self):

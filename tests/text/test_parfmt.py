@@ -84,6 +84,15 @@ class DescribeParagraphFormat:
         paragraph_format.right_indent = value
         assert paragraph_format._element.xml == expected_xml
 
+    def it_knows_its_outline_level(self, outline_level_get_fixture):
+        paragraph_format, expected_value = outline_level_get_fixture
+        assert paragraph_format.outline_level == expected_value
+
+    def it_can_change_its_outline_level(self, outline_level_set_fixture):
+        paragraph_format, value, expected_xml = outline_level_set_fixture
+        paragraph_format.outline_level = value
+        assert paragraph_format._element.xml == expected_xml
+
     def it_knows_its_on_off_prop_values(self, on_off_get_fixture):
         paragraph_format, prop_name, expected_value = on_off_get_fixture
         assert getattr(paragraph_format, prop_name) == expected_value
@@ -305,6 +314,9 @@ class DescribeParagraphFormat:
 
     @pytest.fixture(
         params=[
+            ("w:p", "contextual_spacing", None),
+            ("w:p/w:pPr/w:contextualSpacing{w:val=on}", "contextual_spacing", True),
+            ("w:p/w:pPr/w:contextualSpacing{w:val=0}", "contextual_spacing", False),
             ("w:p", "keep_together", None),
             ("w:p/w:pPr/w:keepLines{w:val=on}", "keep_together", True),
             ("w:p/w:pPr/w:keepLines{w:val=0}", "keep_together", False),
@@ -326,10 +338,17 @@ class DescribeParagraphFormat:
 
     @pytest.fixture(
         params=[
+            ("w:p", "contextual_spacing", True, "w:p/w:pPr/w:contextualSpacing"),
             ("w:p", "keep_together", True, "w:p/w:pPr/w:keepLines"),
             ("w:p", "keep_with_next", True, "w:p/w:pPr/w:keepNext"),
             ("w:p", "page_break_before", True, "w:p/w:pPr/w:pageBreakBefore"),
             ("w:p", "widow_control", True, "w:p/w:pPr/w:widowControl"),
+            (
+                "w:p/w:pPr/w:contextualSpacing",
+                "contextual_spacing",
+                False,
+                "w:p/w:pPr/w:contextualSpacing{w:val=0}",
+            ),
             (
                 "w:p/w:pPr/w:keepLines",
                 "keep_together",
@@ -353,6 +372,12 @@ class DescribeParagraphFormat:
                 "widow_control",
                 False,
                 "w:p/w:pPr/w:widowControl{w:val=0}",
+            ),
+            (
+                "w:p/w:pPr/w:contextualSpacing{w:val=0}",
+                "contextual_spacing",
+                None,
+                "w:p/w:pPr",
             ),
             ("w:p/w:pPr/w:keepLines{w:val=0}", "keep_together", None, "w:p/w:pPr"),
             ("w:p/w:pPr/w:keepNext{w:val=0}", "keep_with_next", None, "w:p/w:pPr"),
@@ -395,6 +420,33 @@ class DescribeParagraphFormat:
         ]
     )
     def right_indent_set_fixture(self, request):
+        p_cxml, value, expected_p_cxml = request.param
+        paragraph_format = ParagraphFormat(element(p_cxml))
+        expected_xml = xml(expected_p_cxml)
+        return paragraph_format, value, expected_xml
+
+    @pytest.fixture(
+        params=[
+            ("w:p", None),
+            ("w:p/w:pPr", None),
+            ("w:p/w:pPr/w:outlineLvl{w:val=0}", 0),
+            ("w:p/w:pPr/w:outlineLvl{w:val=9}", 9),
+        ]
+    )
+    def outline_level_get_fixture(self, request):
+        p_cxml, expected_value = request.param
+        paragraph_format = ParagraphFormat(element(p_cxml))
+        return paragraph_format, expected_value
+
+    @pytest.fixture(
+        params=[
+            ("w:p", 1, "w:p/w:pPr/w:outlineLvl{w:val=1}"),
+            ("w:p/w:pPr/w:outlineLvl{w:val=1}", 10, "w:p/w:pPr/w:outlineLvl{w:val=10}"),
+            ("w:p/w:pPr/w:outlineLvl{w:val=1}", None, "w:p/w:pPr"),
+            ("w:p", None, "w:p/w:pPr"),
+        ]
+    )
+    def outline_level_set_fixture(self, request):
         p_cxml, value, expected_p_cxml = request.param
         paragraph_format = ParagraphFormat(element(p_cxml))
         expected_xml = xml(expected_p_cxml)
