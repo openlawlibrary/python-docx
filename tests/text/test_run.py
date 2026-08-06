@@ -296,6 +296,26 @@ class DescribeRun:
 
         assert run._r.xml == xml(expected_cxml)
 
+    @pytest.mark.parametrize(
+        ("char", "font", "expected_cxml"),
+        [
+            (
+                "0038",
+                "WP TypographicSymbols",
+                "w:r/w:sym{w:char=0038,w:font=WP TypographicSymbols}",
+            ),
+            (None, None, "w:r/w:sym"),
+        ],
+    )
+    def it_can_add_a_symbol(
+        self, char: str | None, font: str | None, expected_cxml: str, paragraph_: Mock
+    ):
+        run = Run(cast(CT_R, element("w:r")), paragraph_)
+
+        run.add_symbol(char, font)
+
+        assert run._r.xml == xml(expected_cxml)
+
     def it_can_add_a_picture(
         self,
         part_prop_: Mock,

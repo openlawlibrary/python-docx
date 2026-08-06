@@ -95,6 +95,11 @@ class Run(StoryChild):
         t = self._r.add_t(text)
         return _Text(t)
 
+    def add_symbol(self, char: str | None = None, font: str | None = None) -> None:
+        """Add a ``<w:sym char font>`` element at the end of the run, which Word
+        interprets as a symbol from `font`'s glyph range at position `char`."""
+        self._r.add_symbol(char, font)
+
     @property
     def bold(self) -> bool | None:
         """Read/write tri-state value.
