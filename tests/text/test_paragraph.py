@@ -4,6 +4,7 @@ from typing import List, cast
 
 import pytest
 
+import docx
 from docx import types as t
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -562,3 +563,73 @@ class DescribeParagraph:
         run_ = instance_mock(request, Run, name="run_")
         run_2_ = instance_mock(request, Run, name="run_2_")
         return run_, run_2_
+
+
+class DescribeParagraphFootnotesAndEndnotes:
+    """Integration-test suite for `Paragraph.add_footnote()`/`.add_endnote()`.
+
+    Uses a real |Document| rather than mocks because the behavior under test spans
+    the paragraph, the containing document, and the footnotes/endnotes part.
+    """
+
+    def it_can_add_a_footnote(self):
+        document = docx.Document()
+        paragraph = document.add_paragraph("Some guinea pig ")
+
+        footnote = paragraph.add_footnote()
+
+        assert len(footnote.paragraphs) == 1
+        assert paragraph.footnotes[0] is not None
+        assert paragraph.footnotes[0].id == footnote.id == 1
+
+    def it_assigns_sequential_ids_to_multiple_footnotes_in_one_paragraph(self):
+        document = docx.Document()
+        paragraph = document.add_paragraph("Some text")
+
+        footnote_1 = paragraph.add_footnote()
+        footnote_2 = paragraph.add_footnote()
+        footnote_3 = paragraph.add_footnote()
+
+        assert [f.id for f in paragraph.footnotes] == [1, 2, 3]
+        assert (footnote_1.id, footnote_2.id, footnote_3.id) == (1, 2, 3)
+
+    def it_renumbers_earlier_footnotes_when_one_is_inserted_ahead_of_them(self):
+        document = docx.Document()
+        p1 = document.add_paragraph("First paragraph")
+        p1.add_footnote()
+        p2 = document.add_paragraph("Second paragraph")
+        p2.add_footnote()
+
+        p0 = p1.insert_paragraph_before("Inserted first")
+        p0.add_footnote()
+
+        assert p0.footnotes[0].id == 1
+        assert p1.footnotes[0].id == 2
+        assert p2.footnotes[0].id == 3
+
+    def it_can_override_the_footnote_number_format_via_the_containing_section(self):
+        document = docx.Document()
+        paragraph = document.add_paragraph("Some text")
+
+        paragraph.add_footnote(num_format="lowerRoman")
+
+        assert document.sections[0].footnote_number_format == "lowerRoman"
+
+    def it_can_add_an_endnote(self):
+        document = docx.Document()
+        paragraph = document.add_paragraph("Some guinea pig ")
+
+        endnote = paragraph.add_endnote()
+
+        assert len(endnote.paragraphs) == 1
+        assert paragraph.endnotes[0] is not None
+        assert paragraph.endnotes[0].id == endnote.id == 1
+
+    def it_can_confine_an_endnote_to_the_end_of_its_section(self):
+        document = docx.Document()
+        paragraph = document.add_paragraph("Some text")
+
+        paragraph.add_endnote(section_endnote=True)
+
+        assert document.sections[0].endnote_position == "sectEnd"
+        assert document.settings.endnote_position == "sectEnd"

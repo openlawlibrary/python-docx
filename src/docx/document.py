@@ -19,9 +19,12 @@ if TYPE_CHECKING:
     import docx.types as t
     from docx.bookmark import _Bookmark
     from docx.comments import Comment, Comments
+    from docx.endnotes import Endnote, Endnotes
+    from docx.footnotes import Footnote, Footnotes
     from docx.opc.customprops import CustomProperties
     from docx.opc.extendedprops import ExtendedProperties
     from docx.oxml.document import CT_Body, CT_Document
+    from docx.oxml.text.paragraph import CT_P
     from docx.parts.document import DocumentPart
     from docx.sdt import SdtBase
     from docx.settings import Settings
@@ -204,6 +207,16 @@ class Document(ElementProxy):
         return self._part.extended_properties
 
     @property
+    def endnotes(self) -> Endnotes:
+        """An |Endnotes| object providing access to the endnotes in the document."""
+        return self._part.endnotes
+
+    @property
+    def footnotes(self) -> Footnotes:
+        """A |Footnotes| object providing access to the footnotes in the document."""
+        return self._part.footnotes
+
+    @property
     def inline_shapes(self):
         """The |InlineShapes| collection for this document.
 
@@ -281,6 +294,16 @@ class Document(ElementProxy):
         """
         return self._body.tables
 
+    def _add_endnote(self, endnote_reference_id: int) -> Endnote:
+        """Return a newly created |Endnote| added to |Endnotes|, having
+        `endnote_reference_id`."""
+        return self._part.endnotes.add_endnote(endnote_reference_id)
+
+    def _add_footnote(self, footnote_reference_id: int) -> Footnote:
+        """Return a newly created |Footnote| added to |Footnotes|, having
+        `footnote_reference_id`."""
+        return self._part.footnotes.add_footnote(footnote_reference_id)
+
     @property
     def _block_width(self) -> Length:
         """A |Length| object specifying the space between margins in last section."""
@@ -296,6 +319,64 @@ class Document(ElementProxy):
         if self.__body is None:
             self.__body = _Body(self._element.body, self)
         return self.__body
+
+    def _calculate_next_endnote_reference_id(self, p: CT_P) -> int:
+        """The endnote reference id to use for a new endnote added at the end of
+        paragraph `p`.
+
+        An endnote can be inserted ahead of other endnotes, so endnotes must be kept
+        ordered by id both in |Endnotes| and in the endnote-reference-carrying
+        paragraphs. Also renumbers, as a side effect, the endnote references in any
+        paragraph that follows `p` and precedes the paragraph (if any) that determines
+        the returned id -- those must shift up by one to make room.
+        """
+        new_er_id = 1
+        if len(p.endnote_reference_ids) > 0:
+            new_er_id = p.endnote_reference_ids[-1] + 1
+
+        has_passed_containing_para = False
+        for p_i in reversed(range(len(self.paragraphs))):
+            if p is self.paragraphs[p_i]._p:
+                has_passed_containing_para = True
+                continue
+            if len(self.paragraphs[p_i]._p.endnote_reference_ids) == 0:
+                continue
+            if not has_passed_containing_para:
+                self.paragraphs[p_i].increment_containing_endnote_reference_ids()
+            else:
+                ids = self.paragraphs[p_i]._p.endnote_reference_ids
+                new_er_id = max(new_er_id, max(ids) + 1)
+                break
+        return new_er_id
+
+    def _calculate_next_footnote_reference_id(self, p: CT_P) -> int:
+        """The footnote reference id to use for a new footnote added at the end of
+        paragraph `p`.
+
+        A footnote can be inserted ahead of other footnotes, so footnotes must be kept
+        ordered by id both in |Footnotes| and in the footnote-reference-carrying
+        paragraphs. Also renumbers, as a side effect, the footnote references in any
+        paragraph that follows `p` and precedes the paragraph (if any) that determines
+        the returned id -- those must shift up by one to make room.
+        """
+        new_fr_id = 1
+        if len(p.footnote_reference_ids) > 0:
+            new_fr_id = p.footnote_reference_ids[-1] + 1
+
+        has_passed_containing_para = False
+        for p_i in reversed(range(len(self.paragraphs))):
+            if p is self.paragraphs[p_i]._p:
+                has_passed_containing_para = True
+                continue
+            if len(self.paragraphs[p_i]._p.footnote_reference_ids) == 0:
+                continue
+            if not has_passed_containing_para:
+                self.paragraphs[p_i].increment_containing_footnote_reference_ids()
+            else:
+                ids = self.paragraphs[p_i]._p.footnote_reference_ids
+                new_fr_id = max(new_fr_id, max(ids) + 1)
+                break
+        return new_fr_id
 
 
 class _Body(BlockItemContainer):

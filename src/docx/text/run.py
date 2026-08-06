@@ -165,6 +165,16 @@ class Run(StoryChild, BookmarkParent):
         return bool(self._r.lastRenderedPageBreaks)
 
     @property
+    def endnote_reference_ids(self) -> list[int]:
+        """The `@w:id` of each `w:endnoteReference` element in this run."""
+        return list(self._r.endnote_reference_ids)
+
+    @property
+    def footnote_reference_ids(self) -> list[int]:
+        """The `@w:id` of each `w:footnoteReference` element in this run."""
+        return list(self._r.footnote_reference_ids)
+
+    @property
     def font(self) -> Font:
         """The |Font| object providing access to the character formatting properties for
         this run, such as font name and size."""

@@ -9,10 +9,18 @@ from lxml import etree
 from typing_extensions import TypeAlias
 
 from docx.enum.section import WD_HEADER_FOOTER, WD_ORIENTATION, WD_SECTION_START
+from docx.oxml.exceptions import XmlchemyError
 from docx.oxml.ns import nsmap
 from docx.oxml.sdts import CT_SdtBase
-from docx.oxml.shared import CT_OnOff
-from docx.oxml.simpletypes import ST_SignedTwipsMeasure, ST_TwipsMeasure, XsdString
+from docx.oxml.shared import CT_DecimalNumber, CT_OnOff
+from docx.oxml.simpletypes import (
+    ST_FtnPos,
+    ST_NumberFormat,
+    ST_RestartNumber,
+    ST_SignedTwipsMeasure,
+    ST_TwipsMeasure,
+    XsdString,
+)
 from docx.oxml.table import CT_Tbl
 from docx.oxml.text.paragraph import CT_P
 from docx.oxml.xmlchemy import (
@@ -101,6 +109,106 @@ class CT_PageSz(BaseOxmlElement):
     )
 
 
+class CT_FtnEdnProps(BaseOxmlElement):
+    """`w:footnotePr` or `w:endnotePr`, specifying section-level default
+    footnote/endnote properties.
+
+    Both elements share this identical child structure (`w:pos`, `w:numFmt`,
+    `w:numStart`, `w:numRestart`); only their tag name and the meaning of their
+    defaults (applied one level up, by `CT_SectPr`) differ.
+    """
+
+    get_or_add_pos: Callable[[], CT_FtnPos]
+    get_or_add_numFmt: Callable[[], CT_NumFmt]
+    get_or_add_numStart: Callable[[], CT_DecimalNumber]
+    get_or_add_numRestart: Callable[[], CT_NumRestart]
+    _remove_pos: Callable[[], None]
+    _remove_numFmt: Callable[[], None]
+
+    _tag_seq = ("w:pos", "w:numFmt", "w:numStart", "w:numRestart")
+    pos: CT_FtnPos | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:pos", successors=_tag_seq[1:]
+    )
+    numFmt: CT_NumFmt | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:numFmt", successors=_tag_seq[2:]
+    )
+    numStart: CT_DecimalNumber | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:numStart", successors=_tag_seq[3:]
+    )
+    numRestart: CT_NumRestart | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:numRestart", successors=_tag_seq[4:]
+    )
+    del _tag_seq
+
+    @property
+    def numFmt_val(self) -> str | None:
+        """Value of `./w:numFmt/@w:val`, or |None| if not present."""
+        numFmt = self.numFmt
+        return None if numFmt is None else numFmt.val
+
+    @numFmt_val.setter
+    def numFmt_val(self, value: str | None):
+        if value is None:
+            self._remove_numFmt()
+            return
+        self.get_or_add_numFmt().val = value
+
+    @property
+    def numRestart_val(self) -> str | None:
+        """Value of `./w:numRestart/@w:val`, or |None| if not present."""
+        numRestart = self.numRestart
+        return None if numRestart is None else numRestart.val
+
+    @numRestart_val.setter
+    def numRestart_val(self, value: str):
+        self.get_or_add_numRestart().val = value
+
+    @property
+    def numStart_val(self) -> int | None:
+        """Value of `./w:numStart/@w:val`, or |None| if not present."""
+        numStart = self.numStart
+        return None if numStart is None else numStart.val
+
+    @numStart_val.setter
+    def numStart_val(self, value: int):
+        self.get_or_add_numStart().val = value
+
+    @property
+    def pos_val(self) -> str | None:
+        """Value of `./w:pos/@w:val`, or |None| if not present."""
+        pos = self.pos
+        return None if pos is None else pos.val
+
+    @pos_val.setter
+    def pos_val(self, value: str | None):
+        if value is None:
+            self._remove_pos()
+            return
+        self.get_or_add_pos().val = value
+
+
+class CT_FtnPos(BaseOxmlElement):
+    """`w:pos` element, specifying footnote/endnote placement on the page."""
+
+    val: str = RequiredAttribute("w:val", ST_FtnPos)  # pyright: ignore[reportAssignmentType]
+
+
+class CT_NumFmt(BaseOxmlElement):
+    """`w:numFmt` element, specifying a footnote/endnote numbering format."""
+
+    val: str = RequiredAttribute(  # pyright: ignore[reportAssignmentType]
+        "w:val", ST_NumberFormat
+    )
+
+
+class CT_NumRestart(BaseOxmlElement):
+    """`w:numRestart` element, specifying when footnote/endnote numbering restarts."""
+
+    val: str = RequiredAttribute(  # pyright: ignore[reportAssignmentType]
+        "w:val", ST_RestartNumber
+    )
+
+
 class CT_SectPr(BaseOxmlElement):
     """`w:sectPr` element, the container element for section properties."""
 
@@ -108,6 +216,8 @@ class CT_SectPr(BaseOxmlElement):
     get_or_add_pgSz: Callable[[], CT_PageSz]
     get_or_add_titlePg: Callable[[], CT_OnOff]
     get_or_add_type: Callable[[], CT_SectType]
+    get_or_add_footnotePr: Callable[[], CT_FtnEdnProps]
+    get_or_add_endnotePr: Callable[[], CT_FtnEdnProps]
     _add_footerReference: Callable[[], CT_HdrFtrRef]
     _add_headerReference: Callable[[], CT_HdrFtrRef]
     _remove_titlePg: Callable[[], None]
@@ -137,6 +247,12 @@ class CT_SectPr(BaseOxmlElement):
     )
     headerReference = ZeroOrMore("w:headerReference", successors=_tag_seq)
     footerReference = ZeroOrMore("w:footerReference", successors=_tag_seq)
+    footnotePr: CT_FtnEdnProps | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:footnotePr", successors=_tag_seq[1:]
+    )
+    endnotePr: CT_FtnEdnProps | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:endnotePr", successors=_tag_seq[2:]
+    )
     type: CT_SectType | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "w:type", successors=_tag_seq[3:]
     )
@@ -198,6 +314,59 @@ class CT_SectPr(BaseOxmlElement):
         return cloned_sectPr
 
     @property
+    def endnote_number_format(self) -> str:
+        """Value of `./w:endnotePr/w:numFmt/@w:val`, or `'decimal'` if not present."""
+        endnotePr = self.endnotePr
+        val = None if endnotePr is None else endnotePr.numFmt_val
+        return "decimal" if val is None else val
+
+    @endnote_number_format.setter
+    def endnote_number_format(self, value: str):
+        self.get_or_add_endnotePr().numFmt_val = value
+
+    @property
+    def endnote_numbering_restart_location(self) -> str:
+        """Value of `./w:endnotePr/w:numRestart/@w:val`, or `'continuous'` if not
+        present."""
+        endnotePr = self.endnotePr
+        val = None if endnotePr is None else endnotePr.numRestart_val
+        return "continuous" if val is None else val
+
+    @endnote_numbering_restart_location.setter
+    def endnote_numbering_restart_location(self, value: str):
+        if value != "continuous" and self.endnote_numbering_start_value != 1:
+            raise XmlchemyError(
+                "When ``<w:numRestart> is not 'continuous', then ``<w:numStart>`` must be 1."
+            )
+        self.get_or_add_endnotePr().numRestart_val = value
+
+    @property
+    def endnote_numbering_start_value(self) -> int:
+        """Value of `./w:endnotePr/w:numStart/@w:val`, or `1` if not present."""
+        endnotePr = self.endnotePr
+        val = None if endnotePr is None else endnotePr.numStart_val
+        return 1 if val is None else val
+
+    @endnote_numbering_start_value.setter
+    def endnote_numbering_start_value(self, value: int):
+        if value != 1 and self.endnote_numbering_restart_location != "continuous":
+            raise XmlchemyError(
+                "When ``<w:numStart> is not 1, then ``<w:numRestart>`` must be 'continuous'."
+            )
+        self.get_or_add_endnotePr().numStart_val = value
+
+    @property
+    def endnote_position(self) -> str:
+        """Value of `./w:endnotePr/w:pos/@w:val`, or `'docEnd'` if not present."""
+        endnotePr = self.endnotePr
+        val = None if endnotePr is None else endnotePr.pos_val
+        return "docEnd" if val is None else val
+
+    @endnote_position.setter
+    def endnote_position(self, value: str):
+        self.get_or_add_endnotePr().pos_val = value
+
+    @property
     def footer(self) -> Length | None:
         """Distance from bottom edge of page to bottom edge of the footer.
 
@@ -214,6 +383,59 @@ class CT_SectPr(BaseOxmlElement):
     def footer(self, value: int | Length | None):
         pgMar = self.get_or_add_pgMar()
         pgMar.footer = value if value is None or isinstance(value, Length) else Length(value)
+
+    @property
+    def footnote_number_format(self) -> str:
+        """Value of `./w:footnotePr/w:numFmt/@w:val`, or `'decimal'` if not present."""
+        footnotePr = self.footnotePr
+        val = None if footnotePr is None else footnotePr.numFmt_val
+        return "decimal" if val is None else val
+
+    @footnote_number_format.setter
+    def footnote_number_format(self, value: str):
+        self.get_or_add_footnotePr().numFmt_val = value
+
+    @property
+    def footnote_numbering_restart_location(self) -> str:
+        """Value of `./w:footnotePr/w:numRestart/@w:val`, or `'continuous'` if not
+        present."""
+        footnotePr = self.footnotePr
+        val = None if footnotePr is None else footnotePr.numRestart_val
+        return "continuous" if val is None else val
+
+    @footnote_numbering_restart_location.setter
+    def footnote_numbering_restart_location(self, value: str):
+        if value != "continuous" and self.footnote_numbering_start_value != 1:
+            raise XmlchemyError(
+                "When ``<w:numRestart> is not 'continuous', then ``<w:numStart>`` must be 1."
+            )
+        self.get_or_add_footnotePr().numRestart_val = value
+
+    @property
+    def footnote_numbering_start_value(self) -> int:
+        """Value of `./w:footnotePr/w:numStart/@w:val`, or `1` if not present."""
+        footnotePr = self.footnotePr
+        val = None if footnotePr is None else footnotePr.numStart_val
+        return 1 if val is None else val
+
+    @footnote_numbering_start_value.setter
+    def footnote_numbering_start_value(self, value: int):
+        if value != 1 and self.footnote_numbering_restart_location != "continuous":
+            raise XmlchemyError(
+                "When ``<w:numStart> is not 1, then ``<w:numRestart>`` must be 'continuous'."
+            )
+        self.get_or_add_footnotePr().numStart_val = value
+
+    @property
+    def footnote_position(self) -> str:
+        """Value of `./w:footnotePr/w:pos/@w:val`, or `'pageBottom'` if not present."""
+        footnotePr = self.footnotePr
+        val = None if footnotePr is None else footnotePr.pos_val
+        return "pageBottom" if val is None else val
+
+    @footnote_position.setter
+    def footnote_position(self, value: str):
+        self.get_or_add_footnotePr().pos_val = value
 
     def get_footerReference(self, type_: WD_HEADER_FOOTER) -> CT_HdrFtrRef | None:
         """Return footerReference element of `type_` or None if not present."""

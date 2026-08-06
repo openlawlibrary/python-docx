@@ -120,6 +120,21 @@ from .document import CT_Body, CT_Document
 register_element_cls("w:body", CT_Body)
 register_element_cls("w:document", CT_Document)
 
+from .endnote import CT_Endnotes, CT_FtnEdn
+
+register_element_cls("w:endnote", CT_FtnEdn)
+register_element_cls("w:endnotes", CT_Endnotes)
+
+from .footnote import CT_Footnotes, CT_FtnEnd
+
+register_element_cls("w:footnote", CT_FtnEnd)
+register_element_cls("w:footnotes", CT_Footnotes)
+
+from .text.footnote_reference import CT_FtnEdnRef
+
+register_element_cls("w:endnoteReference", CT_FtnEdnRef)
+register_element_cls("w:footnoteReference", CT_FtnEdnRef)
+
 from .numbering import CT_Num, CT_Numbering, CT_NumLvl, CT_NumPr
 
 register_element_cls("w:abstractNumId", CT_DecimalNumber)
@@ -132,20 +147,30 @@ register_element_cls("w:numbering", CT_Numbering)
 register_element_cls("w:startOverride", CT_DecimalNumber)
 
 from .section import (
+    CT_FtnEdnProps,
+    CT_FtnPos,
     CT_HdrFtr,
     CT_HdrFtrRef,
+    CT_NumFmt,
+    CT_NumRestart,
     CT_PageMar,
     CT_PageSz,
     CT_SectPr,
     CT_SectType,
 )
 
+register_element_cls("w:endnotePr", CT_FtnEdnProps)
 register_element_cls("w:footerReference", CT_HdrFtrRef)
+register_element_cls("w:footnotePr", CT_FtnEdnProps)
 register_element_cls("w:ftr", CT_HdrFtr)
 register_element_cls("w:hdr", CT_HdrFtr)
 register_element_cls("w:headerReference", CT_HdrFtrRef)
+register_element_cls("w:numFmt", CT_NumFmt)
+register_element_cls("w:numRestart", CT_NumRestart)
+register_element_cls("w:numStart", CT_DecimalNumber)
 register_element_cls("w:pgMar", CT_PageMar)
 register_element_cls("w:pgSz", CT_PageSz)
+register_element_cls("w:pos", CT_FtnPos)
 register_element_cls("w:sectPr", CT_SectPr)
 register_element_cls("w:type", CT_SectType)
 

@@ -11,6 +11,7 @@ import pytest
 from docx import Document
 from docx.enum.section import WD_HEADER_FOOTER, WD_ORIENTATION, WD_SECTION
 from docx.oxml.document import CT_Document
+from docx.oxml.exceptions import XmlchemyError
 from docx.oxml.section import CT_SectPr
 from docx.parts.document import DocumentPart
 from docx.parts.hdrftr import FooterPart, HeaderPart
@@ -519,6 +520,117 @@ class DescribeSection:
         setattr(section, margin_prop_name, value)
 
         assert section._sectPr.xml == expected_xml
+
+    @pytest.mark.parametrize(
+        ("sectPr_cxml", "prop_name", "expected_value"),
+        [
+            ("w:sectPr", "footnote_position", "pageBottom"),
+            ("w:sectPr", "footnote_number_format", "decimal"),
+            ("w:sectPr", "footnote_numbering_start_value", 1),
+            ("w:sectPr", "footnote_numbering_restart_location", "continuous"),
+            ("w:sectPr", "endnote_position", "docEnd"),
+            ("w:sectPr", "endnote_number_format", "decimal"),
+            ("w:sectPr", "endnote_numbering_start_value", 1),
+            ("w:sectPr", "endnote_numbering_restart_location", "continuous"),
+            (
+                "w:sectPr/w:footnotePr/w:pos{w:val=beneathText}",
+                "footnote_position",
+                "beneathText",
+            ),
+            (
+                "w:sectPr/w:footnotePr/w:numFmt{w:val=lowerRoman}",
+                "footnote_number_format",
+                "lowerRoman",
+            ),
+            (
+                "w:sectPr/w:footnotePr/w:numStart{w:val=5}",
+                "footnote_numbering_start_value",
+                5,
+            ),
+            (
+                "w:sectPr/w:footnotePr/w:numRestart{w:val=eachPage}",
+                "footnote_numbering_restart_location",
+                "eachPage",
+            ),
+            (
+                "w:sectPr/w:endnotePr/w:pos{w:val=sectEnd}",
+                "endnote_position",
+                "sectEnd",
+            ),
+        ],
+    )
+    def it_knows_its_footnote_and_endnote_properties_with_defaults(
+        self, sectPr_cxml: str, prop_name: str, expected_value: object, document_part_: Mock
+    ):
+        sectPr = cast(CT_SectPr, element(sectPr_cxml))
+        section = Section(sectPr, document_part_)
+
+        assert getattr(section, prop_name) == expected_value
+
+    @pytest.mark.parametrize(
+        ("prop_name", "value", "expected_cxml"),
+        [
+            ("footnote_position", "beneathText", "w:sectPr/w:footnotePr/w:pos{w:val=beneathText}"),
+            (
+                "footnote_number_format",
+                "lowerRoman",
+                "w:sectPr/w:footnotePr/w:numFmt{w:val=lowerRoman}",
+            ),
+            (
+                "endnote_position",
+                "sectEnd",
+                "w:sectPr/w:endnotePr/w:pos{w:val=sectEnd}",
+            ),
+            (
+                "endnote_number_format",
+                "upperLetter",
+                "w:sectPr/w:endnotePr/w:numFmt{w:val=upperLetter}",
+            ),
+        ],
+    )
+    def it_can_change_its_footnote_and_endnote_properties(
+        self, prop_name: str, value: str, expected_cxml: str, document_part_: Mock
+    ):
+        sectPr = cast(CT_SectPr, element("w:sectPr"))
+        section = Section(sectPr, document_part_)
+
+        setattr(section, prop_name, value)
+
+        assert section._sectPr.xml == xml(expected_cxml)
+
+    def it_raises_when_restart_location_conflicts_with_a_non_1_start_value(
+        self, document_part_: Mock
+    ):
+        sectPr = cast(CT_SectPr, element("w:sectPr"))
+        section = Section(sectPr, document_part_)
+        section.footnote_numbering_start_value = 5
+
+        with pytest.raises(XmlchemyError) as exc_info:
+            section.footnote_numbering_restart_location = "eachPage"
+
+        assert (
+            str(exc_info.value)
+            == "When ``<w:numRestart> is not 'continuous', then ``<w:numStart>`` must be 1."
+        )
+        assert section.footnote_numbering_restart_location == "continuous"
+        assert section.footnote_numbering_start_value == 5
+
+    def it_raises_when_start_value_conflicts_with_a_non_continuous_restart_location(
+        self, document_part_: Mock
+    ):
+        sectPr = cast(CT_SectPr, element("w:sectPr"))
+        section = Section(sectPr, document_part_)
+        section.footnote_numbering_restart_location = "eachPage"
+
+        with pytest.raises(XmlchemyError) as exc_info:
+            section.footnote_numbering_start_value = 5
+
+        assert (
+            str(exc_info.value)
+            == "When ``<w:numStart> is not 1, then ``<w:numRestart>`` must be 'continuous'."
+        )
+        assert section.footnote_numbering_restart_location == "eachPage"
+        assert section.footnote_numbering_start_value == 1
 
     # -- fixtures-----------------------------------------------------
 

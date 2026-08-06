@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     import docx.types as t
     from docx.oxml.comments import CT_Comment
     from docx.oxml.document import CT_Body
+    from docx.oxml.endnote import CT_FtnEdn
+    from docx.oxml.footnote import CT_FtnEnd
     from docx.oxml.sdts import CT_SdtBase, CT_SdtContentBase
     from docx.oxml.section import CT_HdrFtr
     from docx.oxml.table import CT_Tc
@@ -32,7 +34,9 @@ if TYPE_CHECKING:
     from docx.styles.style import ParagraphStyle
     from docx.table import Table
 
-BlockItemElement: TypeAlias = "CT_Body | CT_Comment | CT_HdrFtr | CT_SdtContentBase | CT_Tc"
+BlockItemElement: TypeAlias = (
+    "CT_Body | CT_Comment | CT_FtnEdn | CT_FtnEnd | CT_HdrFtr | CT_SdtContentBase | CT_Tc"
+)
 
 
 class BlockItemContainer(StoryChild, BookmarkParent):
@@ -72,8 +76,9 @@ class BlockItemContainer(StoryChild, BookmarkParent):
         from docx.sdt import SdtBase
 
         # -- `_new_sdt()` is present on `CT_Body`, `CT_HdrFtr`, and `CT_SdtContentBase`,
-        # -- but not `CT_Comment` or `CT_Tc` -- content controls aren't supported inside
-        # -- comments or table cells, matching the original fork's exact scope.
+        # -- but not `CT_Comment`, `CT_Tc`, `CT_FtnEnd`, or `CT_FtnEdn` -- content
+        # -- controls aren't supported inside comments, table cells, footnotes, or
+        # -- endnotes, matching the original fork's exact scope.
         sdt = cast("CT_SdtBase", self._element._new_sdt())  # pyright: ignore
         sdtPr = sdt.get_or_add_sdtPr()
         sdtPr.name = tag_name
