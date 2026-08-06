@@ -80,6 +80,16 @@ class Hyperlink(Parented):
         return self._hyperlink.anchor or ""
 
     @property
+    def link(self) -> str:
+        """The address this hyperlink refers to.
+
+        This is `.address` when present (an external URL), otherwise `.fragment` (a
+        bookmark name, for an internal "jump" hyperlink, whose target is stored there
+        instead since `.address` is blank in that case).
+        """
+        return self.address or self.fragment
+
+    @property
     def runs(self) -> list[Run]:
         """List of |Run| instances in this hyperlink.
 

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Iterator, List, cast
 
 from docx.enum.style import WD_STYLE_TYPE
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.oxml.text.run import CT_R
 from docx.shared import StoryChild
 from docx.styles.style import ParagraphStyle
@@ -18,6 +20,21 @@ if TYPE_CHECKING:
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
     from docx.oxml.text.paragraph import CT_P
     from docx.styles.style import CharacterStyle
+
+_URL_RE = re.compile(
+    r"^https?://"
+    r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|"
+    r"localhost|"
+    r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
+    r"(?::\d+)?"
+    r"(?:/?|[/?]\S+)$",
+    re.IGNORECASE,
+)
+
+
+def _is_valid_url(candidate: str) -> bool:
+    """True when `candidate` looks like an http(s) URL rather than a bookmark name."""
+    return bool(_URL_RE.search(candidate))
 
 
 class Paragraph(StoryChild):
@@ -42,6 +59,21 @@ class Paragraph(StoryChild):
         if style:
             run.style = style
         return run
+
+    def add_hyperlink(self, text: str, reference: str) -> Hyperlink:
+        """Append a `<w:hyperlink>` element containing `text` to this paragraph.
+
+        `reference` can be a fully-qualified URL (`"https://..."`), in which case an
+        external relationship is added to this paragraph's part, or the name of a
+        bookmark elsewhere in this document, in which case the hyperlink becomes an
+        internal "jump" to that bookmark.
+        """
+        if _is_valid_url(reference):
+            rId = self.part.relate_to(reference, RT.HYPERLINK, is_external=True)
+            hyperlink = self._p.add_hyperlink(text, rId=rId)
+        else:
+            hyperlink = self._p.add_hyperlink(text, anchor=reference)
+        return Hyperlink(hyperlink, self)
 
     @property
     def alignment(self) -> WD_PARAGRAPH_ALIGNMENT | None:
@@ -124,8 +156,24 @@ class Paragraph(StoryChild):
     @property
     def runs(self) -> List[Run]:
         """Sequence of |Run| instances corresponding to the <w:r> elements in this
-        paragraph."""
-        return [Run(r, self) for r in self._p.r_lst]
+        paragraph, including those nested inside a hyperlink.
+
+        A hyperlink's runs are flattened in place here rather than nested inside a
+        |Hyperlink| instance -- compare with `.runs_and_hyperlinks`, which does not
+        descend into a hyperlink's own runs.
+        """
+        return [Run(r, self) for r in self._p.all_runs]
+
+    @property
+    def runs_and_hyperlinks(self) -> List[Run | Hyperlink]:
+        """Sequence of |Run| and |Hyperlink| instances in this paragraph, in document
+        order.
+
+        Unlike `.runs`, a hyperlink's own runs are not flattened into this sequence --
+        the hyperlink appears as a single |Hyperlink| instance. This is an alias for
+        `.iter_inner_content()`, provided as a list for convenient indexing.
+        """
+        return list(self.iter_inner_content())
 
     @property
     def style(self) -> ParagraphStyle | None:
