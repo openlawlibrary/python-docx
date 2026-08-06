@@ -93,6 +93,12 @@ class TabStop(ElementProxy):
         self._tab.val = value
 
     @property
+    def is_clear(self):
+        """True when this tab stop overrides (cancels) an inherited tab stop rather
+        than defining an active one, i.e. its alignment is `WD_TAB_ALIGNMENT.CLEAR`."""
+        return self.alignment == WD_TAB_ALIGNMENT.CLEAR
+
+    @property
     def leader(self):
         """A member of :ref:`WdTabLeader` specifying a repeating character used as a
         "leader", filling in the space spanned by this tab.

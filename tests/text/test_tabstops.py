@@ -30,6 +30,10 @@ class DescribeTabStop:
         tab_stop.alignment = value
         assert tab_stop._element.xml == expected_xml
 
+    def it_knows_when_it_is_clear(self, is_clear_fixture):
+        tab_stop, expected_value = is_clear_fixture
+        assert tab_stop.is_clear is expected_value
+
     def it_knows_its_leader(self, leader_get_fixture):
         tab_stop, expected_value = leader_get_fixture
         assert tab_stop.leader == expected_value
@@ -65,6 +69,18 @@ class DescribeTabStop:
         expected_xml = xml(expected_cxml)
         value = getattr(WD_TAB_ALIGNMENT, member)
         return tab_stop, value, expected_xml
+
+    @pytest.fixture(
+        params=[
+            ("w:tab{w:val=left}", False),
+            ("w:tab{w:val=right}", False),
+            ("w:tab{w:val=clear}", True),
+        ]
+    )
+    def is_clear_fixture(self, request):
+        tab_stop_cxml, expected_value = request.param
+        tab_stop = TabStop(element(tab_stop_cxml))
+        return tab_stop, expected_value
 
     @pytest.fixture(
         params=[
