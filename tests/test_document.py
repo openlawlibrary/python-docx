@@ -110,7 +110,19 @@ class DescribeDocument:
 
         paragraph = document.add_paragraph(text, style)
 
-        body_.add_paragraph.assert_called_once_with(text, style)
+        body_.add_paragraph.assert_called_once_with(text, style, None, None)
+        assert paragraph is paragraph_
+
+    def it_can_add_a_paragraph_continuing_a_numbered_list(
+        self, document: Document, body_: Mock, body_prop_: Mock, paragraph_: Mock
+    ):
+        body_prop_.return_value = body_
+        body_.add_paragraph.return_value = paragraph_
+        prev_p = document.add_paragraph("prior item")
+
+        paragraph = document.add_paragraph("next item", prev_p=prev_p, ilvl=1)
+
+        body_.add_paragraph.assert_called_with("next item", None, prev_p, 1)
         assert paragraph is paragraph_
 
     def it_can_add_a_picture(

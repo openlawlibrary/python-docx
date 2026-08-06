@@ -51,7 +51,13 @@ class BlockItemContainer(StoryChild, BookmarkParent):
         super(BlockItemContainer, self).__init__(parent)
         self._element = element
 
-    def add_paragraph(self, text: str = "", style: str | ParagraphStyle | None = None) -> Paragraph:
+    def add_paragraph(
+        self,
+        text: str = "",
+        style: str | ParagraphStyle | None = None,
+        prev: Paragraph | None = None,
+        ilvl: int | None = None,
+    ) -> Paragraph:
         """Return paragraph newly added to the end of the content in this container.
 
         The paragraph has `text` in a single run if present, and is given paragraph
@@ -59,12 +65,18 @@ class BlockItemContainer(StoryChild, BookmarkParent):
 
         If `style` is |None|, no paragraph style is applied, which has the same effect
         as applying the 'Normal' style.
+
+        If the new paragraph is part of a numbered list, pass `prev` (the paragraph it
+        continues the list from) and/or `ilvl` (its indentation level); see
+        :meth:`.Paragraph.set_li_lvl`.
         """
         paragraph = self._add_paragraph()
         if text:
             paragraph.add_run(text)
         if style is not None:
             paragraph.style = style
+        if prev is not None or ilvl is not None:
+            paragraph.set_li_lvl(prev, ilvl)
         return paragraph
 
     def add_sdt(self, tag_name: str, alias_name: str = "") -> SdtBase:

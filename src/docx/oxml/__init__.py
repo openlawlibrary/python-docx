@@ -135,10 +135,12 @@ from .text.footnote_reference import CT_FtnEdnRef
 register_element_cls("w:endnoteReference", CT_FtnEdnRef)
 register_element_cls("w:footnoteReference", CT_FtnEdnRef)
 
-from .numbering import CT_Num, CT_Numbering, CT_NumLvl, CT_NumPr
+from .numbering import CT_AbstractNum, CT_Lvl, CT_Num, CT_Numbering, CT_NumLvl, CT_NumPr
 
+register_element_cls("w:abstractNum", CT_AbstractNum)
 register_element_cls("w:abstractNumId", CT_DecimalNumber)
 register_element_cls("w:ilvl", CT_DecimalNumber)
+register_element_cls("w:lvl", CT_Lvl)
 register_element_cls("w:lvlOverride", CT_NumLvl)
 register_element_cls("w:num", CT_Num)
 register_element_cls("w:numId", CT_DecimalNumber)

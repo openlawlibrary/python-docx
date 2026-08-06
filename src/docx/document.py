@@ -114,7 +114,13 @@ class Document(ElementProxy):
         paragraph.add_run().add_break(WD_BREAK.PAGE)
         return paragraph
 
-    def add_paragraph(self, text: str = "", style: str | ParagraphStyle | None = None) -> Paragraph:
+    def add_paragraph(
+        self,
+        text: str = "",
+        style: str | ParagraphStyle | None = None,
+        prev_p: Paragraph | None = None,
+        ilvl: int | None = None,
+    ) -> Paragraph:
         """Return paragraph newly added to the end of the document.
 
         The paragraph is populated with `text` and having paragraph style `style`.
@@ -123,8 +129,12 @@ class Document(ElementProxy):
         appropriate XML form for a tab. `text` can also include newline (``\\n``) or
         carriage return (``\\r``) characters, each of which is converted to a line
         break.
+
+        If the new paragraph is part of a numbered list, pass `prev_p` (the paragraph
+        it continues the list from) and/or `ilvl` (its indentation level); see
+        :meth:`.Paragraph.set_li_lvl`.
         """
-        return self._body.add_paragraph(text, style)
+        return self._body.add_paragraph(text, style, prev_p, ilvl)
 
     def add_picture(
         self,

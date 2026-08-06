@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, List, cast
+from typing import TYPE_CHECKING, Any, Callable, List, cast
 
 from docx.oxml.parser import OxmlElement
 from docx.oxml.xmlchemy import BaseOxmlElement, ZeroOrMore, ZeroOrOne
@@ -12,6 +12,7 @@ from docx.oxml.xmlchemy import BaseOxmlElement, ZeroOrMore, ZeroOrOne
 if TYPE_CHECKING:
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
     from docx.oxml.bookmark import CT_BookmarkEnd, CT_BookmarkStart
+    from docx.oxml.numbering import CT_Lvl, CT_Numbering
     from docx.oxml.sdts import CT_SdtBase
     from docx.oxml.section import CT_SectPr
     from docx.oxml.text.hyperlink import CT_Hyperlink
@@ -90,6 +91,33 @@ class CT_P(BaseOxmlElement):
         return self.xpath(
             "./w:r/w:lastRenderedPageBreak | ./w:hyperlink/w:r/w:lastRenderedPageBreak"
         )
+
+    def lvl_from_para_props(self, numbering_el: CT_Numbering) -> CT_Lvl | None:
+        """The `w:lvl` numbering-level definition for this paragraph, resolved via its
+        own direct numbering properties (not those inherited from its style)."""
+        return numbering_el.get_lvl_from_props(self)
+
+    def lvl_from_style_props(
+        self, numbering_el: CT_Numbering, styles_cache: dict[str, Any]
+    ) -> CT_Lvl | None:
+        """The `w:lvl` numbering-level definition for this paragraph, resolved via its
+        paragraph style's numbering properties."""
+        return numbering_el.get_lvl_from_props(self, styles_cache)
+
+    def number(self, numbering_el: CT_Numbering, styles_cache: dict[str, Any]) -> str | None:
+        """This paragraph's list-item label (e.g. `"1)\\t"`), or |None| if this
+        paragraph is not part of a numbered list."""
+        return numbering_el.get_num_for_p(self, styles_cache)
+
+    def set_li_lvl(
+        self,
+        numbering_el: CT_Numbering,
+        styles_cache: dict[str, Any],
+        prev_el: CT_P | None,
+        ilvl: int | None,
+    ) -> None:
+        """Set this paragraph's list-item indentation level."""
+        numbering_el.set_li_lvl(self, styles_cache, prev_el, ilvl)
 
     def set_sectPr(self, sectPr: CT_SectPr):
         """Unconditionally replace or add `sectPr` as grandchild in correct sequence."""
