@@ -10,9 +10,11 @@ from docx.oxml.ns import nsdecls, qn
 from docx.oxml.parser import parse_xml
 from docx.oxml.shared import CT_DecimalNumber
 from docx.oxml.simpletypes import (
+    ST_Border,
     ST_Merge,
     ST_TblLayoutType,
     ST_TblWidth,
+    ST_TextDirection,
     ST_TwipsMeasure,
     XsdInt,
 )
@@ -34,6 +36,75 @@ if TYPE_CHECKING:
     from docx.oxml.bookmark import CT_BookmarkEnd, CT_BookmarkStart
     from docx.oxml.shared import CT_OnOff, CT_String
     from docx.oxml.text.parfmt import CT_Jc
+
+
+class CT_Border(BaseOxmlElement):
+    """`<w:top>`, `<w:left>`, `<w:bottom>`, `<w:right>` etc. in a border context.
+
+    Defines a single border edge, e.g. of `<w:tblBorders>` or `<w:tcBorders>`.
+    """
+
+    val: str = RequiredAttribute("w:val", ST_Border)  # pyright: ignore[reportAssignmentType]
+
+
+class CT_TblCellMar(BaseOxmlElement):
+    """`<w:tblCellMar>` element, specifying default table cell margins."""
+
+    get_or_add_t: Callable[[], MT_BorderMargin]
+    get_or_add_l_elm: Callable[[], MT_BorderMargin]
+    get_or_add_b: Callable[[], MT_BorderMargin]
+    get_or_add_r: Callable[[], MT_BorderMargin]
+
+    _tag_seq = ("w:top", "w:left", "w:bottom", "w:right")
+    t: MT_BorderMargin | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:top", successors=_tag_seq[1:]
+    )
+    l_elm: MT_BorderMargin | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:left", successors=_tag_seq[2:]
+    )
+    b: MT_BorderMargin | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:bottom", successors=_tag_seq[3:]
+    )
+    r: MT_BorderMargin | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:right", successors=_tag_seq[4:]
+    )
+    del _tag_seq
+
+    @property
+    def top(self) -> Length | None:
+        t = self.t
+        return None if t is None else t.width
+
+    @top.setter
+    def top(self, value: Length):
+        self.get_or_add_t().width = value
+
+    @property
+    def left(self) -> Length | None:
+        l_elm = self.l_elm
+        return None if l_elm is None else l_elm.width
+
+    @left.setter
+    def left(self, value: Length):
+        self.get_or_add_l_elm().width = value
+
+    @property
+    def bottom(self) -> Length | None:
+        b = self.b
+        return None if b is None else b.width
+
+    @bottom.setter
+    def bottom(self, value: Length):
+        self.get_or_add_b().width = value
+
+    @property
+    def right(self) -> Length | None:
+        r = self.r
+        return None if r is None else r.width
+
+    @right.setter
+    def right(self, value: Length):
+        self.get_or_add_r().width = value
 
 
 class CT_Height(BaseOxmlElement):
@@ -97,6 +168,15 @@ class CT_Row(BaseOxmlElement):
             remaining_offset -= tc.grid_span
 
         raise ValueError(f"no `tc` element at grid_offset={grid_offset}")
+
+    @property
+    def repeat_header_row(self) -> bool:
+        """Value of `./w:trPr/w:tblHeader/@w:val`, or |False| if not present."""
+        return self.get_or_add_trPr().repeat_header_row
+
+    @repeat_header_row.setter
+    def repeat_header_row(self, value: bool):
+        self.get_or_add_trPr().repeat_header_row = value
 
     @property
     def tr_idx(self) -> int:
@@ -306,7 +386,11 @@ class CT_TblPr(BaseOxmlElement):
     get_or_add_bidiVisual: Callable[[], CT_OnOff]
     get_or_add_jc: Callable[[], CT_Jc]
     get_or_add_tblLayout: Callable[[], CT_TblLayoutType]
+    get_or_add_tblW: Callable[[], CT_TblWidth]
+    get_or_add_tblCellMar: Callable[[], CT_TblCellMar]
     _add_tblStyle: Callable[[], CT_String]
+    _add_tblBorders: Callable[[], CT_TcBorders]
+    _add_tblCellMar: Callable[[], CT_TblCellMar]
     _remove_bidiVisual: Callable[[], None]
     _remove_jc: Callable[[], None]
     _remove_tblStyle: Callable[[], None]
@@ -340,8 +424,17 @@ class CT_TblPr(BaseOxmlElement):
     jc: CT_Jc | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "w:jc", successors=_tag_seq[8:]
     )
+    tblW: CT_TblWidth | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:tblW", successors=_tag_seq[7:]
+    )
+    tblBorders: CT_TcBorders | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:tblBorders", successors=_tag_seq[11:]
+    )
     tblLayout: CT_TblLayoutType | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "w:tblLayout", successors=_tag_seq[13:]
+    )
+    tblCellMar: CT_TblCellMar | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:tblCellMar", successors=_tag_seq[14:]
     )
     del _tag_seq
 
@@ -376,6 +469,30 @@ class CT_TblPr(BaseOxmlElement):
         tblLayout.type = "autofit" if value else "fixed"
 
     @property
+    def borders(self) -> CT_TcBorders:
+        """The `w:tblBorders` element of this table, adding one if not present."""
+        tblBorders = self.tblBorders
+        if tblBorders is None:
+            tblBorders = self._add_tblBorders()
+        return tblBorders
+
+    @property
+    def cell_margins(self) -> CT_TblCellMar:
+        """The `w:tblCellMar` element of this table, adding one if not present."""
+        tblCellMar = self.tblCellMar
+        if tblCellMar is None:
+            tblCellMar = self._add_tblCellMar()
+        return tblCellMar
+
+    @cell_margins.setter
+    def cell_margins(self, value: list[Length]):
+        cellMar = self.get_or_add_tblCellMar()
+        cellMar.top = value[0]
+        cellMar.left = value[1]
+        cellMar.bottom = value[2]
+        cellMar.right = value[3]
+
+    @property
     def style(self):
         """Return the value of the ``val`` attribute of the ``<w:tblStyle>`` child or
         |None| if not present."""
@@ -390,6 +507,17 @@ class CT_TblPr(BaseOxmlElement):
         if value is None:
             return
         self._add_tblStyle().val = value
+
+    @property
+    def width(self) -> Length | None:
+        """EMU length indicated by the combined `w:w` and `w:type` attrs of `w:tblW`,
+        or |None| if `w:tblW` is not present."""
+        tblW = self.tblW
+        return None if tblW is None else tblW.width
+
+    @width.setter
+    def width(self, value: Length):
+        self.get_or_add_tblW().width = value
 
 
 class CT_TblPrEx(BaseOxmlElement):
@@ -423,6 +551,15 @@ class CT_TblWidth(BaseOxmlElement):
         self.w = Emu(value).twips
 
 
+class MT_BorderMargin(CT_Border, CT_TblWidth):
+    """Element class registered for `w:top`/`w:left`/`w:bottom`/`w:right`.
+
+    Those tag names are shared between two distinct semantic contexts: a border edge
+    (which uses `@w:val`, see `CT_Border`) inside `w:tblBorders`/`w:tcBorders`, and a
+    cell margin (which uses `@w:w`/`@w:type`, see `CT_TblWidth`) inside `w:tblCellMar`.
+    """
+
+
 class CT_Tc(BaseOxmlElement):
     """`w:tc` table cell element."""
 
@@ -437,6 +574,11 @@ class CT_Tc(BaseOxmlElement):
     tcPr: CT_TcPr | None = ZeroOrOne("w:tcPr")  # pyright: ignore[reportAssignmentType]
     p = OneOrMore("w:p")
     tbl = OneOrMore("w:tbl")
+
+    @property
+    def borders(self) -> CT_TcBorders:
+        """The `w:tcBorders` element of this cell, adding one if not present."""
+        return self.get_or_add_tcPr().borders
 
     @property
     def bottom(self) -> int:
@@ -786,14 +928,87 @@ class CT_Tc(BaseOxmlElement):
         return self._tbl.tr_lst.index(self._tr)
 
 
+class CT_TcBorders(BaseOxmlElement):
+    """`<w:tcBorders>` element, defining table cell border properties."""
+
+    get_or_add_t: Callable[[], MT_BorderMargin]
+    get_or_add_l_elm: Callable[[], MT_BorderMargin]
+    get_or_add_b: Callable[[], MT_BorderMargin]
+    get_or_add_r: Callable[[], MT_BorderMargin]
+
+    _tag_seq = (
+        "w:top",
+        "w:left",
+        "w:bottom",
+        "w:right",
+        "w:insideH",
+        "w:insideV",
+        "w:tl2br",
+        "w:tr2bl",
+    )
+    t: MT_BorderMargin | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:top", successors=_tag_seq[1:]
+    )
+    l_elm: MT_BorderMargin | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:left", successors=_tag_seq[2:]
+    )
+    b: MT_BorderMargin | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:bottom", successors=_tag_seq[3:]
+    )
+    r: MT_BorderMargin | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:right", successors=_tag_seq[4:]
+    )
+    del _tag_seq
+
+    @property
+    def top(self) -> str:
+        t = self.t
+        return "none" if t is None else t.val
+
+    @top.setter
+    def top(self, value: str | None):
+        self.get_or_add_t().val = "none" if value is None else value
+
+    @property
+    def left(self) -> str:
+        l_elm = self.l_elm
+        return "none" if l_elm is None else l_elm.val
+
+    @left.setter
+    def left(self, value: str | None):
+        self.get_or_add_l_elm().val = "none" if value is None else value
+
+    @property
+    def bottom(self) -> str:
+        b = self.b
+        return "none" if b is None else b.val
+
+    @bottom.setter
+    def bottom(self, value: str | None):
+        self.get_or_add_b().val = "none" if value is None else value
+
+    @property
+    def right(self) -> str:
+        r = self.r
+        return "none" if r is None else r.val
+
+    @right.setter
+    def right(self, value: str | None):
+        self.get_or_add_r().val = "none" if value is None else value
+
+
 class CT_TcPr(BaseOxmlElement):
     """``<w:tcPr>`` element, defining table cell properties."""
 
     get_or_add_gridSpan: Callable[[], CT_DecimalNumber]
     get_or_add_tcW: Callable[[], CT_TblWidth]
+    get_or_add_tcBorders: Callable[[], CT_TcBorders]
+    get_or_add_textDirection: Callable[[], CT_TextDirection]
     get_or_add_vAlign: Callable[[], CT_VerticalJc]
+    _add_tcBorders: Callable[[], CT_TcBorders]
     _add_vMerge: Callable[[], CT_VMerge]
     _remove_gridSpan: Callable[[], None]
+    _remove_textDirection: Callable[[], None]
     _remove_vAlign: Callable[[], None]
     _remove_vMerge: Callable[[], None]
 
@@ -826,10 +1041,21 @@ class CT_TcPr(BaseOxmlElement):
     vMerge: CT_VMerge | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "w:vMerge", successors=_tag_seq[5:]
     )
+    tcBorders: CT_TcBorders | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:tcBorders", successors=_tag_seq[6:]
+    )
+    textDirection: CT_TextDirection | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:textDirection", successors=_tag_seq[10:]
+    )
     vAlign: CT_VerticalJc | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "w:vAlign", successors=_tag_seq[12:]
     )
     del _tag_seq
+
+    @property
+    def borders(self) -> CT_TcBorders:
+        """The `w:tcBorders` element of this cell, adding one if not present."""
+        return self.get_or_add_tcBorders()
 
     @property
     def grid_span(self) -> int:
@@ -845,6 +1071,19 @@ class CT_TcPr(BaseOxmlElement):
         self._remove_gridSpan()
         if value > 1:
             self.get_or_add_gridSpan().val = value
+
+    @property
+    def text_direction(self) -> str | None:
+        """Value of `./w:textDirection/@w:val`, or |None| if not present."""
+        textDirection = self.textDirection
+        return None if textDirection is None else textDirection.val
+
+    @text_direction.setter
+    def text_direction(self, value: str | None):
+        if value is None:
+            self._remove_textDirection()
+            return
+        self.get_or_add_textDirection().val = value
 
     @property
     def vAlign_val(self):
@@ -898,6 +1137,8 @@ class CT_TrPr(BaseOxmlElement):
     """``<w:trPr>`` element, defining table row properties."""
 
     get_or_add_trHeight: Callable[[], CT_Height]
+    get_or_add_tblHeader: Callable[[], CT_OnOff]
+    _remove_tblHeader: Callable[[], None]
 
     _tag_seq = (
         "w:cnfStyle",
@@ -924,6 +1165,9 @@ class CT_TrPr(BaseOxmlElement):
     )
     trHeight: CT_Height | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "w:trHeight", successors=_tag_seq[8:]
+    )
+    tblHeader: CT_OnOff | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:tblHeader", successors=_tag_seq[9:]
     )
     del _tag_seq
 
@@ -965,6 +1209,20 @@ class CT_TrPr(BaseOxmlElement):
         trHeight = self.get_or_add_trHeight()
         trHeight.val = value
 
+    @property
+    def repeat_header_row(self) -> bool:
+        """Value of `./w:tblHeader/@w:val`, or |False| if `w:tblHeader` is not
+        present."""
+        tblHeader = self.tblHeader
+        return False if tblHeader is None else tblHeader.val
+
+    @repeat_header_row.setter
+    def repeat_header_row(self, value: bool):
+        if value:
+            self.get_or_add_tblHeader().val = True
+        else:
+            self._remove_tblHeader()
+
 
 class CT_VerticalJc(BaseOxmlElement):
     """`w:vAlign` element, specifying vertical alignment of cell."""
@@ -980,3 +1238,9 @@ class CT_VMerge(BaseOxmlElement):
     val: str | None = OptionalAttribute(  # pyright: ignore[reportAssignmentType]
         "w:val", ST_Merge, default=ST_Merge.CONTINUE
     )
+
+
+class CT_TextDirection(BaseOxmlElement):
+    """``<w:textDirection>`` element, specifying text flow in a cell."""
+
+    val: str = RequiredAttribute("w:val", ST_TextDirection)  # pyright: ignore[reportAssignmentType]

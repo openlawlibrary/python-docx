@@ -83,6 +83,34 @@ class Table(StoryChild, BookmarkParent):
     @autofit.setter
     def autofit(self, value: bool):
         self._tblPr.autofit = value
+        for row in self.rows:
+            for cell in row.cells:
+                tc = cell._tc  # pyright: ignore[reportPrivateUsage]
+                if value is True:
+                    tc.tcPr.tcW.type = "auto"  # pyright: ignore[reportOptionalMemberAccess]
+                    tc.tcPr.tcW.w = 0  # pyright: ignore[reportOptionalMemberAccess]
+                else:
+                    tc.tcPr.tcW.type = "dxa"  # pyright: ignore[reportOptionalMemberAccess]
+        if value is True and self._tblPr.tblW is not None:
+            self._tblPr.tblW.type = "auto"
+
+    @property
+    def borders(self) -> list[str]:
+        """List of borders in order: top, left, bottom, right.
+
+        Each is a member of `ST_Border`, or `"none"` if not explicitly set.
+        """
+        b = self._tblPr.borders
+        return [b.top, b.left, b.bottom, b.right]
+
+    @borders.setter
+    def borders(self, value: list[str]):
+        if len(value) != 4:
+            raise ValueError(
+                "Borders are set with list of 4 elements!\nlist: [top, left, bottom, right]"
+            )
+        b = self._tblPr.borders
+        b.top, b.left, b.bottom, b.right = value
 
     @property
     def bookmark_ends(self) -> list[CT_BookmarkEnd]:
@@ -112,6 +140,24 @@ class Table(StoryChild, BookmarkParent):
     def columns(self):
         """|_Columns| instance representing the sequence of columns in this table."""
         return _Columns(self._tbl, self)
+
+    @property
+    def margins(self) -> list[Length | None]:
+        """List of cell margins in order: top, left, bottom, right.
+
+        Each is a |Length| value, or |None| if not explicitly set.
+        """
+        cm = self._tblPr.cell_margins
+        return [cm.top, cm.left, cm.bottom, cm.right]
+
+    @margins.setter
+    def margins(self, value: list[Length]):
+        if len(value) != 4:
+            raise ValueError(
+                "Margins are set with list of 4 elements!\nlist: [top, left, bottom, right]"
+            )
+        cm = self._tblPr.cell_margins
+        cm.top, cm.left, cm.bottom, cm.right = value
 
     def row_cells(self, row_idx: int) -> list[_Cell]:
         """DEPRECATED: Use `table.rows[row_idx].cells` instead.
@@ -171,6 +217,15 @@ class Table(StoryChild, BookmarkParent):
     @table_direction.setter
     def table_direction(self, value: WD_TABLE_DIRECTION | None):
         self._element.bidiVisual_val = value
+
+    @property
+    def width(self) -> Length | None:
+        """Table width in EMU, or |None| if no explicit width is set."""
+        return self._tblPr.width
+
+    @width.setter
+    def width(self, value: Length):
+        self._tblPr.width = value
 
     @property
     def _cells(self) -> list[_Cell]:
@@ -238,6 +293,24 @@ class _Cell(BlockItemContainer):
         return table
 
     @property
+    def borders(self) -> list[str]:
+        """List of borders in order: top, left, bottom, right.
+
+        Each is a member of `ST_Border`, or `"none"` if not explicitly set.
+        """
+        b = self._tc.borders
+        return [b.top, b.left, b.bottom, b.right]
+
+    @borders.setter
+    def borders(self, value: list[str]):
+        if len(value) != 4:
+            raise ValueError(
+                "Borders are set with list of 4 elements!\nlist: [top, left, bottom, right]"
+            )
+        b = self._tc.borders
+        b.top, b.left, b.bottom, b.right = value
+
+    @property
     def grid_span(self) -> int:
         """Number of layout-grid cells this cell spans horizontally.
 
@@ -294,6 +367,23 @@ class _Cell(BlockItemContainer):
         p = tc.add_p()
         r = p.add_r()
         r.text = text
+
+    @property
+    def text_direction(self) -> str | None:
+        """Member of :ref:`ST_TextDirection` or |None|.
+
+        A value of |None| indicates that the text direction is not set (the text is
+        then rendered left to right).
+        """
+        tcPr = self._element.tcPr
+        if tcPr is None:
+            return None
+        return tcPr.text_direction
+
+    @text_direction.setter
+    def text_direction(self, value: str | None):
+        tcPr = self._element.get_or_add_tcPr()
+        tcPr.text_direction = value
 
     @property
     def vertical_alignment(self):
@@ -504,6 +594,18 @@ class _Row(Parented):
     @height_rule.setter
     def height_rule(self, value: WD_ROW_HEIGHT_RULE | None):
         self._tr.trHeight_hRule = value
+
+    @property
+    def repeat_header_row(self) -> bool:
+        """|True| if this row is repeated when the table spans a page break.
+
+        Mainly used for table header rows.
+        """
+        return self._tr.repeat_header_row
+
+    @repeat_header_row.setter
+    def repeat_header_row(self, value: bool):
+        self._tr.repeat_header_row = value
 
     @property
     def table(self) -> Table:

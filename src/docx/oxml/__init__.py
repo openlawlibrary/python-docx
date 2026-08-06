@@ -172,6 +172,7 @@ from .table import (
     CT_Height,
     CT_Row,
     CT_Tbl,
+    CT_TblCellMar,
     CT_TblGrid,
     CT_TblGridCol,
     CT_TblLayoutType,
@@ -179,26 +180,39 @@ from .table import (
     CT_TblPrEx,
     CT_TblWidth,
     CT_Tc,
+    CT_TcBorders,
     CT_TcPr,
+    CT_TextDirection,
     CT_TrPr,
     CT_VMerge,
     CT_VerticalJc,
+    MT_BorderMargin,
 )
 
 register_element_cls("w:bidiVisual", CT_OnOff)
+register_element_cls("w:bottom", MT_BorderMargin)
 register_element_cls("w:gridAfter", CT_DecimalNumber)
 register_element_cls("w:gridBefore", CT_DecimalNumber)
 register_element_cls("w:gridCol", CT_TblGridCol)
 register_element_cls("w:gridSpan", CT_DecimalNumber)
+register_element_cls("w:left", MT_BorderMargin)
+register_element_cls("w:right", MT_BorderMargin)
 register_element_cls("w:tbl", CT_Tbl)
+register_element_cls("w:tblBorders", CT_TcBorders)
+register_element_cls("w:tblCellMar", CT_TblCellMar)
 register_element_cls("w:tblGrid", CT_TblGrid)
+register_element_cls("w:tblHeader", CT_OnOff)
 register_element_cls("w:tblLayout", CT_TblLayoutType)
 register_element_cls("w:tblPr", CT_TblPr)
 register_element_cls("w:tblPrEx", CT_TblPrEx)
 register_element_cls("w:tblStyle", CT_String)
+register_element_cls("w:tblW", CT_TblWidth)
 register_element_cls("w:tc", CT_Tc)
+register_element_cls("w:tcBorders", CT_TcBorders)
 register_element_cls("w:tcPr", CT_TcPr)
 register_element_cls("w:tcW", CT_TblWidth)
+register_element_cls("w:textDirection", CT_TextDirection)
+register_element_cls("w:top", MT_BorderMargin)
 register_element_cls("w:tr", CT_Row)
 register_element_cls("w:trHeight", CT_Height)
 register_element_cls("w:trPr", CT_TrPr)
