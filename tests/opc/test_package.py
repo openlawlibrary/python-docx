@@ -41,6 +41,11 @@ class DescribeOpcPackage:
         PackageReader_.from_file.assert_called_once_with(pkg_file)
         Unmarshaller_.unmarshal.assert_called_once_with(pkg_reader, pkg, PartFactory_)
         assert isinstance(pkg, OpcPackage)
+        assert pkg.path is pkg_file
+
+    def it_has_no_path_before_it_is_opened_or_saved(self):
+        pkg = OpcPackage()
+        assert pkg.path is None
 
     def it_initializes_its_rels_collection_on_first_reference(self, Relationships_):
         pkg = OpcPackage()
@@ -128,6 +133,7 @@ class DescribeOpcPackage:
         for part in parts_:
             part.before_marshal.assert_called_once_with()
         PackageWriter_.write.assert_called_once_with(pkg_file_, pkg.rels, parts_)
+        assert pkg.path is pkg_file_
 
     def it_provides_access_to_the_core_properties(self, core_props_fixture):
         opc_package, core_properties_ = core_props_fixture
