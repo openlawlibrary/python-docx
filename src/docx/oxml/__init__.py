@@ -7,6 +7,7 @@ This including registering custom element classes corresponding to Open XML elem
 
 from __future__ import annotations
 
+from docx.oxml.bookmark import CT_BookmarkEnd, CT_BookmarkStart
 from docx.oxml.drawing import CT_Drawing
 from docx.oxml.parser import OxmlElement, parse_xml, register_element_cls
 from docx.oxml.shape import (
@@ -70,6 +71,8 @@ register_element_cls("w:hyperlink", CT_Hyperlink)
 # ---------------------------------------------------------------------------
 # text-related elements
 
+register_element_cls("w:bookmarkEnd", CT_BookmarkEnd)
+register_element_cls("w:bookmarkStart", CT_BookmarkStart)
 register_element_cls("w:br", CT_Br)
 register_element_cls("w:cr", CT_Cr)
 register_element_cls("w:lastRenderedPageBreak", CT_LastRenderedPageBreak)

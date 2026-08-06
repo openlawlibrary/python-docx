@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Iterator, List, cast
 
+from docx.bookmark import BookmarkParent
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.text.run import CT_R
 from docx.shared import StoryChild
@@ -16,11 +17,12 @@ from docx.text.run import Run
 if TYPE_CHECKING:
     import docx.types as t
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    from docx.oxml.bookmark import CT_BookmarkEnd, CT_BookmarkStart
     from docx.oxml.text.paragraph import CT_P
     from docx.styles.style import CharacterStyle
 
 
-class Paragraph(StoryChild):
+class Paragraph(StoryChild, BookmarkParent):
     """Proxy object wrapping a `<w:p>` element."""
 
     def __init__(self, p: CT_P, parent: t.ProvidesStoryPart):
@@ -57,6 +59,16 @@ class Paragraph(StoryChild):
     @alignment.setter
     def alignment(self, value: WD_PARAGRAPH_ALIGNMENT):
         self._p.alignment = value
+
+    @property
+    def bookmark_ends(self) -> List[CT_BookmarkEnd]:
+        """The `w:bookmarkEnd` elements appearing directly in this paragraph."""
+        return self._p.bookmarkEnd_lst
+
+    @property
+    def bookmark_starts(self) -> List[CT_BookmarkStart]:
+        """The `w:bookmarkStart` elements appearing directly in this paragraph."""
+        return self._p.bookmarkStart_lst
 
     def clear(self):
         """Return this same paragraph after removing all its content.

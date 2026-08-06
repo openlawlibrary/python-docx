@@ -32,6 +32,9 @@ class CT_R(BaseOxmlElement):
     _add_sym: Callable[[], CT_Sym]
     _add_t: Callable[..., CT_Text]
 
+    bookmarkStart = ZeroOrMore(
+        "w:bookmarkStart", successors=("w:t", "w:rPr", "w:br", "w:cr", "w:tab", "w:drawing")
+    )
     rPr: CT_RPr | None = ZeroOrOne("w:rPr")  # pyright: ignore[reportAssignmentType]
     br = ZeroOrMore("w:br")
     cr = ZeroOrMore("w:cr")
@@ -39,6 +42,7 @@ class CT_R(BaseOxmlElement):
     sym = ZeroOrMore("w:sym")
     t = ZeroOrMore("w:t")
     tab = ZeroOrMore("w:tab")
+    bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
 
     def add_t(self, text: str) -> CT_Text:
         """Return a newly added `<w:t>` element containing `text`."""

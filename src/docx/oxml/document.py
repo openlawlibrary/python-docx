@@ -42,6 +42,8 @@ class CT_Body(BaseOxmlElement):
 
     _insert_tbl: Callable[[CT_Tbl], CT_Tbl]
 
+    bookmarkStart = ZeroOrMore("w:bookmarkStart", successors=("w:sectPr",))
+    bookmarkEnd = ZeroOrMore("w:bookmarkEnd", successors=("w:sectPr",))
     p = ZeroOrMore("w:p", successors=("w:sectPr",))
     tbl = ZeroOrMore("w:tbl", successors=("w:sectPr",))
     sectPr: CT_SectPr | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]

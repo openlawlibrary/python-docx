@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import IO, TYPE_CHECKING, Iterator, cast
 
+from docx.bookmark import BookmarkParent
 from docx.drawing import Drawing
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_BREAK
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     from docx.shared import Length
 
 
-class Run(StoryChild):
+class Run(StoryChild, BookmarkParent):
     """Proxy object wrapping `<w:r>` element.
 
     Several of the properties on Run take a tri-state value, |True|, |False|, or |None|.

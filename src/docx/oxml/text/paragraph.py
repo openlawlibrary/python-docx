@@ -11,6 +11,7 @@ from docx.oxml.xmlchemy import BaseOxmlElement, ZeroOrMore, ZeroOrOne
 
 if TYPE_CHECKING:
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    from docx.oxml.bookmark import CT_BookmarkEnd, CT_BookmarkStart
     from docx.oxml.section import CT_SectPr
     from docx.oxml.text.hyperlink import CT_Hyperlink
     from docx.oxml.text.pagebreak import CT_LastRenderedPageBreak
@@ -23,12 +24,18 @@ class CT_P(BaseOxmlElement):
 
     add_r: Callable[[], CT_R]
     get_or_add_pPr: Callable[[], CT_PPr]
+    bookmarkStart_lst: List[CT_BookmarkStart]
+    bookmarkEnd_lst: List[CT_BookmarkEnd]
     hyperlink_lst: List[CT_Hyperlink]
     r_lst: List[CT_R]
 
-    pPr: CT_PPr | None = ZeroOrOne("w:pPr")  # pyright: ignore[reportAssignmentType]
-    hyperlink = ZeroOrMore("w:hyperlink")
-    r = ZeroOrMore("w:r")
+    bookmarkStart = ZeroOrMore("w:bookmarkStart", successors=("w:pPr", "w:hyperlink", "w:r"))
+    pPr: CT_PPr | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "w:pPr", successors=("w:bookmarkEnd",)
+    )
+    hyperlink = ZeroOrMore("w:hyperlink", successors=("w:bookmarkEnd",))
+    r = ZeroOrMore("w:r", successors=("w:bookmarkEnd",))
+    bookmarkEnd = ZeroOrMore("w:bookmarkEnd")
 
     def add_p_before(self) -> CT_P:
         """Return a new `<w:p>` element inserted directly prior to this one."""

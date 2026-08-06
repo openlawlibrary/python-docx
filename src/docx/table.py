@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Iterator, cast, overload
 from typing_extensions import TypeAlias
 
 from docx.blkcntnr import BlockItemContainer
+from docx.bookmark import BookmarkParent
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.oxml.simpletypes import ST_Merge
@@ -16,6 +17,7 @@ from docx.shared import Inches, Parented, StoryChild, lazyproperty
 if TYPE_CHECKING:
     import docx.types as t
     from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT, WD_TABLE_DIRECTION
+    from docx.oxml.bookmark import CT_BookmarkEnd, CT_BookmarkStart
     from docx.oxml.table import CT_Row, CT_Tbl, CT_TblPr, CT_Tc
     from docx.shared import Length
     from docx.styles.style import (
@@ -26,7 +28,7 @@ if TYPE_CHECKING:
 TableParent: TypeAlias = "Table | _Columns | _Rows"
 
 
-class Table(StoryChild):
+class Table(StoryChild, BookmarkParent):
     """Proxy class for a WordprocessingML ``<w:tbl>`` element."""
 
     def __init__(self, tbl: CT_Tbl, parent: t.ProvidesStoryPart):
@@ -81,6 +83,16 @@ class Table(StoryChild):
     @autofit.setter
     def autofit(self, value: bool):
         self._tblPr.autofit = value
+
+    @property
+    def bookmark_ends(self) -> list[CT_BookmarkEnd]:
+        """The `w:bookmarkEnd` elements appearing directly in this table."""
+        return self._tbl.bookmarkEnd_lst
+
+    @property
+    def bookmark_starts(self) -> list[CT_BookmarkStart]:
+        """The `w:bookmarkStart` elements appearing directly in this table."""
+        return self._tbl.bookmarkStart_lst
 
     def cell(self, row_idx: int, col_idx: int) -> _Cell:
         """|_Cell| at `row_idx`, `col_idx` intersection.
