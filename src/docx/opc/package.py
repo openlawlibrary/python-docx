@@ -126,7 +126,18 @@ class OpcPackage:
         pkg_reader = PackageReader.from_file(pkg_file)
         package = cls()
         Unmarshaller.unmarshal(pkg_reader, package, PartFactory)
+        package.path = pkg_file
         return package
+
+    @property
+    def path(self) -> str | IO[bytes] | None:
+        """The path or file-like object this package was most recently opened from or
+        saved to, or |None| if it has been neither."""
+        return getattr(self, "_path", None)
+
+    @path.setter
+    def path(self, value: str | IO[bytes]) -> None:
+        self._path = value
 
     def part_related_by(self, reltype: str) -> Part:
         """Return part to which this package has a relationship of `reltype`.
@@ -164,6 +175,7 @@ class OpcPackage:
         for part in self.parts:
             part.before_marshal()
         PackageWriter.write(pkg_file, self.rels, self.parts)
+        self.path = pkg_file
 
     @property
     def _core_properties_part(self) -> CorePropertiesPart:

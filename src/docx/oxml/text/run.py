@@ -27,6 +27,7 @@ class CT_R(BaseOxmlElement):
     add_br: Callable[[], CT_Br]
     add_tab: Callable[[], CT_TabStop]
     get_or_add_rPr: Callable[[], CT_RPr]
+    drawing_lst: List[CT_Drawing]
     _add_drawing: Callable[[], CT_Drawing]
     _add_t: Callable[..., CT_Text]
 

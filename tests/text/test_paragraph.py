@@ -1,5 +1,6 @@
 """Unit test suite for the docx.text.paragraph module."""
 
+from types import SimpleNamespace
 from typing import List, cast
 
 import pytest
@@ -10,6 +11,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.text.paragraph import CT_P
 from docx.oxml.text.run import CT_R
 from docx.parts.document import DocumentPart
+from docx.parts.image import ImagePart
 from docx.text.paragraph import Paragraph
 from docx.text.parfmt import ParagraphFormat
 from docx.text.run import Run
@@ -81,6 +83,46 @@ class DescribeParagraph:
 
         actual = [type(item).__name__ for item in inner_content]
         assert actual == expected, f"expected: {expected}, got: {actual}"
+
+    def it_provides_access_to_an_embedded_image_part(self, request, part_prop_, document_part_):
+        image_part_ = instance_mock(request, ImagePart)
+        document_part_.related_parts = {"rId7": image_part_}
+        drawing_cxml = (
+            "w:drawing/wp:inline/a:graphic/a:graphicData/pic:pic/pic:blipFill/a:blip{r:embed=rId7}"
+        )
+        paragraph = Paragraph(cast(CT_P, element(f"w:p/w:r/{drawing_cxml}")), None)
+
+        image_parts = paragraph.image_parts
+
+        assert image_parts == [image_part_]
+
+    def it_omits_a_linked_image_whose_target_file_cannot_be_found(
+        self, part_prop_, document_part_, tmp_path
+    ):
+        document_part_.package.path = str(tmp_path / "doc.docx")
+        document_part_.rels = {"rId8": SimpleNamespace(target_ref="missing.png")}
+        drawing_cxml = (
+            "w:drawing/wp:inline/a:graphic/a:graphicData/pic:pic/pic:blipFill/a:blip{r:link=rId8}"
+        )
+        paragraph = Paragraph(cast(CT_P, element(f"w:p/w:r/{drawing_cxml}")), None)
+
+        assert paragraph.image_parts == []
+
+    def it_provides_access_to_a_linked_image_found_next_to_the_package(
+        self, part_prop_, document_part_, tmp_path
+    ):
+        (tmp_path / "photo.png").write_bytes(b"\x89PNGfake")
+        document_part_.package.path = str(tmp_path / "doc.docx")
+        document_part_.rels = {"rId8": SimpleNamespace(target_ref="images/subdir/photo.png")}
+        drawing_cxml = (
+            "w:drawing/wp:inline/a:graphic/a:graphicData/pic:pic/pic:blipFill/a:blip{r:link=rId8}"
+        )
+        paragraph = Paragraph(cast(CT_P, element(f"w:p/w:r/{drawing_cxml}")), None)
+
+        (image_part,) = paragraph.image_parts
+
+        assert image_part.blob == b"\x89PNGfake"
+        assert image_part.content_type == "image/png"
 
     def it_knows_its_paragraph_style(self, style_get_fixture):
         paragraph, style_id_, style_ = style_get_fixture
