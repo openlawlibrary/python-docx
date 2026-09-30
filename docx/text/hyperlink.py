@@ -1,4 +1,4 @@
-from ..shared import Parented, find_containing_document
+from ..shared import Parented
 
 class Hyperlink(Parented):
 
@@ -22,9 +22,11 @@ class Hyperlink(Parented):
     @property
     def link(self):
         """
-        String that can be either an URL or an |Bookmark| name.
+        String that can be either an URL or an |Bookmark| name. The URL is a
+        relationship of the part that holds the hyperlink, e.g. the footnotes
+        part for a hyperlink in a footnote.
         """
         if self._h.relationship_id:
-            return find_containing_document(self).part.rels[self._h.relationship_id].target_ref
+            return self.part.rels[self._h.relationship_id].target_ref
         else:
             return self._h.anchor

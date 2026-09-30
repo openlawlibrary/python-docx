@@ -137,9 +137,9 @@ class Paragraph(Parented, BookmarkParent):
         an bookmark name.
         """
         if is_valid_url(reference):
-            # Store URL as relationship rId
-            rId = find_containing_document(self).part.relate_to(
-                reference, RT.HYPERLINK, True)
+            # Store the URL as a relationship of the part that holds this
+            # paragraph, e.g. the footnotes part for a footnote.
+            rId = self.part.relate_to(reference, RT.HYPERLINK, True)
             reference = rId
         return Hyperlink(self._p.add_hyperlink(text, reference), self)
 
