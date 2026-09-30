@@ -159,6 +159,9 @@ class CT_P(BaseOxmlElement):
         hyperlinks and content controls.
         If the argument `return_hyperlinks` is `True` then the hyperlinks
         will be yielded as `CT_Hyperlink`.
+        Tracked changes are read as accepted: runs inside ``<w:ins>`` and
+        ``<w:moveTo>`` are included, runs inside ``<w:del>`` and
+        ``<w:moveFrom>`` are not.
         """
 
         def get_el(elem):
@@ -200,6 +203,7 @@ class CT_P(BaseOxmlElement):
                         yield child
                     else:
                         yield from get_el(child)
-                elif child.tag in (qn('w:sdt'), qn('w:sdtContent'), qn('w:smartTag'),):
+                elif child.tag in (qn('w:sdt'), qn('w:sdtContent'), qn('w:smartTag'),
+                                   qn('w:ins'), qn('w:moveTo'),):
                     yield from get_el(child)
         yield from get_el(self)
