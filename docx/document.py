@@ -8,6 +8,7 @@ from .blkcntnr import BlockItemContainer
 from docx.bookmark import Bookmarks
 from .enum.section import WD_SECTION
 from .enum.text import WD_BREAK
+from .oxml.notes import note_reference_marks
 from .section import Section, Sections
 from .shared import ElementProxy, Emu, lazyproperty
 
@@ -141,6 +142,26 @@ class Document(ElementProxy):
         A |Endnotes| object providing access to endnote elements in this document.
         """
         return self._part.endnotes
+
+    @property
+    def footnote_reference_marks(self):
+        """
+        A dict of the mark that Word shows for each footnote reference in the
+        body, keyed by footnote id, in the order of the references. The mark
+        comes from the note properties of the document and of the section,
+        not from the id: a document converted from .doc has footnote ids from
+        2, where Word shows 1. It is calculated on each access.
+        """
+        return note_reference_marks(self._element.body, self.settings.element)[0]
+
+    @property
+    def endnote_reference_marks(self):
+        """
+        A dict of the mark that Word shows for each endnote reference in the
+        body, keyed by endnote id, in the order of the references (i, ii,
+        iii by default). See :attr:`footnote_reference_marks`.
+        """
+        return note_reference_marks(self._element.body, self.settings.element)[1]
 
     @property
     def custom_properties(self):
