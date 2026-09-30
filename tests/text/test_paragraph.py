@@ -264,6 +264,10 @@ class DescribeParagraph(object):
         ('w:p/w:r/(w:t"foo", w:tab, w:t"bar")', 'foo\tbar'),
         ('w:p/w:r/(w:t"foo", w:br,  w:t"bar")', 'foo\nbar'),
         ('w:p/w:r/(w:t"foo", w:cr,  w:t"bar")', 'foo\nbar'),
+        ('w:p/(w:ins/w:r/w:t"(f)", w:r/w:t" foo")', '(f) foo'),
+        ('w:p/(w:r/w:t"foo", w:moveTo/w:r/w:t" bar")', 'foo bar'),
+        ('w:p/(w:r/w:t"foo", w:del/w:r/w:delText" bar")', 'foo'),
+        ('w:p/(w:moveFrom/w:r/w:t"bar ", w:r/w:t"foo")', 'foo'),
     ])
     def text_get_fixture(self, request):
         p_cxml, expected_text_value = request.param

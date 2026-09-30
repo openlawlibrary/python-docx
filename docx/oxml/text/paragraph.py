@@ -159,13 +159,26 @@ class CT_P(BaseOxmlElement):
         hyperlinks and content controls.
         If the argument `return_hyperlinks` is `True` then the hyperlinks
         will be yielded as `CT_Hyperlink`.
+        Tracked changes are read as accepted: runs inside ``<w:ins>`` and
+        ``<w:moveTo>`` are included, runs inside ``<w:del>`` and
+        ``<w:moveFrom>`` are not.
         """
+
+        def children(elem):
+            # A tracked insertion is read as accepted, so its children are
+            # children of the element that holds it. A complex field can
+            # then start outside the insertion and end in it.
+            for child in elem:
+                if child.tag in (qn('w:ins'), qn('w:moveTo')):
+                    yield from children(child)
+                else:
+                    yield child
 
         def get_el(elem):
             # Two flags used to remove hidden parts of complex field characters.
             ignoreRun = 0 # used to count nesting of ``<w:fldChar>``, if it's 0 then the run property is not inside a hidden part of ``<w:fldChar>``
             hasSeparate = False
-            for child in elem:
+            for child in children(elem):
                 if child.tag == qn('w:r'):
                     # Remove run's elements that are not visible.
                     # Complex field characters have not visible part and they are removed.
