@@ -439,8 +439,21 @@ class CT_Numbering(BaseOxmlElement):
         if append_suffix is True:
             suffix = lvl_el.suffix
         lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
+
+        def is_hidden_level(target_ilvl):
+            # Word shows a %N that refers to another level with
+            # numFmt="none" as nothing: "%12030.%2" shows "2030.1".
+            if target_ilvl == ilvl:
+                return False
+            target_lvl_el = abstractNum_el.get_lvl(target_ilvl)
+            return (target_lvl_el is not None and target_lvl_el.numFmt is not None
+                    and target_lvl_el.numFmt.get('{%s}val' % nsmap['w']) == 'none')
+
         if lvlText.count('%') <= 1:
-            return re.sub(r'%(\d)', str(p_num_str), lvlText, 1) + suffix
+            return re.sub(
+                r'%(\d)',
+                lambda m: '' if is_hidden_level(int(m.group(1)) - 1) else str(p_num_str),
+                lvlText, 1) + suffix
 
         # Multi-component lvlText (e.g. '%1.%2.%3'). Each %N references the
         # counter at ilvl=N-1 in the same numbering family. Compute each
@@ -498,6 +511,8 @@ class CT_Numbering(BaseOxmlElement):
 
         def replace_token(m):
             n = int(m.group(1))
+            if is_hidden_level(n - 1):
+                return ''
             return str(cur_formatter(value_at_ilvl(n - 1)))
 
         return re.sub(r'%(\d)', replace_token, lvlText) + suffix
