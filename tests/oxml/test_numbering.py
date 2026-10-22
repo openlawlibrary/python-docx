@@ -23,6 +23,10 @@ class DescribeCT_Numbering(object):
         document, expected_labels = counting_fixture
         assert [p.number for p in document.paragraphs] == expected_labels
 
+    def it_follows_a_numStyleLink_to_the_levels(self, link_fixture):
+        document, expected_labels = link_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
     # fixtures -------------------------------------------------------
 
     @pytest.fixture(params=[
@@ -119,5 +123,45 @@ class DescribeCT_Numbering(object):
             paragraph._p.get_or_add_pPr().append(parse_xml(
                 '<w:numPr %s><w:ilvl w:val="%d"/><w:numId w:val="%d"/></w:numPr>'
                 % (nsdecls('w'), ilvl, 90 + numId)
+            ))
+        return document, [label + '\t' for label in expected_labels]
+
+    # Aspose shows these labels. LibreOffice counts one list for each
+    # numbering style instead: it shows 3. for the third item of the last two.
+    @pytest.fixture(params=[
+        # numIds 1 and 2 use definition 91, which links to the style
+        ([1, 2, 1], ['1.', '2.', '3.']),
+        # numId 3 uses definition 92, which links to the same style
+        ([1, 1, 3, 1], ['1.', '2.', '1.', '3.']),
+        # numId 4 uses definition 93, which has the levels of the style
+        ([4, 4, 1, 4], ['1.', '2.', '1.', '3.']),
+    ])
+    def link_fixture(self, request):
+        paragraphs, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        for abstractNum_id in (91, 92):
+            numbering.append(parse_xml(
+                '<w:abstractNum %s w:abstractNumId="%d">'
+                '  <w:numStyleLink w:val="Numbered"/>'
+                '</w:abstractNum>' % (nsdecls('w'), abstractNum_id)
+            ))
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="93">'
+            '  <w:styleLink w:val="Numbered"/>'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
+        ))
+        for numId, abstractNum_id in ((1, 91), (2, 91), (3, 92), (4, 93)):
+            numbering.append(parse_xml(
+                '<w:num %s w:numId="%d"><w:abstractNumId w:val="%d"/></w:num>'
+                % (nsdecls('w'), 90 + numId, abstractNum_id)
+            ))
+        for numId in paragraphs:
+            paragraph = document.add_paragraph('Item.')
+            paragraph._p.get_or_add_pPr().append(parse_xml(
+                '<w:numPr %s><w:ilvl w:val="0"/><w:numId w:val="%d"/></w:numPr>'
+                % (nsdecls('w'), 90 + numId)
             ))
         return document, [label + '\t' for label in expected_labels]
