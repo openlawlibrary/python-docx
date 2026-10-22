@@ -52,6 +52,39 @@ def _restart_level(lvl_el, ilvl):
     return int(restart.get('{%s}val' % nsmap['w']))
 
 
+def _style_numPrs(pPr, styles_cache):
+    """
+    Yield the ``w:numPr`` of the style of *pPr* and of the styles it is
+    based on, nearest first.
+    """
+    style_id = pPr.pStyle.val if pPr.pStyle is not None else None
+    seen = set()
+    while style_id is not None and style_id not in seen:
+        seen.add(style_id)
+        style = styles_cache.get(style_id)
+        if style is None:
+            return
+        if style.pPr is not None and style.pPr.numPr is not None:
+            yield style.pPr.numPr
+        style_id = style.basedOn_val
+
+
+def _ilvl_and_numId(numPrs):
+    """
+    Return ``(ilvl, numId)`` from the first of *numPrs* that sets each, or
+    None if none sets a numId other than 0.
+    """
+    ilvl = numId = None
+    for numPr in numPrs:
+        if numId is None and numPr.numId is not None:
+            numId = numPr.numId.val
+        if ilvl is None and numPr.ilvl is not None:
+            ilvl = numPr.ilvl.val
+    if not numId:
+        return None
+    return (ilvl or 0), numId
+
+
 def _format_value(formatter, value):
     try:
         return str(formatter(value))
@@ -274,19 +307,22 @@ class CT_Numbering(BaseOxmlElement):
         level from direct paragraph formating is used.
         """
         try:
-            numPr  = p.pPr.get_style_numPr(styles_cache) if styles_cache else p.pPr.numPr
-            # numId 0 turns off the numbering of the style, and with it the
-            # indent of its level.
-            if styles_cache and p.pPr.numPr is not None and p.pPr.numPr.numId is not None:
-                if p.pPr.numPr.numId.val == 0:
+            numPr = p.pPr.numPr
+            if styles_cache:
+                # numId 0 turns off the numbering of the style, and with it
+                # the indent of its level.
+                if numPr is not None and numPr.numId is not None and numPr.numId.val == 0:
                     return None
-
-            ilvl, numId = numPr.ilvl, numPr.numId.val
-            ilvl = ilvl.val if ilvl is not None else 0
-            abstractNum_el = self.get_abstractNum(numId)
-            return abstractNum_el.get_lvl(ilvl)
+                props = _ilvl_and_numId(_style_numPrs(p.pPr, styles_cache))
+            else:
+                props = _ilvl_and_numId([numPr] if numPr is not None else [])
         except AttributeError:
             return None
+        if props is None:
+            return None
+        ilvl, numId = props
+        abstractNum_el = self.get_abstractNum(numId)
+        return abstractNum_el.get_lvl(ilvl) if abstractNum_el is not None else None
 
     def get_num_for_p(self, p, styles_cache, append_suffix=True):
         """
@@ -404,16 +440,15 @@ class CT_Numbering(BaseOxmlElement):
     def _get_ilvl_and_numId(self, p, styles_cache):
         """
         Return ``(ilvl, numId)`` of the list *p* is in, or None if it is
-        not in a list.
+        not in a list. Each comes from the paragraph, or else from the
+        nearest of its styles that sets it.
         """
-        try:
-            numPr = p.pPr.get_numPr(styles_cache)
-            ilvl, numId = numPr.ilvl, numPr.numId.val
-        except AttributeError:
+        pPr = p.pPr
+        if pPr is None:
             return None
-        if not numId:
-            return None
-        return (ilvl.val if ilvl is not None else 0), numId
+        numPrs = [pPr.numPr] if pPr.numPr is not None else []
+        numPrs.extend(_style_numPrs(pPr, styles_cache or {}))
+        return _ilvl_and_numId(numPrs)
 
     def _start_override(self, numId, ilvl):
         """
