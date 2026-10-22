@@ -211,8 +211,9 @@ class CT_Numbering(BaseOxmlElement):
         Per-instance lookup caches: ``abstractNum`` maps numId to its
         |CT_AbstractNum| (or None), ``startOverride`` and ``start_override``
         map (numId, ilvl) to the startOverride value (0 or None if there is
-        none), and ``labels`` maps a story element to the list items of its
-        paragraphs (see ``_count_list_items``). Numbering definitions,
+        none), ``lvl`` maps (numId, ilvl) to the |CT_Lvl| that applies, and
+        ``labels`` maps a story element to the list items of its paragraphs
+        (see ``_count_list_items``). Numbering definitions,
         paragraph properties and styles are treated as immutable during a
         document read (the same assumption Paragraph._number and the text
         cache already make); ``add_num`` and ``set_li_lvl`` invalidate.
@@ -227,7 +228,7 @@ class CT_Numbering(BaseOxmlElement):
         except AttributeError:
             caches = {
                 'abstractNum': {}, 'startOverride': {},
-                'start_override': {}, 'labels': {},
+                'start_override': {}, 'labels': {}, 'lvl': {},
             }
             self._num_caches_dict = caches
             return caches
@@ -321,8 +322,7 @@ class CT_Numbering(BaseOxmlElement):
         if props is None:
             return None
         ilvl, numId = props
-        abstractNum_el = self.get_abstractNum(numId)
-        return abstractNum_el.get_lvl(ilvl) if abstractNum_el is not None else None
+        return self._lvl_of(numId, ilvl)
 
     def get_num_for_p(self, p, styles_cache, append_suffix=True):
         """
@@ -342,8 +342,7 @@ class CT_Numbering(BaseOxmlElement):
         if item is None:
             return None
         numId, ilvl, counters = item
-        abstractNum_el = self.get_abstractNum(numId)
-        lvl_el = abstractNum_el.get_lvl(ilvl)
+        lvl_el = self._lvl_of(numId, ilvl)
 
         numFmt = lvl_el.numFmt.get('{%s}val' % nsmap['w'])
         if numFmt not in self.fmt_map:
@@ -357,7 +356,7 @@ class CT_Numbering(BaseOxmlElement):
         # shows as nothing: "%12030.%2" shows "2030.1".
         def replace_token(m):
             target_ilvl = int(m.group(1)) - 1
-            target_lvl_el = abstractNum_el.get_lvl(target_ilvl)
+            target_lvl_el = self._lvl_of(numId, target_ilvl)
             target_numFmt = numFmt
             if target_lvl_el is not None and target_lvl_el.numFmt is not None:
                 target_numFmt = target_lvl_el.numFmt.get('{%s}val' % nsmap['w'])
@@ -405,10 +404,9 @@ class CT_Numbering(BaseOxmlElement):
             if props is None:
                 continue
             ilvl, numId = props
-            abstractNum_el = self.get_abstractNum(numId)
-            lvl_el = abstractNum_el.get_lvl(ilvl) if abstractNum_el is not None else None
-            if lvl_el is None:
+            if self._lvl_of(numId, ilvl) is None:
                 continue
+            abstractNum_el = self.get_abstractNum(numId)
 
             if numId not in list_ids:
                 list_ids[numId] = self.num_having_numId(numId).abstractNumId.val
@@ -416,9 +414,14 @@ class CT_Numbering(BaseOxmlElement):
 
             def start_of(level):
                 startOverride = self._start_override(numId, level)
-                if startOverride is not None:
-                    return startOverride
-                return _start_value(abstractNum_el.get_lvl(level))
+                if startOverride is None:
+                    return _start_value(abstractNum_el.get_lvl(level))
+                # With a w:lvl in the w:lvlOverride, Aspose restarts at its
+                # w:start; LibreOffice at the startOverride.
+                override_lvl_el = self._override_lvl(numId, level)
+                if override_lvl_el is not None and override_lvl_el.start is not None:
+                    return _start_value(override_lvl_el)
+                return startOverride
 
             if (self._start_override(numId, ilvl) is not None
                     and (numId, ilvl) not in overridden):
@@ -432,7 +435,7 @@ class CT_Numbering(BaseOxmlElement):
                 if upper not in counters:
                     counters[upper] = start_of(upper)
             for lower in [i for i in counters if i > ilvl]:
-                if ilvl < _restart_level(abstractNum_el.get_lvl(lower), lower):
+                if ilvl < _restart_level(self._lvl_of(numId, lower), lower):
                     del counters[lower]
             items[p] = (numId, ilvl, dict(counters))
         return items
@@ -449,6 +452,36 @@ class CT_Numbering(BaseOxmlElement):
         numPrs = [pPr.numPr] if pPr.numPr is not None else []
         numPrs.extend(_style_numPrs(pPr, styles_cache or {}))
         return _ilvl_and_numId(numPrs)
+
+    def _lvl_of(self, numId, ilvl):
+        """
+        Return the ``w:lvl`` that the ``<w:num>`` having *numId* uses at
+        *ilvl*: the one in its ``w:lvlOverride``, or else the one of its
+        definition. Return None if there is none.
+        """
+        cache = self._num_caches['lvl']
+        key = (numId, ilvl)
+        if key not in cache:
+            lvl_el = self._override_lvl(numId, ilvl)
+            if lvl_el is None:
+                abstractNum_el = self.get_abstractNum(numId)
+                lvl_el = abstractNum_el.get_lvl(ilvl) if abstractNum_el is not None else None
+            cache[key] = lvl_el
+        return cache[key]
+
+    def _override_lvl(self, numId, ilvl):
+        """
+        Return the ``w:lvl`` in the ``w:lvlOverride`` of the ``<w:num>``
+        having *numId* for level *ilvl*, or None if there is none.
+        """
+        try:
+            w_num = self.num_having_numId(numId)
+        except KeyError:
+            return None
+        for lvlOverride in w_num.lvlOverride_lst:
+            if lvlOverride.ilvl == ilvl:
+                return lvlOverride.find(qn('w:lvl'))
+        return None
 
     def _start_override(self, numId, ilvl):
         """
