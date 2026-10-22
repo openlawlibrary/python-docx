@@ -228,6 +228,17 @@ class CT_Numbering(BaseOxmlElement):
                     abstractNum = el
                     break
 
+        # A definition with a numStyleLink has no levels of its own. They
+        # are in the definition whose styleLink names the same style.
+        link = abstractNum.find(qn('w:numStyleLink')) if abstractNum is not None else None
+        if link is not None:
+            abstractNum = None
+            for el in self.abstractNum_lst:
+                styleLink = el.find(qn('w:styleLink'))
+                if styleLink is not None and styleLink.get(qn('w:val')) == link.get(qn('w:val')):
+                    abstractNum = el
+                    break
+
         cache[numId] = abstractNum
         return abstractNum
 
@@ -333,9 +344,13 @@ class CT_Numbering(BaseOxmlElement):
         uses its ``w:num`` at that level, and only there. An item starts
         the levels above it that have not started, and restarts the levels
         below it (see ``w:lvlRestart``).
+
+        The counters belong to the definition that a ``w:num`` names, also
+        when the levels come from a ``w:numStyleLink``, as in Aspose.
         """
         items = {}
         counters_of = {}
+        list_ids = {}
         overridden = set()
         for p in story.iter(_w_p_tag):
             if _story_of(p) is not story:
@@ -350,7 +365,9 @@ class CT_Numbering(BaseOxmlElement):
             if lvl_el is None:
                 continue
 
-            counters = counters_of.setdefault(abstractNum_el.abstractNumId, {})
+            if numId not in list_ids:
+                list_ids[numId] = self.num_having_numId(numId).abstractNumId.val
+            counters = counters_of.setdefault(list_ids[numId], {})
             startOverride = self._start_override(numId, ilvl)
             if startOverride is not None and (numId, ilvl) not in overridden:
                 overridden.add((numId, ilvl))
