@@ -436,3 +436,64 @@ class DescribeParagraph(object):
         section = instance_mock(request, Section)
         object.__setattr__(section, '_sectPr', sectPr)
         return section
+
+
+class DescribeParagraph_norm_left_indent(object):
+
+    def it_knows_where_its_first_line_starts(self, indent_fixture):
+        paragraph, expected_inches = indent_fixture
+        assert paragraph.norm_left_indent.inches == expected_inches
+
+    # fixtures -------------------------------------------------------
+
+    # Aspose and LibreOffice show these indents. Style B has left 0.5,
+    # hanging 0.25; style S is based on B and numbers at level 1 (left 1.0,
+    # hanging 0.25); style Z is based on B, sets numId 0 and left 0.25.
+    @pytest.fixture(params=[
+        ('S', '', 0.75),
+        # numId 0 sets both indents to 0, over those of the styles
+        ('S', '<w:numPr><w:numId w:val="0"/></w:numPr>', 0.0),
+        ('B', '<w:numPr><w:numId w:val="0"/></w:numPr>', 0.0),
+        ('S', '<w:numPr><w:numId w:val="0"/></w:numPr><w:ind w:left="2880"/>', 2.0),
+        ('S', '<w:numPr><w:numId w:val="0"/></w:numPr><w:ind w:firstLine="360"/>', 0.25),
+        ('Z', '', 0.25),
+    ])
+    def indent_fixture(self, request):
+        from docx import Document
+        from docx.oxml import parse_xml
+        from docx.oxml.ns import nsdecls
+
+        style_id, pPr_xml, expected_inches = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/>'
+            '    <w:lvlText w:val="%%1."/>'
+            '    <w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="decimal"/>'
+            '    <w:lvlText w:val="%%2."/>'
+            '    <w:pPr><w:ind w:left="1440" w:hanging="360"/></w:pPr></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'
+            % nsdecls('w')
+        ))
+        for style_xml in (
+            '<w:style %s w:type="paragraph" w:styleId="B"><w:name w:val="B"/>'
+            '<w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:style>',
+            '<w:style %s w:type="paragraph" w:styleId="S"><w:name w:val="S"/>'
+            '<w:basedOn w:val="B"/><w:pPr><w:numPr><w:ilvl w:val="1"/>'
+            '<w:numId w:val="91"/></w:numPr></w:pPr></w:style>',
+            '<w:style %s w:type="paragraph" w:styleId="Z"><w:name w:val="Z"/>'
+            '<w:basedOn w:val="B"/><w:pPr><w:numPr><w:numId w:val="0"/></w:numPr>'
+            '<w:ind w:left="360"/></w:pPr></w:style>',
+        ):
+            document.styles.element.append(parse_xml(style_xml % nsdecls('w')))
+        paragraph = document.add_paragraph('Text.')
+        paragraph._p.get_or_add_pPr().append(parse_xml(
+            '<w:pStyle %s w:val="%s"/>' % (nsdecls('w'), style_id)))
+        for child in parse_xml('<w:pPr %s>%s</w:pPr>' % (nsdecls('w'), pPr_xml)):
+            paragraph._p.pPr.append(child)
+        return paragraph, expected_inches

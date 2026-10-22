@@ -808,20 +808,29 @@ class Paragraph(Parented, BookmarkParent):
                     left_indent = getattr(source, 'left_indent')
             return first_line_indent, left_indent
 
+        def apply_numbering(numbering_format, pPr, first_line_indent, left_indent):
+            # numId 0 turns the numbering off. Word then sets both indents
+            # to 0, as a list level would.
+            numPr = pPr.numPr if pPr is not None else None
+            if numPr is not None and numPr.numId is not None and numPr.numId.val == 0:
+                return Length(0), Length(0)
+            return apply_formatting(numbering_format, first_line_indent, left_indent)
+
         # Apply paragraph styles by priority (from lowest to highest).
         # Formatting from the base style has the lowest priority.
         first_line_indent = get_base_style_attr(
             self.style, 'first_line_indent')
         left_indent = get_base_style_attr(self.style, 'left_indent')
         # Next, we apply formatting from numbering properties defined in paragraph style.
-        first_line_indent, left_indent = apply_formatting(
-            self.style_numbering_format, first_line_indent, left_indent)
+        first_line_indent, left_indent = apply_numbering(
+            self.style_numbering_format, self.style._element.pPr,
+            first_line_indent, left_indent)
         # Then formatting from paragraph style.
         first_line_indent, left_indent = apply_formatting(
             self.style.paragraph_format, first_line_indent, left_indent)
         # Next, formatting from numbering properties defined in direct paragraph properties is applied.
-        first_line_indent, left_indent = apply_formatting(
-            self.para_numbering_format, first_line_indent, left_indent)
+        first_line_indent, left_indent = apply_numbering(
+            self.para_numbering_format, self._p.pPr, first_line_indent, left_indent)
         # Finally, we apply formatting from direct paragraph formatting.
         first_line_indent, left_indent = apply_formatting(
             self.paragraph_format, first_line_indent, left_indent)

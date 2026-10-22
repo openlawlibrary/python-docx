@@ -275,6 +275,11 @@ class CT_Numbering(BaseOxmlElement):
         """
         try:
             numPr  = p.pPr.get_style_numPr(styles_cache) if styles_cache else p.pPr.numPr
+            # numId 0 turns off the numbering of the style, and with it the
+            # indent of its level.
+            if styles_cache and p.pPr.numPr is not None and p.pPr.numPr.numId is not None:
+                if p.pPr.numPr.numId.val == 0:
+                    return None
 
             ilvl, numId = numPr.ilvl, numPr.numId.val
             ilvl = ilvl.val if ilvl is not None else 0
