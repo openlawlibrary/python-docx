@@ -86,6 +86,9 @@ class DescribeCT_Numbering(object):
          ['(a)', '(b)', '2.', '(a)']),
         ({1: {}}, [(1, 2), (1, 0)],
          ['(i)', '2.']),
+        # decimalZero shows at least two digits
+        ({5: {0: 9}}, [(5, 0), (5, 0), (5, 0)],
+         ['09.', '10.', '11.']),
         # lvlRestart 0: level 1 never restarts
         ({3: {}}, [(3, 1), (3, 1), (3, 0), (3, 1)],
          ['(a)', '(b)', '2.', '(c)']),
@@ -113,7 +116,13 @@ class DescribeCT_Numbering(object):
                 '</w:abstractNum>' % ((nsdecls('w'), abstractNum_id) + tuple(
                     '<w:lvlRestart w:val="%s"/>' % r if r else '' for r in restarts))
             ))
-        abstractNum_of = {1: 91, 2: 91, 3: 93, 4: 92}
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="94">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimalZero"/><w:lvlText w:val="%%1."/></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
+        ))
+        abstractNum_of = {1: 91, 2: 91, 3: 93, 4: 92, 5: 94}
         for numId, overrides in nums.items():
             numbering.append(parse_xml(
                 '<w:num %s w:numId="%d"><w:abstractNumId w:val="%d"/>%s</w:num>' % (

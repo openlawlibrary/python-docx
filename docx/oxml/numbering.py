@@ -157,6 +157,7 @@ class CT_Numbering(BaseOxmlElement):
         'lowerLetter': lambda num: (chr(96 + (num % 26 if num % 26 != 0 else 26))
                                     * math.ceil(num / 26)),
         'decimal': lambda num: num,
+        'decimalZero': lambda num: '%02d' % num,
         'upperLetter': lambda num: (chr(64 + (num % 26 if num % 26 != 0 else 26))
                                     * math.ceil(num / 26)),
         'lowerRoman': lambda num: toRoman(num).lower(),
@@ -332,7 +333,8 @@ class CT_Numbering(BaseOxmlElement):
 
         # Word shows each %N in the numFmt of its own level, or in decimal
         # if the current level has w:isLgl. A level with numFmt="none"
-        # shows as nothing: "%12030.%2" shows "2030.1".
+        # shows as nothing: "%12030.%2" shows "2030.1". A decimalZero level
+        # stays decimalZero with w:isLgl, as in Aspose: "Section 1.01".
         def replace_token(m):
             target_ilvl = int(m.group(1)) - 1
             target_lvl_el = abstractNum_el.get_lvl(target_ilvl)
@@ -341,7 +343,7 @@ class CT_Numbering(BaseOxmlElement):
                 target_numFmt = target_lvl_el.numFmt.get('{%s}val' % nsmap['w'])
             if target_numFmt == 'none':
                 return ''
-            if isLgl:
+            if isLgl and target_numFmt != 'decimalZero':
                 target_numFmt = 'decimal'
             value = counters.get(target_ilvl)
             if value is None:
