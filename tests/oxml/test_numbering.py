@@ -27,6 +27,10 @@ class DescribeCT_Numbering(object):
         document, expected_labels = start_fixture
         assert [p.number for p in document.paragraphs] == expected_labels
 
+    def it_finds_the_list_of_a_paragraph_in_its_styles(self, style_fixture):
+        document, expected_labels = style_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
     def it_follows_a_numStyleLink_to_the_levels(self, link_fixture):
         document, expected_labels = link_fixture
         assert [p.number for p in document.paragraphs] == expected_labels
@@ -220,4 +224,46 @@ class DescribeCT_Numbering(object):
                 '<w:numPr %s><w:ilvl w:val="%d"/><w:numId w:val="91"/></w:numPr>'
                 % (nsdecls('w'), ilvl)
             ))
+        return document, [label + '\t' for label in expected_labels]
+
+    # Aspose and LibreOffice show these labels. Style A numbers at level 0;
+    # style B is based on A.
+    @pytest.fixture(params=[
+        # a style gets the list of the style it is based on
+        ([('B', ''), ('B', ''), ('A', '')], ['1.', '2.', '3.']),
+        # a paragraph that sets only ilvl gets the numId of its style
+        ([('A', ''), ('A', '<w:ilvl w:val="1"/>'), ('A', '<w:ilvl w:val="1"/>'),
+          ('A', '')], ['1.', '(a)', '(b)', '2.']),
+    ])
+    def style_fixture(self, request):
+        paragraphs, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/></w:lvl>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="lowerLetter"/><w:lvlText w:val="(%%2)"/></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'
+            % nsdecls('w')
+        ))
+        document.styles.element.append(parse_xml(
+            '<w:style %s w:type="paragraph" w:styleId="A"><w:name w:val="A"/>'
+            '<w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="91"/></w:numPr>'
+            '</w:pPr></w:style>' % nsdecls('w')
+        ))
+        document.styles.element.append(parse_xml(
+            '<w:style %s w:type="paragraph" w:styleId="B"><w:name w:val="B"/>'
+            '<w:basedOn w:val="A"/></w:style>' % nsdecls('w')
+        ))
+        for style_id, numPr_xml in paragraphs:
+            paragraph = document.add_paragraph('Item.')
+            pPr = paragraph._p.get_or_add_pPr()
+            pPr.append(parse_xml('<w:pStyle %s w:val="%s"/>' % (nsdecls('w'), style_id)))
+            if numPr_xml:
+                pPr.append(parse_xml('<w:numPr %s>%s</w:numPr>' % (nsdecls('w'), numPr_xml)))
         return document, [label + '\t' for label in expected_labels]
