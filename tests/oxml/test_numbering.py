@@ -23,6 +23,10 @@ class DescribeCT_Numbering(object):
         document, expected_labels = counting_fixture
         assert [p.number for p in document.paragraphs] == expected_labels
 
+    def it_starts_a_level_at_the_startOverride_of_its_num(self, start_fixture):
+        document, expected_labels = start_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
     def it_follows_a_numStyleLink_to_the_levels(self, link_fixture):
         document, expected_labels = link_fixture
         assert [p.number for p in document.paragraphs] == expected_labels
@@ -175,5 +179,45 @@ class DescribeCT_Numbering(object):
             paragraph._p.get_or_add_pPr().append(parse_xml(
                 '<w:numPr %s><w:ilvl w:val="0"/><w:numId w:val="%d"/></w:numPr>'
                 % (nsdecls('w'), 90 + numId)
+            ))
+        return document, [label + '\t' for label in expected_labels]
+
+    # Aspose shows these labels. LibreOffice does not use the
+    # startOverride of a level above the item.
+    @pytest.fixture(params=[
+        # level 0 starts at 5 for the level-1 items; the first level-0
+        # item restarts there
+        ({0: 5}, [1, 1, 0, 1], ['5.1', '5.2', '5.', '5.1']),
+        # the restart at level 1 uses up the override at level 0
+        ({0: 5, 1: 3}, [1, 0], ['5.3', '6.']),
+        ({0: 5, 1: 3}, [2, 0], ['5.3.1', '5.']),
+        # level 1 starts at 3 again after level 0 restarts it
+        ({1: 3}, [2, 1, 0, 1], ['1.3.1', '1.3', '2.', '2.3']),
+    ])
+    def start_fixture(self, request):
+        overrides, levels, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/></w:lvl>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1.%%2"/></w:lvl>'
+            '  <w:lvl w:ilvl="2"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1.%%2.%%3"/></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/>%s</w:num>' % (
+                nsdecls('w'), ''.join(
+                    '<w:lvlOverride w:ilvl="%d"><w:startOverride w:val="%d"/>'
+                    '</w:lvlOverride>' % item for item in overrides.items()))
+        ))
+        for ilvl in levels:
+            paragraph = document.add_paragraph('Item.')
+            paragraph._p.get_or_add_pPr().append(parse_xml(
+                '<w:numPr %s><w:ilvl w:val="%d"/><w:numId w:val="91"/></w:numPr>'
+                % (nsdecls('w'), ilvl)
             ))
         return document, [label + '\t' for label in expected_labels]
