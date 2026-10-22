@@ -342,10 +342,12 @@ class CT_Numbering(BaseOxmlElement):
 
         Word keeps one counter per level for each abstract numbering
         definition; every ``w:num`` that uses the definition shares them.
-        A ``w:startOverride`` sets the counter at the first paragraph that
-        uses its ``w:num`` at that level, and only there. An item starts
-        the levels above it that have not started, and restarts the levels
-        below it (see ``w:lvlRestart``).
+        An item starts the levels above it that have not started, and
+        restarts the levels below it (see ``w:lvlRestart``). A level starts
+        at the ``w:startOverride`` of the item's ``w:num``, if it has one,
+        or else at ``w:start``. The first item of a ``w:num`` at a level
+        with a ``w:startOverride`` also restarts the counter there, and uses
+        up the overrides of that ``w:num`` at the levels above it.
 
         The counters belong to the definition that a ``w:num`` names, also
         when the levels come from a ``w:numStyleLink``, as in Aspose.
@@ -370,17 +372,24 @@ class CT_Numbering(BaseOxmlElement):
             if numId not in list_ids:
                 list_ids[numId] = self.num_having_numId(numId).abstractNumId.val
             counters = counters_of.setdefault(list_ids[numId], {})
-            startOverride = self._start_override(numId, ilvl)
-            if startOverride is not None and (numId, ilvl) not in overridden:
-                overridden.add((numId, ilvl))
-                counters[ilvl] = startOverride
+
+            def start_of(level):
+                startOverride = self._start_override(numId, level)
+                if startOverride is not None:
+                    return startOverride
+                return _start_value(abstractNum_el.get_lvl(level))
+
+            if (self._start_override(numId, ilvl) is not None
+                    and (numId, ilvl) not in overridden):
+                overridden.update((numId, level) for level in range(ilvl + 1))
+                counters[ilvl] = start_of(ilvl)
             elif ilvl in counters:
                 counters[ilvl] += 1
             else:
-                counters[ilvl] = _start_value(lvl_el)
+                counters[ilvl] = start_of(ilvl)
             for upper in range(ilvl):
                 if upper not in counters:
-                    counters[upper] = _start_value(abstractNum_el.get_lvl(upper))
+                    counters[upper] = start_of(upper)
             for lower in [i for i in counters if i > ilvl]:
                 if ilvl < _restart_level(abstractNum_el.get_lvl(lower), lower):
                     del counters[lower]
