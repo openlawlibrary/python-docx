@@ -382,11 +382,25 @@ class Paragraph(Parented, BookmarkParent):
                 curpos = endpos
 
         paras.append(next_para)
+        self._forget_list_items()
         return paras
 
     def remove(self):
         """Removes this paragraph from its container."""
         self._p.getparent().remove(self._p)
+        self._forget_list_items()
+
+    def _forget_list_items(self):
+        """
+        Tell the numbering that the paragraphs of the document changed. It
+        counts the list items of all the paragraphs together and keeps the
+        count, so the numbers of the other paragraphs can change too.
+        """
+        try:
+            self.part.numbering_part._element.forget_list_items()
+        except (AttributeError, NotImplementedError):
+            # a part with no numbering has no count to forget
+            pass
 
     @text_changing
     def remove_text(self, start=0, end=-1):
@@ -550,6 +564,7 @@ class Paragraph(Parented, BookmarkParent):
         )
         self._p.style = style_id
         self._cache = {}
+        self._forget_list_items()
 
     def set_li_lvl(self, styles, prev, ilvl):
         """
@@ -752,6 +767,7 @@ class Paragraph(Parented, BookmarkParent):
         paragraph.
         """
         p = self._p.add_p_before()
+        self._forget_list_items()
         return Paragraph(p, self._parent)
 
     @property
