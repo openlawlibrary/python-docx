@@ -308,25 +308,26 @@ class CT_Numbering(BaseOxmlElement):
             return None
         lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w'])
 
-        def is_hidden_level(target_ilvl):
-            # Word shows a %N that refers to another level with
-            # numFmt="none" as nothing: "%12030.%2" shows "2030.1".
-            if target_ilvl == ilvl:
-                return False
-            target_lvl_el = abstractNum_el.get_lvl(target_ilvl)
-            return (target_lvl_el is not None and target_lvl_el.numFmt is not None
-                    and target_lvl_el.numFmt.get('{%s}val' % nsmap['w']) == 'none')
+        isLgl = lvl_el.find(qn('w:isLgl')) is not None
 
-        # All %N substitutions inside a single lvlText share the current
-        # level's numFmt.
+        # Word shows each %N in the numFmt of its own level, or in decimal
+        # if the current level has w:isLgl. A level with numFmt="none"
+        # shows as nothing: "%12030.%2" shows "2030.1".
         def replace_token(m):
             target_ilvl = int(m.group(1)) - 1
-            if is_hidden_level(target_ilvl):
+            target_lvl_el = abstractNum_el.get_lvl(target_ilvl)
+            target_numFmt = numFmt
+            if target_lvl_el is not None and target_lvl_el.numFmt is not None:
+                target_numFmt = target_lvl_el.numFmt.get('{%s}val' % nsmap['w'])
+            if target_numFmt == 'none':
                 return ''
+            if isLgl:
+                target_numFmt = 'decimal'
             value = counters.get(target_ilvl)
             if value is None:
-                value = _start_value(abstractNum_el.get_lvl(target_ilvl))
-            return _format_value(self.fmt_map[numFmt], value)
+                value = _start_value(target_lvl_el)
+            formatter = self.fmt_map.get(target_numFmt, self.fmt_map[numFmt])
+            return _format_value(formatter, value)
 
         suffix = lvl_el.suffix if append_suffix is True else ''
         return re.sub(r'%(\d)', replace_token, lvlText) + suffix

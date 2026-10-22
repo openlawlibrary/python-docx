@@ -31,20 +31,23 @@ class DescribeCT_Numbering(object):
 
     @pytest.fixture(params=[
         # Word shows %1 as nothing when level 1 has numFmt="none"
-        ('none', '%12030.%2', ['2030.1\t', '2030.2\t']),
-        ('decimal', '%1.%2', ['2030.1\t', '2030.2\t']),
+        ('none', '%12030.%2', '', ['2030.1\t', '2030.2\t']),
+        ('decimal', '%1.%2', '', ['2030.1\t', '2030.2\t']),
+        # each level shows in its own numFmt, unless the level has isLgl
+        ('upperRoman', '%1.%2', '', ['MMXXX.1\t', 'MMXXX.2\t']),
+        ('upperRoman', '%1.%2', '<w:isLgl/>', ['2030.1\t', '2030.2\t']),
     ])
     def labels_fixture(self, request):
-        lvl0_numFmt, lvl1_text, expected_labels = request.param
+        lvl0_numFmt, lvl1_text, lvl1_isLgl, expected_labels = request.param
         document = Document()
         numbering = document.part.numbering_part.element
         numbering.append(parse_xml(
             '<w:abstractNum %s w:abstractNumId="90">'
             '  <w:lvl w:ilvl="0"><w:start w:val="2030"/>'
             '    <w:numFmt w:val="%s"/><w:lvlText w:val="2030"/></w:lvl>'
-            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>%s'
             '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%s"/></w:lvl>'
-            '</w:abstractNum>' % (nsdecls('w'), lvl0_numFmt, lvl1_text)
+            '</w:abstractNum>' % (nsdecls('w'), lvl0_numFmt, lvl1_isLgl, lvl1_text)
         ))
         numbering.append(parse_xml(
             '<w:num %s w:numId="90"><w:abstractNumId w:val="90"/></w:num>'
