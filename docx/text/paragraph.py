@@ -779,14 +779,6 @@ class Paragraph(Parented, BookmarkParent):
         where ``*`` is param name. Default tab stop ``DEFAULT_TAB_STOP`` has (.5 Inches) val.
         """
 
-        def get_base_style_attr(obj, attr_name):
-            if getattr(obj, 'base_style', None) is None:
-                return Length(0)
-            elif getattr(obj.base_style, 'paragraph_format', None) is not None:
-                if getattr(obj.base_style.paragraph_format, attr_name, None) is not None:
-                    return getattr(obj.base_style.paragraph_format, attr_name)
-            return get_base_style_attr(obj.base_style, attr_name)
-
         def get_tabstops(para):
             """
             Build tab-stop list from elements found following the style hierarchy.
@@ -832,18 +824,39 @@ class Paragraph(Parented, BookmarkParent):
                 return Length(0), Length(0)
             return apply_formatting(numbering_format, first_line_indent, left_indent)
 
-        # Apply paragraph styles by priority (from lowest to highest).
-        # Formatting from the base style has the lowest priority.
-        first_line_indent = get_base_style_attr(
-            self.style, 'first_line_indent')
-        left_indent = get_base_style_attr(self.style, 'left_indent')
-        # Next, we apply formatting from numbering properties defined in paragraph style.
-        first_line_indent, left_indent = apply_numbering(
-            self.style_numbering_format, self.style._element.pPr,
-            first_line_indent, left_indent)
-        # Then formatting from paragraph style.
-        first_line_indent, left_indent = apply_formatting(
-            self.style.paragraph_format, first_line_indent, left_indent)
+        # A paragraph in a part with no numbering (a header, a footnote)
+        # gets no list level from its styles.
+        try:
+            numbering = self.part.numbering_part._element
+            styles = self.part.cached_styles
+        except (AttributeError, NotImplementedError):
+            numbering = styles = None
+
+        def style_indents(style, seen=()):
+            """
+            The indents that *style* gives. Each style of the chain, from
+            the one that is based on no style, applies the indents of its
+            list level and then its own indents.
+            """
+            if style is None or style.style_id in seen:
+                return Length(0), Length(0)
+            first_line_indent, left_indent = style_indents(
+                getattr(style, 'base_style', None), seen + (style.style_id,))
+            pPr = style._element.pPr
+            if pPr is not None and pPr.numPr is not None:
+                lvl = None
+                if numbering is not None:
+                    lvl = numbering.get_lvl_from_style(style.style_id, styles)
+                first_line_indent, left_indent = apply_numbering(
+                    ParagraphFormat(lvl) if lvl is not None else None, pPr,
+                    first_line_indent, left_indent)
+            return apply_formatting(
+                getattr(style, 'paragraph_format', None), first_line_indent, left_indent)
+
+        # Apply paragraph styles by priority (from lowest to highest): the
+        # styles that the style is based on, then the style. Each applies
+        # the formatting of its numbering properties, then its own.
+        first_line_indent, left_indent = style_indents(self.style)
         # Next, formatting from numbering properties defined in direct paragraph properties is applied.
         first_line_indent, left_indent = apply_numbering(
             self.para_numbering_format, self._p.pPr, first_line_indent, left_indent)

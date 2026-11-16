@@ -60,12 +60,11 @@ def _is_on(el):
     return el is not None and el.get(qn('w:val')) not in ('0', 'false', 'off')
 
 
-def _style_numPrs(pPr, styles_cache):
+def _style_numPrs(style_id, styles_cache):
     """
-    Yield the ``w:numPr`` of the style of *pPr* and of the styles it is
-    based on, nearest first.
+    Yield the ``w:numPr`` of the style having *style_id* and of the styles
+    it is based on, nearest first.
     """
-    style_id = pPr.pStyle.val if pPr.pStyle is not None else None
     seen = set()
     while style_id is not None and style_id not in seen:
         seen.add(style_id)
@@ -369,11 +368,25 @@ class CT_Numbering(BaseOxmlElement):
                 # the indent of its level.
                 if numPr is not None and numPr.numId is not None and numPr.numId.val == 0:
                     return None
-                props = _ilvl_and_numId(_style_numPrs(p.pPr, styles_cache))
+                props = _ilvl_and_numId(_style_numPrs(p.pPr.style, styles_cache))
             else:
                 props = _ilvl_and_numId([numPr] if numPr is not None else [])
         except AttributeError:
             return None
+        if props is None:
+            return None
+        ilvl, numId = props
+        return self._lvl_of(numId, ilvl)
+
+    def get_lvl_from_style(self, style_id, styles_cache):
+        """
+        Return the ``w:lvl`` of the list that the style having *style_id*
+        puts a paragraph in, or None if it puts it in no list. The numId and
+        the ilvl each come from the style, or else from the nearest of the
+        styles it is based on.
+        """
+        self.use_styles(styles_cache)
+        props = _ilvl_and_numId(_style_numPrs(style_id, styles_cache or {}))
         if props is None:
             return None
         ilvl, numId = props
@@ -515,7 +528,7 @@ class CT_Numbering(BaseOxmlElement):
         if pPr is None:
             return None
         numPrs = [pPr.numPr] if pPr.numPr is not None else []
-        numPrs.extend(_style_numPrs(pPr, styles_cache or {}))
+        numPrs.extend(_style_numPrs(pPr.style, styles_cache or {}))
         return _ilvl_and_numId(numPrs)
 
     def _lvl_of(self, numId, ilvl):
