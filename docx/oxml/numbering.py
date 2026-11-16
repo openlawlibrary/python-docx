@@ -257,7 +257,16 @@ class CT_Numbering(BaseOxmlElement):
         """
         self._num_caches['labels'].clear()
 
-    def get_abstractNum(self, numId):
+    def use_styles(self, styles_cache):
+        """
+        Remember *styles_cache*, a dict of the ``w:style`` elements by style
+        id. A ``w:numStyleLink`` names a numbering style, and that style is
+        in the styles, not in the numbering part.
+        """
+        if styles_cache:
+            self._styles_cache = styles_cache
+
+    def get_abstractNum(self, numId, _linked_from=()):
         """
         Returns |CT_AbstractNum| instance with corresponding
         paragraph ``pPr.numPr.numId`` if any
@@ -282,19 +291,45 @@ class CT_Numbering(BaseOxmlElement):
                     break
 
         # A definition with a numStyleLink has no levels of its own. They
-        # are in the definition whose styleLink names the same style. If
-        # the link has no target, the definition has only the levels that
-        # it holds.
+        # are in the definition of its numbering style. If the link has no
+        # target, the definition has only the levels that it holds.
         link = abstractNum.find(qn('w:numStyleLink')) if abstractNum is not None else None
         if link is not None:
-            for el in self.abstractNum_lst:
-                styleLink = el.find(qn('w:styleLink'))
-                if styleLink is not None and styleLink.get(qn('w:val')) == link.get(qn('w:val')):
-                    abstractNum = el
-                    break
+            target, styles_known = self._abstractNum_of_numbering_style(
+                link.get(qn('w:val')), _linked_from + (numId,))
+            if target is not None:
+                abstractNum = target
+            elif not styles_known:
+                # The styles can give the target later (see use_styles).
+                return abstractNum
 
         cache[numId] = abstractNum
         return abstractNum
+
+    def _abstractNum_of_numbering_style(self, style_id, linked_from):
+        """
+        Return ``(abstractNum, styles_known)`` for the numbering style having
+        *style_id*. The definition is the one whose ``w:styleLink`` names
+        the style, or else the one of the ``w:num`` that the style names in
+        ``styles.xml`` (DCMR 21-522: no ``w:styleLink`` names the styles
+        "RegsList2" and "RegsList3"). It is None if there is none.
+        *styles_known* is False if the styles were necessary and are not
+        known. *linked_from* has the numIds that led here, to stop a loop.
+        """
+        for el in self.abstractNum_lst:
+            styleLink = el.find(qn('w:styleLink'))
+            if styleLink is not None and styleLink.get(qn('w:val')) == style_id:
+                return el, True
+        styles_cache = getattr(self, '_styles_cache', None)
+        if not styles_cache:
+            return None, False
+        try:
+            numId = styles_cache[style_id].pPr.numPr.numId.val
+        except (KeyError, AttributeError):
+            return None, True
+        if not numId or numId in linked_from:
+            return None, True
+        return self.get_abstractNum(numId, linked_from), True
 
     def get_startOverride(self, numId, ilvl):
         """
@@ -326,6 +361,7 @@ class CT_Numbering(BaseOxmlElement):
         If ``styles_cache`` is not None then level from style formating is fetched otherwise
         level from direct paragraph formating is used.
         """
+        self.use_styles(styles_cache)
         try:
             numPr = p.pPr.numPr
             if styles_cache:
@@ -350,6 +386,7 @@ class CT_Numbering(BaseOxmlElement):
         numbered level suffix after the number
         (usually blank spaces between the number and the text of numbered paragraph).
         """
+        self.use_styles(styles_cache)
         if self._get_ilvl_and_numId(p, styles_cache) is None:
             return None
         story = _story_of(p)
@@ -494,6 +531,9 @@ class CT_Numbering(BaseOxmlElement):
             if lvl_el is None:
                 abstractNum_el = self.get_abstractNum(numId)
                 lvl_el = abstractNum_el.get_lvl(ilvl) if abstractNum_el is not None else None
+                if numId not in self._num_caches['abstractNum']:
+                    # The definition can change when the styles are known.
+                    return lvl_el
             cache[key] = lvl_el
         return cache[key]
 

@@ -112,11 +112,13 @@ class CT_P(BaseOxmlElement):
             if not any(ancestor.tag in _DELETED for ancestor in el.iterancestors()):
                 yield el
 
-    def lvl_from_para_props(self, numbering_el):
+    def lvl_from_para_props(self, numbering_el, styles_cache=None):
         """
         Returns ``<w:lvl>`` numbering level paragraph formatting for the current paragraph using
-        numbering linked via the direct paragraph formatting.
+        numbering linked via the direct paragraph formatting. *styles_cache* is not used
+        for the paragraph: the numbering needs it for a list that links to a numbering style.
         """
+        numbering_el.use_styles(styles_cache)
         return numbering_el.get_lvl_from_props(self)
 
     def lvl_from_style_props(self, numbering_el, styles_cache):

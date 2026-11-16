@@ -483,7 +483,7 @@ class Paragraph(Parented, BookmarkParent):
         if self._lvl_from_para_props is None:
             try:
                 self._lvl_from_para_props = self._p.lvl_from_para_props(
-                    self.part.numbering_part._element)
+                    self.part.numbering_part._element, self.part.cached_styles)
             except (AttributeError, NotImplementedError):
                 return None
         return self._lvl_from_para_props
