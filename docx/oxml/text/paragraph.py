@@ -8,6 +8,11 @@ from ..sdts import CT_SdtBase
 from ..xmlchemy import BaseOxmlElement, OxmlElement, ZeroOrMore, ZeroOrOne
 
 
+#: Content in these elements is not there when the tracked changes are
+#: accepted.
+_DELETED = (qn('w:del'), qn('w:moveFrom'))
+
+
 class CT_P(BaseOxmlElement):
     """
     ``<w:p>`` element, containing the properties, text for a paragraph and content controls.
@@ -86,10 +91,7 @@ class CT_P(BaseOxmlElement):
         Return all footnote reference ids (``<w:footnoteReference>``) form the paragraph,
         or |None| if not present.
         """
-        footnote_ids = []
-        for run in self.r_lst:
-            footnote_ids.extend([ref_id for ref_id in run.footnote_reference_ids])
-        return footnote_ids
+        return [ref.id for ref in self._iter_shown(qn('w:footnoteReference'))]
 
     @property
     def endnote_reference_ids(self):
@@ -97,10 +99,18 @@ class CT_P(BaseOxmlElement):
         Return all endnote reference ids (``<w:endnoteReference>``) from the paragraph,
         or |None| if not present.
         """
-        endnote_ids = []
-        for run in self.r_lst:
-            endnote_ids.extend([ref_id for ref_id in run.endnote_reference_ids])
-        return endnote_ids
+        return [ref.id for ref in self._iter_shown(qn('w:endnoteReference'))]
+
+    def _iter_shown(self, tag):
+        """
+        Generate the *tag* elements of this paragraph in document order.
+        Tracked changes are read as accepted: an element in ``<w:ins>`` or
+        ``<w:moveTo>`` is included, one in ``<w:del>`` or ``<w:moveFrom>``
+        is not.
+        """
+        for el in self.iter(tag):
+            if not any(ancestor.tag in _DELETED for ancestor in el.iterancestors()):
+                yield el
 
     def lvl_from_para_props(self, numbering_el):
         """
