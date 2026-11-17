@@ -457,9 +457,12 @@ class CT_Numbering(BaseOxmlElement):
         An item starts the levels above it that have not started, and
         restarts the levels below it (see ``w:lvlRestart``). A level starts
         at the ``w:startOverride`` of the item's ``w:num``, if it has one,
-        or else at ``w:start``. The first item of a ``w:num`` at a level
-        with a ``w:startOverride`` also restarts the counter there, and uses
-        up the overrides of that ``w:num`` at the levels above it.
+        or else at ``w:start``.
+
+        A ``w:num`` restarts a counter one time only: at its first item at
+        a level that has a ``w:startOverride``. That uses up its overrides
+        at all the levels (DCMR 11-X305: after 305.1 restarts level 3, the
+        first item of the same ``w:num`` at level 4 continues with "(d)").
 
         The label of an item shows a level above it that has no item of its
         own at the ``w:start`` of the definition, not at the value of its
@@ -478,7 +481,7 @@ class CT_Numbering(BaseOxmlElement):
         counters_of = {}
         with_item_of = {}
         list_ids = {}
-        overridden = set()
+        restarted = set()
         for p in story.iter(_w_p_tag):
             if _story_of(p) is not story:
                 continue
@@ -515,8 +518,8 @@ class CT_Numbering(BaseOxmlElement):
                 return startOverride
 
             if (self._start_override(numId, ilvl) is not None
-                    and (numId, ilvl) not in overridden):
-                overridden.update((numId, level) for level in range(ilvl + 1))
+                    and numId not in restarted):
+                restarted.add(numId)
                 counters[ilvl] = start_of(ilvl)
             elif ilvl in counters:
                 counters[ilvl] += 1

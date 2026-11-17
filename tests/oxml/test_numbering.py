@@ -90,6 +90,10 @@ class DescribeCT_Numbering(object):
         # the restart waits for the first use at its own level
         ({1: {}, 2: {0: 1}}, [(1, 0), (1, 0), (2, 1), (2, 0), (1, 0)],
          ['1.', '2.', '(a)', '1.', '2.']),
+        # a w:num restarts a counter one time only: Word shows (c), not (a),
+        # for the first item of numId 2 at level 1 (as DCMR 11-X305)
+        ({1: {}, 2: {0: 1, 1: 1}}, [(2, 0), (1, 1), (1, 1), (2, 1), (2, 0)],
+         ['1.', '(a)', '(b)', '(c)', '2.']),
         # an item of any w:num of the list restarts the levels below it
         ({1: {}, 2: {}}, [(1, 1), (1, 1), (2, 0), (1, 1)],
          ['(a)', '(b)', '2.', '(a)']),
