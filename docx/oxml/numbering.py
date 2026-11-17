@@ -490,6 +490,7 @@ class CT_Numbering(BaseOxmlElement):
             if props is None:
                 continue
             ilvl, numId = props
+            ilvl = self._level_in_list(numId, ilvl)
             if self._lvl_of(numId, ilvl) is None:
                 continue
             abstractNum_el = self.get_abstractNum(numId)
@@ -552,6 +553,23 @@ class CT_Numbering(BaseOxmlElement):
         numPrs = [pPr.numPr] if pPr.numPr is not None else []
         numPrs.extend(_style_numPrs(pPr.style, styles_cache or {}))
         return _ilvl_and_numId(numPrs)
+
+    def _level_in_list(self, numId, ilvl):
+        """
+        Return the level that Word uses for an item of the ``<w:num>``
+        having *numId* at *ilvl*. That is level 0 if the list is a
+        ``singleLevel`` list and does not have *ilvl*: in DCMR 24-3306,
+        the items at level 1 of such a list show "(1)" to "(5)". In a list
+        of a different type, Word shows no label for an item at a level
+        that the list does not have.
+        """
+        if ilvl and self._lvl_of(numId, ilvl) is None:
+            abstractNum_el = self.get_abstractNum(numId)
+            kind = (abstractNum_el.find(qn('w:multiLevelType'))
+                    if abstractNum_el is not None else None)
+            if kind is not None and kind.get(qn('w:val')) == 'singleLevel':
+                return 0
+        return ilvl
 
     def _lvl_of(self, numId, ilvl):
         """

@@ -105,6 +105,14 @@ class DescribeCT_Numbering(object):
         # decimalZero shows at least two digits
         ({5: {0: 9}}, [(5, 0), (5, 0), (5, 0)],
          ['09.', '10.', '11.']),
+        # an item at a level that a singleLevel list does not have is an
+        # item of level 0 (Word, as DCMR 24-3306)
+        ({5: {}}, [(5, 0), (5, 1), (5, 1), (5, 0), (5, 2)],
+         ['01.', '02.', '03.', '04.', '05.']),
+        # in a list of a different type, such an item has no label and
+        # does not count (Word)
+        ({1: {}}, [(1, 0), (1, 1), (1, 3), (1, 3), (1, 1)],
+         ['1.', '(a)', None, None, '(b)']),
         # lvlRestart 0: level 1 never restarts
         ({3: {}}, [(3, 1), (3, 1), (3, 0), (3, 1)],
          ['(a)', '(b)', '2.', '(c)']),
@@ -134,6 +142,7 @@ class DescribeCT_Numbering(object):
             ))
         numbering.append(parse_xml(
             '<w:abstractNum %s w:abstractNumId="94">'
+            '  <w:multiLevelType w:val="singleLevel"/>'
             '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
             '    <w:numFmt w:val="decimalZero"/><w:lvlText w:val="%%1."/></w:lvl>'
             '</w:abstractNum>' % nsdecls('w')
@@ -152,7 +161,8 @@ class DescribeCT_Numbering(object):
                 '<w:numPr %s><w:ilvl w:val="%d"/><w:numId w:val="%d"/></w:numPr>'
                 % (nsdecls('w'), ilvl, 90 + numId)
             ))
-        return document, [label + '\t' for label in expected_labels]
+        return document, [None if label is None else label + '\t'
+                          for label in expected_labels]
 
     # Aspose shows these labels. LibreOffice counts one list for each
     # numbering style instead: it shows 3. for the third item of the last two.
