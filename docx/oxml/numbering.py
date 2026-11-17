@@ -449,7 +449,8 @@ class CT_Numbering(BaseOxmlElement):
         Count the list items of *story* in document order, as Word does.
         Returns a dict that maps each paragraph of *story* to
         ``(numId, ilvl, counters)``, or to None if it is not a list item.
-        ``counters`` maps each started level of its list to its value.
+        ``counters`` maps each started level of its list to the value that
+        the label of the paragraph shows for it.
 
         Word keeps one counter per level for each abstract numbering
         definition; every ``w:num`` that uses the definition shares them.
@@ -460,6 +461,12 @@ class CT_Numbering(BaseOxmlElement):
         with a ``w:startOverride`` also restarts the counter there, and uses
         up the overrides of that ``w:num`` at the levels above it.
 
+        The label of an item shows a level above it that has no item of its
+        own at the ``w:start`` of the definition, not at the value of its
+        counter. With a ``w:startOverride`` of 5 on level 0 and of 3 on
+        level 1, Word shows "1.3." for a first item at level 1, and "6."
+        for the level 0 item after it. Aspose shows "5.3." and "6.".
+
         The counters belong to the definition that a ``w:num`` names, also
         when the levels come from a ``w:numStyleLink``, as in Aspose.
 
@@ -469,6 +476,7 @@ class CT_Numbering(BaseOxmlElement):
         """
         items = {}
         counters_of = {}
+        with_item_of = {}
         list_ids = {}
         overridden = set()
         for p in story.iter(_w_p_tag):
@@ -486,14 +494,19 @@ class CT_Numbering(BaseOxmlElement):
             if numId not in list_ids:
                 list_ids[numId] = self.num_having_numId(numId).abstractNumId.val
             counters = counters_of.setdefault(list_ids[numId], {})
+            # the levels that have an item since their last restart
+            with_item = with_item_of.setdefault(list_ids[numId], set())
+
+            def definition_start_of(level):
+                lvl_el = abstractNum_el.get_lvl(level) if abstractNum_el is not None else None
+                if lvl_el is None:
+                    lvl_el = self._override_lvl(numId, level)
+                return _start_value(lvl_el)
 
             def start_of(level):
                 startOverride = self._start_override(numId, level)
                 if startOverride is None:
-                    lvl_el = abstractNum_el.get_lvl(level) if abstractNum_el is not None else None
-                    if lvl_el is None:
-                        lvl_el = self._override_lvl(numId, level)
-                    return _start_value(lvl_el)
+                    return definition_start_of(level)
                 # With a w:lvl in the w:lvlOverride, Aspose restarts at its
                 # w:start; LibreOffice at the startOverride.
                 override_lvl_el = self._override_lvl(numId, level)
@@ -509,13 +522,19 @@ class CT_Numbering(BaseOxmlElement):
                 counters[ilvl] += 1
             else:
                 counters[ilvl] = start_of(ilvl)
+            with_item.add(ilvl)
             for upper in range(ilvl):
                 if upper not in counters:
                     counters[upper] = start_of(upper)
             for lower in [i for i in counters if i > ilvl]:
                 if ilvl < _restart_level(self._lvl_of(numId, lower), lower):
                     del counters[lower]
-            items[p] = (numId, ilvl, dict(counters))
+                    with_item.discard(lower)
+            shown = dict(counters)
+            for upper in range(ilvl):
+                if upper not in with_item:
+                    shown[upper] = definition_start_of(upper)
+            items[p] = (numId, ilvl, shown)
         return items
 
     def _get_ilvl_and_numId(self, p, styles_cache):

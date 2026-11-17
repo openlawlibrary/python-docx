@@ -190,17 +190,19 @@ class DescribeCT_Numbering(object):
             ))
         return document, [label + '\t' for label in expected_labels]
 
-    # Aspose shows these labels. LibreOffice does not use the
-    # startOverride of a level above the item.
+    # Word 16.0.20527 shows these labels. Aspose shows the startOverride
+    # for a level above the item that has no item of its own: "5.1", "5.3"
+    # and "5.3.1" for the first items of the first three cases.
     @pytest.fixture(params=[
-        # level 0 starts at 5 for the level-1 items; the first level-0
-        # item restarts there
-        ({0: 5}, [1, 1, 0, 1], ['5.1', '5.2', '5.', '5.1']),
-        # the restart at level 1 uses up the override at level 0
-        ({0: 5, 1: 3}, [1, 0], ['5.3', '6.']),
-        ({0: 5, 1: 3}, [2, 0], ['5.3.1', '5.']),
-        # level 1 starts at 3 again after level 0 restarts it
-        ({1: 3}, [2, 1, 0, 1], ['1.3.1', '1.3', '2.', '2.3']),
+        # level 0 has no item: the level-1 items show its w:start. The
+        # first level-0 item restarts at 5 (as DCMR 11-U100).
+        ({0: 5}, [1, 1, 0, 1], ['1.1', '1.2', '5.', '5.1']),
+        # the restart at level 1 uses up the override at level 0: the
+        # counter of level 0 is at 5, and the first level-0 item shows 6
+        ({0: 5, 1: 3}, [1, 0, 1], ['1.3', '6.', '6.3']),
+        ({0: 5, 1: 3}, [2, 1, 0], ['1.1.1', '1.3', '6.']),
+        # level 1 starts at 5 again after level 0 restarts it
+        ({1: 5}, [0, 1, 1, 0, 1], ['1.', '1.5', '1.6', '2.', '2.5']),
     ])
     def start_fixture(self, request):
         overrides, levels, expected_labels = request.param
