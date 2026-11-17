@@ -94,6 +94,20 @@ class DescribeCT_Numbering(object):
         # for the first item of numId 2 at level 1 (as DCMR 11-X305)
         ({1: {}, 2: {0: 1, 1: 1}}, [(2, 0), (1, 1), (1, 1), (2, 1), (2, 0)],
          ['1.', '(a)', '(b)', '(c)', '2.']),
+        # Word 16.0.20527 shows the labels of the next three cases.
+        # a first item at a level with no startOverride uses up nothing:
+        # numId 2 restarts level 2 later, at its first item there
+        ({1: {}, 2: {2: 1}},
+         [(1, 0), (1, 1), (1, 2), (2, 1), (1, 2), (1, 2), (2, 2), (2, 2)],
+         ['1.', '(a)', '(i)', '(b)', '(i)', '(ii)', '(i)', '(ii)']),
+        # the restart at level 1 uses up the override at level 0
+        ({1: {}, 2: {0: 1, 1: 1}},
+         [(1, 0), (1, 0), (1, 1), (2, 1), (2, 0), (2, 1)],
+         ['1.', '2.', '(a)', '(a)', '3.', '(a)']),
+        # a startOverride does not change a level above the item that has
+        # an item
+        ({1: {}, 2: {0: 5, 1: 7}}, [(1, 0), (1, 1), (2, 1), (2, 1), (2, 0)],
+         ['1.', '(a)', '(g)', '(h)', '2.']),
         # an item of any w:num of the list restarts the levels below it
         ({1: {}, 2: {}}, [(1, 1), (1, 1), (2, 0), (1, 1)],
          ['(a)', '(b)', '2.', '(a)']),
