@@ -150,7 +150,8 @@ class Document(ElementProxy):
         body, keyed by footnote id, in the order of the references. The mark
         comes from the note properties of the document and of the section,
         not from the id: a document converted from .doc has footnote ids from
-        2, where Word shows 1. It is calculated on each access.
+        2, where Word shows 1. A reference in a text box has no mark: Word
+        does not show it. It is calculated on each access.
         """
         return note_reference_marks(self._element.body, self.settings.element)[0]
 
