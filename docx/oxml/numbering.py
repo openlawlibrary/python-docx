@@ -217,8 +217,10 @@ class CT_Numbering(BaseOxmlElement):
         """
         Per-instance lookup caches: ``abstractNum`` maps numId to its
         |CT_AbstractNum| (or None), ``start_override`` maps (numId, ilvl) to
-        the startOverride value (None if there is none), ``lvl`` maps
-        (numId, ilvl) to the |CT_Lvl| that applies, and
+        the startOverride value (None if there is none), ``override_lvl``
+        maps (numId, ilvl) to the |CT_Lvl| in the ``w:lvlOverride`` (None if
+        there is none), ``lvl`` maps (numId, ilvl) to the |CT_Lvl| that
+        applies, and
         ``labels`` maps a story element to the list items of its paragraphs
         (see ``_count_list_items``). Numbering definitions,
         paragraph properties and styles are treated as immutable during a
@@ -236,7 +238,8 @@ class CT_Numbering(BaseOxmlElement):
             return self._num_caches_dict
         except AttributeError:
             caches = {
-                'abstractNum': {}, 'start_override': {}, 'labels': {}, 'lvl': {},
+                'abstractNum': {}, 'start_override': {}, 'override_lvl': {},
+                'labels': {}, 'lvl': {},
             }
             self._num_caches_dict = caches
             return caches
@@ -570,14 +573,19 @@ class CT_Numbering(BaseOxmlElement):
         Return the ``w:lvl`` in the ``w:lvlOverride`` of the ``<w:num>``
         having *numId* for level *ilvl*, or None if there is none.
         """
-        try:
-            w_num = self.num_having_numId(numId)
-        except KeyError:
-            return None
-        for lvlOverride in w_num.lvlOverride_lst:
-            if lvlOverride.ilvl == ilvl:
-                return lvlOverride.find(qn('w:lvl'))
-        return None
+        cache = self._num_caches['override_lvl']
+        key = (numId, ilvl)
+        if key not in cache:
+            cache[key] = None
+            try:
+                lvlOverrides = self.num_having_numId(numId).lvlOverride_lst
+            except KeyError:
+                lvlOverrides = []
+            for lvlOverride in lvlOverrides:
+                if lvlOverride.ilvl == ilvl:
+                    cache[key] = lvlOverride.find(qn('w:lvl'))
+                    break
+        return cache[key]
 
     def _start_override(self, numId, ilvl):
         """
