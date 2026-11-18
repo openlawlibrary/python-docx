@@ -216,9 +216,9 @@ class CT_Numbering(BaseOxmlElement):
     def _num_caches(self):
         """
         Per-instance lookup caches: ``abstractNum`` maps numId to its
-        |CT_AbstractNum| (or None), ``startOverride`` and ``start_override``
-        map (numId, ilvl) to the startOverride value (0 or None if there is
-        none), ``lvl`` maps (numId, ilvl) to the |CT_Lvl| that applies, and
+        |CT_AbstractNum| (or None), ``start_override`` maps (numId, ilvl) to
+        the startOverride value (None if there is none), ``lvl`` maps
+        (numId, ilvl) to the |CT_Lvl| that applies, and
         ``labels`` maps a story element to the list items of its paragraphs
         (see ``_count_list_items``). Numbering definitions,
         paragraph properties and styles are treated as immutable during a
@@ -236,8 +236,7 @@ class CT_Numbering(BaseOxmlElement):
             return self._num_caches_dict
         except AttributeError:
             caches = {
-                'abstractNum': {}, 'startOverride': {},
-                'start_override': {}, 'labels': {}, 'lvl': {},
+                'abstractNum': {}, 'start_override': {}, 'labels': {}, 'lvl': {},
             }
             self._num_caches_dict = caches
             return caches
@@ -329,30 +328,6 @@ class CT_Numbering(BaseOxmlElement):
         if not numId or numId in linked_from:
             return None, True
         return self.get_abstractNum(numId, linked_from), True
-
-    def get_startOverride(self, numId, ilvl):
-        """
-        Returns the ``w:startOverride`` value of the ``<w:num>`` having
-        *numId* for level *ilvl*, or 0 if there is none. Raises |KeyError|
-        if no ``<w:num>`` has *numId*, |AttributeError| if the matching
-        ``<w:lvlOverride>`` has no ``<w:startOverride>`` child.
-        """
-        cache = self._num_caches['startOverride']
-        key = (numId, ilvl)
-        try:
-            return cache[key]
-        except KeyError:
-            pass
-
-        val = 0
-        w_num = self.num_having_numId(numId)
-        for lvlOverride in w_num.lvlOverride_lst:
-            if lvlOverride.ilvl == ilvl:
-                val = lvlOverride.startOverride.val
-                break
-
-        cache[key] = val
-        return val
 
     def get_lvl_from_props(self, p, styles_cache=None):
         """
