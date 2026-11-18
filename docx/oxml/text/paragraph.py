@@ -106,9 +106,12 @@ class CT_P(BaseOxmlElement):
         Generate the *tag* elements of this paragraph in document order.
         Tracked changes are read as accepted: an element in ``<w:ins>`` or
         ``<w:moveTo>`` is included, one in ``<w:del>`` or ``<w:moveFrom>``
-        is not.
+        is not. An element in a text box of this paragraph is not included:
+        it is an element of the paragraph in the text box.
         """
         for el in self.iter(tag):
+            if next(el.iterancestors(qn('w:p'))) is not self:
+                continue
             if not any(ancestor.tag in _DELETED for ancestor in el.iterancestors()):
                 yield el
 
