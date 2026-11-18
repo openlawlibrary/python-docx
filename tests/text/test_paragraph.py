@@ -444,7 +444,52 @@ class DescribeParagraph_norm_left_indent(object):
         paragraph, expected_inches = indent_fixture
         assert paragraph.norm_left_indent.inches == expected_inches
 
+    def it_keeps_the_indent_in_characters_of_a_style(self, chars_fixture):
+        paragraph, expected_inches = chars_fixture
+        assert round(paragraph.norm_left_indent.inches, 2) == expected_inches
+
     # fixtures -------------------------------------------------------
+
+    # Word shows these indents. The default paragraph style has a font of
+    # 12 points, so one character is 12 points.
+    @pytest.fixture(params=[
+        # DCMR 18-2424: the w:ind of the paragraph gives no w:leftChars, so
+        # the 10.28 characters of the style stay
+        ('A', '<w:ind w:left="718" w:hanging="718" w:hangingChars="299"/>', 1.71),
+        # the w:ind of the paragraph gives its own w:leftChars
+        ('A', '<w:ind w:left="3187" w:hanging="720" w:leftChars="1028"'
+              ' w:hangingChars="300"/>', 1.71),
+        # DCMR 11-2103: the font size of the style (10.5) is not the width
+        # of a character
+        ('C', '<w:ind w:left="800" w:hanging="800" w:hangingChars="400"/>', 0.6),
+    ])
+    def chars_fixture(self, request):
+        from docx import Document
+        from docx.oxml import parse_xml
+        from docx.oxml.ns import nsdecls
+
+        style_id, pPr_xml, expected_inches = request.param
+        document = Document()
+        document.styles['Normal'].element.append(parse_xml(
+            '<w:rPr %s><w:sz w:val="24"/></w:rPr>' % nsdecls('w')))
+        for style_xml in (
+            '<w:style %s w:type="paragraph" w:styleId="One"><w:name w:val="One"/>'
+            '<w:pPr><w:ind w:left="1978" w:hanging="540" w:leftChars="685"'
+            ' w:hangingChars="257"/></w:pPr></w:style>',
+            '<w:style %s w:type="paragraph" w:styleId="A"><w:name w:val="A"/>'
+            '<w:basedOn w:val="One"/>'
+            '<w:pPr><w:ind w:left="2699" w:leftChars="1028"/></w:pPr></w:style>',
+            '<w:style %s w:type="paragraph" w:styleId="C"><w:name w:val="C"/>'
+            '<w:pPr><w:ind w:left="630" w:hanging="270" w:leftChars="360"'
+            ' w:hangingChars="270"/></w:pPr><w:rPr><w:sz w:val="21"/></w:rPr></w:style>',
+        ):
+            document.styles.element.append(parse_xml(style_xml % nsdecls('w')))
+        paragraph = document.add_paragraph('Text.')
+        paragraph._p.get_or_add_pPr().append(parse_xml(
+            '<w:pStyle %s w:val="%s"/>' % (nsdecls('w'), style_id)))
+        for child in parse_xml('<w:pPr %s>%s</w:pPr>' % (nsdecls('w'), pPr_xml)):
+            paragraph._p.pPr.append(child)
+        return paragraph, expected_inches
 
     # Aspose and LibreOffice show these indents. Style B has left 0.5,
     # hanging 0.25; style S is based on B and numbers at level 1 (left 1.0,

@@ -16,8 +16,8 @@ from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
 from .hyperlink import Hyperlink
-from ..shared import Parented, Length, find_containing_document, is_valid_url, lazyproperty, Inches, cache, bust_cache
-from ..oxml.ns import nsmap
+from ..shared import Parented, Length, find_containing_document, is_valid_url, lazyproperty, Inches, Pt, cache, bust_cache
+from ..oxml.ns import nsmap, qn
 from ..oxml.text.hyperlink import CT_Hyperlink
 from docx.bookmark import BookmarkParent
 from docx.parts.image import ImagePart
@@ -863,6 +863,12 @@ class Paragraph(Parented, BookmarkParent):
         # Finally, we apply formatting from direct paragraph formatting.
         first_line_indent, left_indent = apply_formatting(
             self.paragraph_format, first_line_indent, left_indent)
+        # Word can keep the indent in characters of a style. The left
+        # indent is then that position plus the hanging indent.
+        first_line_start = self._first_line_start_from_style_chars()
+        if first_line_start is not None:
+            hanging = -min(first_line_indent or 0, 0)
+            left_indent = Length(first_line_start + hanging)
 
         # Get explicitly set indentation
         if first_line_indent is not None:
@@ -923,6 +929,70 @@ class Paragraph(Parented, BookmarkParent):
                 indent /= (1 / DEFAULT_TAB_STOP)
 
         return Inches(indent)
+
+    def _first_line_start_from_style_chars(self):
+        """
+        Where the first line starts when Word keeps the ``w:leftChars`` of
+        a style, as a |Length|. |None| in all other cases.
+
+        Word uses an indent in characters before an indent in twips. When
+        the ``w:ind`` of the paragraph gives ``w:left`` and no
+        ``w:leftChars``, the ``w:leftChars`` of its style stays, and Word
+        does not use the ``w:left`` of the paragraph. The first line then
+        starts at that number of characters. One character is as wide as
+        the font size of the default paragraph style. A ``w:hanging`` of
+        the paragraph moves the other lines, not the first line.
+
+        Word is proven only for a paragraph with no list, so a paragraph
+        or a style with ``w:numPr`` gets |None|.
+        """
+        pPr = self._p.pPr
+        ind = pPr.ind if pPr is not None else None
+        if ind is None or pPr.numPr is not None:
+            return None
+
+        def chars_of(ind):
+            for name in ('w:leftChars', 'w:startChars'):
+                if ind.get(qn(name)) is not None:
+                    return int(ind.get(qn(name)))
+            return None
+
+        if chars_of(ind) is not None:
+            return None
+        if ind.get(qn('w:left')) is None and ind.get(qn('w:start')) is None:
+            return None
+
+        chars = None
+        style, seen = self.style, set()
+        while style is not None and style.style_id not in seen:
+            seen.add(style.style_id)
+            style_pPr = style._element.pPr
+            if style_pPr is not None:
+                if style_pPr.numPr is not None:
+                    return None
+                # the style nearest to the paragraph gives the value
+                if chars is None and style_pPr.ind is not None:
+                    chars = chars_of(style_pPr.ind)
+            style = getattr(style, 'base_style', None)
+        if not chars:
+            return None
+        return Pt(chars / 100 * self._default_font_size)
+
+    @property
+    def _default_font_size(self):
+        """
+        The font size of the default paragraph style, in points. The
+        document defaults give it when the style does not. Word uses 10
+        when the document gives no size.
+        """
+        styles = self.style._element.getparent()
+        default = styles.default_for(WD_STYLE_TYPE.PARAGRAPH)
+        defaults = styles.find('%s/%s/%s' % (
+            qn('w:docDefaults'), qn('w:rPrDefault'), qn('w:rPr')))
+        for rPr in (default.rPr if default is not None else None, defaults):
+            if rPr is not None and rPr.sz_val is not None:
+                return rPr.sz_val.pt
+        return 10.0
 
     def __repr__(self):
         text_stripped = self.text.strip()
