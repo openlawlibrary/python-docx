@@ -404,8 +404,15 @@ class CT_Numbering(BaseOxmlElement):
         numId, ilvl, counters = item
         lvl_el = self._lvl_of(numId, ilvl)
 
-        numFmt = lvl_el.numFmt.get('{%s}val' % nsmap['w'])
+        # Word shows a decimal number for a level with no w:numFmt.
+        numFmt = 'decimal'
+        if lvl_el.numFmt is not None:
+            numFmt = lvl_el.numFmt.get('{%s}val' % nsmap['w'])
         if numFmt not in self.fmt_map:
+            return None
+        # Word shows no label for a level with no w:lvlText. The item
+        # counts: the label of an item below it shows its number.
+        if lvl_el.lvlText is None:
             return None
         # w:val is optional: a w:lvlText without it is an empty level text.
         lvlText = lvl_el.lvlText.get('{%s}val' % nsmap['w']) or ''

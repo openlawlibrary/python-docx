@@ -39,6 +39,10 @@ class DescribeCT_Numbering(object):
         document, expected_labels = link_fixture
         assert [p.number for p in document.paragraphs] == expected_labels
 
+    def it_reads_a_level_with_no_numFmt_or_no_lvlText(self, partial_lvl_fixture):
+        document, expected_labels = partial_lvl_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
     def it_counts_again_after_forget_list_items(self):
         document = Document()
         numbering = document.part.numbering_part.element
@@ -95,6 +99,36 @@ class DescribeCT_Numbering(object):
             paragraph._p.get_or_add_pPr().append(parse_xml(
                 '<w:numPr %s><w:ilvl w:val="1"/><w:numId w:val="90"/></w:numPr>'
                 % nsdecls('w')
+            ))
+        return document, expected_labels
+
+    # Word 16.0.20527 shows these labels for items at the levels 0, 0, 1, 0.
+    @pytest.fixture(params=[
+        # a level with no w:numFmt is decimal
+        ('<w:lvlText w:val="%1."/>', ['1.\t', '2.\t', '2.1.\t', '3.\t']),
+        # a level with no w:lvlText has no label, and its items count
+        ('<w:numFmt w:val="decimal"/>', [None, None, '2.1.\t', None]),
+    ])
+    def partial_lvl_fixture(self, request):
+        lvl0_xml, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>%s</w:lvl>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1.%%2."/></w:lvl>'
+            '</w:abstractNum>' % (nsdecls('w'), lvl0_xml)
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'
+            % nsdecls('w')
+        ))
+        for ilvl in (0, 0, 1, 0):
+            paragraph = document.add_paragraph('Item.')
+            paragraph._p.get_or_add_pPr().append(parse_xml(
+                '<w:numPr %s><w:ilvl w:val="%d"/><w:numId w:val="91"/></w:numPr>'
+                % (nsdecls('w'), ilvl)
             ))
         return document, expected_labels
 
