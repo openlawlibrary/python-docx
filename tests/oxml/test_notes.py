@@ -76,6 +76,29 @@ class Describe_note_reference_marks(object):
 
         assert cut == ({3: '1'}, {})
 
+    def it_counts_a_reference_in_a_text_box_one_time(self):
+        # The paragraph of the text box is in a paragraph of the body.
+        text_box = (
+            'w:p/(w:r/w:footnoteReference{w:id=2}'
+            ',w:r/w:pict/w:txbxContent/w:p/w:r/w:footnoteReference{w:id=3}'
+            ',w:r/w:footnoteReference{w:id=4})')
+
+        cut = note_reference_marks(body(text_box, FN % 5), None)
+
+        assert cut == ({2: '1', 3: '2', 4: '3', 5: '4'}, {})
+
+    def it_skips_the_fallback_copy_of_a_text_box(self):
+        paragraph = '<w:p><w:r><w:footnoteReference w:id="%d"/></w:r></w:p>'
+        text_box = '<w:txbxContent>%s</w:txbxContent>' % (paragraph % 3)
+        mc = 'http://schemas.openxmlformats.org/markup-compatibility/2006'
+        cut = note_reference_marks(parse_xml(
+            '<w:body %s xmlns:mc="%s">%s<w:p><w:r><mc:AlternateContent>'
+            '<mc:Choice Requires="wps">%s</mc:Choice><mc:Fallback>%s</mc:Fallback>'
+            '</mc:AlternateContent></w:r></w:p>%s</w:body>'
+            % (nsdecls('w'), mc, paragraph % 2, text_box, text_box, paragraph % 4)), None)
+
+        assert cut == ({2: '1', 3: '2', 4: '3'}, {})
+
 
 class Describe_format_note_number(object):
 

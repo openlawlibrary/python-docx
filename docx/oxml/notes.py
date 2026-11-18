@@ -29,6 +29,11 @@ NOTE_REFERENCES = {
 #: A reference in a deleted revision does not show.
 DELETED = (qn('w:del'), qn('w:moveFrom'))
 
+#: Word writes a text box two times: in ``mc:Choice`` and, for a reader that
+#: does not know its format, in ``mc:Fallback``. A reference in the second
+#: copy is the same reference.
+FALLBACK = '{http://schemas.openxmlformats.org/markup-compatibility/2006}Fallback'
+
 CHICAGO_SYMBOLS = '*†‡§'  # *, dagger, double dagger, section
 
 
@@ -89,7 +94,8 @@ def note_reference_marks(body, settings):
     revision does not count. Word restarts the numbers on each page for
     ``numRestart="eachPage"``; that needs the page layout, so here the
     numbers continue. A ``numStart`` in a later section applies only when
-    that section restarts the numbers (``eachSect``).
+    that section restarts the numbers (``eachSect``). A reference in a text
+    box counts one time, at the position of the text box.
     """
     document_properties = {
         kind: note_properties(
@@ -97,7 +103,12 @@ def note_reference_marks(body, settings):
         for kind in DEFAULT_NOTE_PROPERTIES
     }
 
-    paragraphs = list(body.iter(qn('w:p')))
+    # A paragraph in a text box is in a paragraph of the body, and the loop
+    # below reads its references with that paragraph.
+    paragraphs = [
+        p for p in body.iter(qn('w:p'))
+        if next(p.iterancestors(qn('w:p')), None) is None
+    ]
     # A section ends at the w:sectPr in its last paragraph; the w:sectPr of
     # the body ends the last section.
     breaks = [p.pPr.sectPr if p.pPr is not None else None for p in paragraphs]
@@ -118,7 +129,8 @@ def note_reference_marks(body, settings):
     marks = {'footnote': {}, 'endnote': {}}
     for paragraph, section_break in zip(paragraphs, breaks):
         for reference in paragraph.iter(*NOTE_REFERENCES):
-            if any(ancestor.tag in DELETED for ancestor in reference.iterancestors()):
+            if any(ancestor.tag in DELETED or ancestor.tag == FALLBACK
+                   for ancestor in reference.iterancestors()):
                 continue
             kind = NOTE_REFERENCES[reference.tag]
             if reference.customMarkFollows:
