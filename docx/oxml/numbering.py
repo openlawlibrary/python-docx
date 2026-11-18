@@ -220,7 +220,8 @@ class CT_Numbering(BaseOxmlElement):
         the startOverride value (None if there is none), ``override_lvl``
         maps (numId, ilvl) to the |CT_Lvl| in the ``w:lvlOverride`` (None if
         there is none), ``lvl`` maps (numId, ilvl) to the |CT_Lvl| that
-        applies, and
+        applies, ``num`` maps the ``w:numId`` of each ``<w:num>`` to that
+        element (see ``_num_of``), and
         ``labels`` maps a story element to the list items of its paragraphs
         (see ``_count_list_items``). Numbering definitions,
         paragraph properties and styles are treated as immutable during a
@@ -239,7 +240,7 @@ class CT_Numbering(BaseOxmlElement):
         except AttributeError:
             caches = {
                 'abstractNum': {}, 'start_override': {}, 'override_lvl': {},
-                'labels': {}, 'lvl': {},
+                'labels': {}, 'lvl': {}, 'num': {},
             }
             self._num_caches_dict = caches
             return caches
@@ -286,7 +287,7 @@ class CT_Numbering(BaseOxmlElement):
 
         abstractNum = None
         try:
-            num_el = self.num_having_numId(numId)
+            num_el = self._num_of(numId)
         except KeyError:
             num_el = None
 
@@ -494,7 +495,7 @@ class CT_Numbering(BaseOxmlElement):
             abstractNum_el = self.get_abstractNum(numId)
 
             if numId not in list_ids:
-                list_ids[numId] = self.num_having_numId(numId).abstractNumId.val
+                list_ids[numId] = self._num_of(numId).abstractNumId.val
             counters = counters_of.setdefault(list_ids[numId], {})
             # the levels that have an item since their last restart
             with_item = with_item_of.setdefault(list_ids[numId], set())
@@ -598,7 +599,7 @@ class CT_Numbering(BaseOxmlElement):
         if key not in cache:
             cache[key] = None
             try:
-                lvlOverrides = self.num_having_numId(numId).lvlOverride_lst
+                lvlOverrides = self._num_of(numId).lvlOverride_lst
             except KeyError:
                 lvlOverrides = []
             for lvlOverride in lvlOverrides:
@@ -616,11 +617,29 @@ class CT_Numbering(BaseOxmlElement):
         key = (numId, ilvl)
         if key not in cache:
             cache[key] = None
-            for lvlOverride in self.num_having_numId(numId).lvlOverride_lst:
+            for lvlOverride in self._num_of(numId).lvlOverride_lst:
                 if lvlOverride.ilvl == ilvl and lvlOverride.startOverride is not None:
                     cache[key] = int(lvlOverride.startOverride.get('{%s}val' % nsmap['w']))
                     break
         return cache[key]
+
+    def _num_of(self, numId):
+        """
+        Return the ``<w:num>`` child element having *numId*, as
+        ``num_having_numId`` does, from a dict of all the ``<w:num>``
+        elements. The XPath of ``num_having_numId`` reads each ``<w:num>``,
+        and the count of the list items needs a ``<w:num>`` some times for
+        each list.
+        """
+        nums = self._num_caches['num']
+        if not nums:
+            for num_el in self.num_lst:
+                nums.setdefault(num_el.get(qn('w:numId')), num_el)
+        key = '%d' % numId
+        if key not in nums:
+            # a <w:num> that was added after the dict was made
+            nums[key] = self.num_having_numId(numId)
+        return nums[key]
 
     def num_having_numId(self, numId):
         """

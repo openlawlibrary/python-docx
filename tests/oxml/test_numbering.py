@@ -68,6 +68,29 @@ class DescribeCT_Numbering(object):
 
         assert [p.number for p in document.paragraphs] == ['1.\t', '2.\t']
 
+    def it_finds_a_num_that_was_added_after_a_count(self):
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91"><w:lvl w:ilvl="0">'
+            '<w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/>'
+            '</w:lvl></w:abstractNum>' % nsdecls('w')
+        ))
+        num = '<w:num %s w:numId="%d"><w:abstractNumId w:val="91"/></w:num>'
+        numPr = '<w:numPr %s><w:ilvl w:val="0"/><w:numId w:val="%d"/></w:numPr>'
+        numbering.append(parse_xml(num % (nsdecls('w'), 91)))
+        document.add_paragraph('Item.')._p.get_or_add_pPr().append(
+            parse_xml(numPr % (nsdecls('w'), 91)))
+        assert [p.number for p in document.paragraphs] == ['1.\t']
+
+        # The numbering keeps the w:num elements that it read. This one
+        # comes later, and not from add_num.
+        numbering.append(parse_xml(num % (nsdecls('w'), 92)))
+        document.add_paragraph('Item.')._p.get_or_add_pPr().append(
+            parse_xml(numPr % (nsdecls('w'), 92)))
+
+        assert [p.number for p in document.paragraphs] == ['1.\t', '2.\t']
+
     # fixtures -------------------------------------------------------
 
     @pytest.fixture(params=[
