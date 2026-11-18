@@ -458,6 +458,16 @@ class Paragraph(Parented, BookmarkParent):
         """
         Gets the list item number with trailing space, if paragraph is part of the numbered
         list, otherwise returns None.
+
+        The numbering counts the list items of all the paragraphs one time
+        and keeps the count. ``remove``, ``split``, ``insert_paragraph_before``,
+        ``set_li_lvl`` and a change of ``style`` tell it to count again. A
+        direct change of the XML does not, for example the removal of a table
+        with ``getparent().remove()``. After such a change, call
+        ``part.numbering_part._element.forget_list_items()``, or this property
+        can give the number from before the change. A |Paragraph| object also
+        keeps the number that it read: get the paragraphs again to read the
+        new numbers.
         """
         if self._number is None:
             try:

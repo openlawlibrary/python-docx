@@ -255,6 +255,12 @@ class CT_Numbering(BaseOxmlElement):
         Forget the count of the list items. Call this after a paragraph is
         added to, removed from or moved in the document, or gets a different
         style: the count is for all the paragraphs of a story together.
+
+        |Paragraph| calls it for the changes that its methods make. Code
+        that changes the XML directly must call it: the count has no means
+        to see such a change, and ``get_num_for_p`` counts again by itself
+        only for a paragraph that it does not know. The removal of a table
+        that holds list items is an example.
         """
         self._num_caches['labels'].clear()
 

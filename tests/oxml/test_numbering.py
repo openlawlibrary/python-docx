@@ -39,6 +39,31 @@ class DescribeCT_Numbering(object):
         document, expected_labels = link_fixture
         assert [p.number for p in document.paragraphs] == expected_labels
 
+    def it_counts_again_after_forget_list_items(self):
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91"><w:lvl w:ilvl="0">'
+            '<w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/>'
+            '</w:lvl></w:abstractNum>' % nsdecls('w')
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'
+            % nsdecls('w')
+        ))
+        numPr = '<w:numPr %s><w:ilvl w:val="0"/><w:numId w:val="91"/></w:numPr>' % nsdecls('w')
+        document.add_paragraph('Item.')._p.get_or_add_pPr().append(parse_xml(numPr))
+        table = document.add_table(1, 1)
+        table.cell(0, 0).paragraphs[0]._p.get_or_add_pPr().append(parse_xml(numPr))
+        document.add_paragraph('Item.')._p.get_or_add_pPr().append(parse_xml(numPr))
+        assert [p.number for p in document.paragraphs] == ['1.\t', '3.\t']
+
+        # A direct change of the XML does not tell the numbering.
+        table._tbl.getparent().remove(table._tbl)
+        numbering.forget_list_items()
+
+        assert [p.number for p in document.paragraphs] == ['1.\t', '2.\t']
+
     # fixtures -------------------------------------------------------
 
     @pytest.fixture(params=[
