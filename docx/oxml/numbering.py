@@ -343,6 +343,11 @@ class CT_Numbering(BaseOxmlElement):
         Gets the formatting based on current paragraph indentation level defined in paragraph styles.
         If ``styles_cache`` is not None then level from style formating is fetched otherwise
         level from direct paragraph formating is used.
+
+        The ``w:numPr`` of the paragraph can give only the numId or only the
+        ilvl. The styles of the paragraph then give the other one, as they
+        do for the label: Word shows the label and the indent of the same
+        level. The styles are those that ``use_styles`` got.
         """
         self.use_styles(styles_cache)
         try:
@@ -353,8 +358,10 @@ class CT_Numbering(BaseOxmlElement):
                 if numPr is not None and numPr.numId is not None and numPr.numId.val == 0:
                     return None
                 props = _ilvl_and_numId(_style_numPrs(p.pPr.style, styles_cache))
+            elif numPr is None:
+                return None
             else:
-                props = _ilvl_and_numId([numPr] if numPr is not None else [])
+                props = self._get_ilvl_and_numId(p, getattr(self, '_styles_cache', None))
         except AttributeError:
             return None
         if props is None:

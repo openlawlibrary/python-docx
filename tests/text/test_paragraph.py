@@ -493,7 +493,8 @@ class DescribeParagraph_norm_left_indent(object):
 
     # Aspose and LibreOffice show these indents. Style B has left 0.5,
     # hanging 0.25; style S is based on B and numbers at level 1 (left 1.0,
-    # hanging 0.25); style Z is based on B, sets numId 0 and left 0.25.
+    # hanging 0.25); style Z is based on B, sets numId 0 and left 0.25;
+    # style L numbers with no ilvl, thus at level 0 (left 0.5, hanging 0.25).
     @pytest.fixture(params=[
         ('S', '', 0.75),
         # numId 0 sets both indents to 0, over those of the styles
@@ -502,6 +503,11 @@ class DescribeParagraph_norm_left_indent(object):
         ('S', '<w:numPr><w:numId w:val="0"/></w:numPr><w:ind w:left="2880"/>', 2.0),
         ('S', '<w:numPr><w:numId w:val="0"/></w:numPr><w:ind w:firstLine="360"/>', 0.25),
         ('Z', '', 0.25),
+        # Word 16.0.20527 shows the level of the next two cases. The
+        # paragraph gives only the numId: the ilvl comes from its style
+        ('S', '<w:numPr><w:numId w:val="91"/></w:numPr>', 0.75),
+        # the paragraph gives only the ilvl: the numId comes from its style
+        ('L', '<w:numPr><w:ilvl w:val="1"/></w:numPr>', 0.75),
     ])
     def indent_fixture(self, request):
         from docx import Document
@@ -534,6 +540,8 @@ class DescribeParagraph_norm_left_indent(object):
             '<w:style %s w:type="paragraph" w:styleId="Z"><w:name w:val="Z"/>'
             '<w:basedOn w:val="B"/><w:pPr><w:numPr><w:numId w:val="0"/></w:numPr>'
             '<w:ind w:left="360"/></w:pPr></w:style>',
+            '<w:style %s w:type="paragraph" w:styleId="L"><w:name w:val="L"/>'
+            '<w:pPr><w:numPr><w:numId w:val="91"/></w:numPr></w:pPr></w:style>',
         ):
             document.styles.element.append(parse_xml(style_xml % nsdecls('w')))
         paragraph = document.add_paragraph('Text.')

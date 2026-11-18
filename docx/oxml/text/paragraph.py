@@ -118,8 +118,9 @@ class CT_P(BaseOxmlElement):
     def lvl_from_para_props(self, numbering_el, styles_cache=None):
         """
         Returns ``<w:lvl>`` numbering level paragraph formatting for the current paragraph using
-        numbering linked via the direct paragraph formatting. *styles_cache* is not used
-        for the paragraph: the numbering needs it for a list that links to a numbering style.
+        numbering linked via the direct paragraph formatting. The numbering needs
+        *styles_cache* for a list that links to a numbering style, and for the numId or
+        the ilvl that the ``w:numPr`` of the paragraph does not give.
         """
         numbering_el.use_styles(styles_cache)
         return numbering_el.get_lvl_from_props(self)
