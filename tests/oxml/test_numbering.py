@@ -128,20 +128,25 @@ class DescribeCT_Numbering(object):
     # Word 16.0.20527 shows these labels for items at the levels 0, 0, 1, 0.
     @pytest.fixture(params=[
         # a level with no w:numFmt is decimal
-        ('<w:lvlText w:val="%1."/>', ['1.\t', '2.\t', '2.1.\t', '3.\t']),
+        ('<w:lvlText w:val="%1."/>', 'decimal',
+         ['1.\t', '2.\t', '2.1.\t', '3.\t']),
+        # also in the label of a level below it that has a different format
+        ('<w:lvlText w:val="%1."/>', 'lowerLetter',
+         ['1.\t', '2.\t', '2.a.\t', '3.\t']),
         # a level with no w:lvlText has no label, and its items count
-        ('<w:numFmt w:val="decimal"/>', [None, None, '2.1.\t', None]),
+        ('<w:numFmt w:val="decimal"/>', 'decimal',
+         [None, None, '2.1.\t', None]),
     ])
     def partial_lvl_fixture(self, request):
-        lvl0_xml, expected_labels = request.param
+        lvl0_xml, lvl1_numFmt, expected_labels = request.param
         document = Document()
         numbering = document.part.numbering_part.element
         numbering.append(parse_xml(
             '<w:abstractNum %s w:abstractNumId="91">'
             '  <w:lvl w:ilvl="0"><w:start w:val="1"/>%s</w:lvl>'
             '  <w:lvl w:ilvl="1"><w:start w:val="1"/>'
-            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1.%%2."/></w:lvl>'
-            '</w:abstractNum>' % (nsdecls('w'), lvl0_xml)
+            '    <w:numFmt w:val="%s"/><w:lvlText w:val="%%1.%%2."/></w:lvl>'
+            '</w:abstractNum>' % (nsdecls('w'), lvl0_xml, lvl1_numFmt)
         ))
         numbering.append(parse_xml(
             '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'

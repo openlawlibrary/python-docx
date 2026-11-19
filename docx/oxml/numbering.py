@@ -41,6 +41,16 @@ def _start_value(lvl_el):
         return 0
 
 
+def _num_format(lvl_el):
+    """
+    The ``w:numFmt`` value of *lvl_el*. Word shows a decimal number for a
+    level with no ``w:numFmt``.
+    """
+    if lvl_el.numFmt is None:
+        return 'decimal'
+    return lvl_el.numFmt.get('{%s}val' % nsmap['w'])
+
+
 def _restart_level(lvl_el, ilvl):
     """
     An item at a level lower than the returned level restarts *lvl_el*. By
@@ -409,10 +419,7 @@ class CT_Numbering(BaseOxmlElement):
         numId, ilvl, counters = item
         lvl_el = self._lvl_of(numId, ilvl)
 
-        # Word shows a decimal number for a level with no w:numFmt.
-        numFmt = 'decimal'
-        if lvl_el.numFmt is not None:
-            numFmt = lvl_el.numFmt.get('{%s}val' % nsmap['w'])
+        numFmt = _num_format(lvl_el)
         if numFmt not in self.fmt_map:
             return None
         # Word shows no label for a level with no w:lvlText. The item
@@ -427,13 +434,15 @@ class CT_Numbering(BaseOxmlElement):
         # Word shows each %N in the numFmt of its own level, or in decimal
         # if the current level has w:isLgl. A level with numFmt="none"
         # shows as nothing: "%12030.%2" shows "2030.1". A decimalZero level
-        # stays decimalZero with w:isLgl, as in Aspose: "Section 1.01".
+        # stays decimalZero with w:isLgl, as in Aspose: "Section 1.01". A
+        # level with no w:numFmt is decimal here too: below it, a
+        # lowerLetter level with the text "%1.%2." shows "2.a.".
         def replace_token(m):
             target_ilvl = int(m.group(1)) - 1
             target_lvl_el = self._lvl_of(numId, target_ilvl)
             target_numFmt = numFmt
-            if target_lvl_el is not None and target_lvl_el.numFmt is not None:
-                target_numFmt = target_lvl_el.numFmt.get('{%s}val' % nsmap['w'])
+            if target_lvl_el is not None:
+                target_numFmt = _num_format(target_lvl_el)
             if target_numFmt == 'none':
                 return ''
             if isLgl and target_numFmt != 'decimalZero':
