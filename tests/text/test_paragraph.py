@@ -494,7 +494,9 @@ class DescribeParagraph_norm_left_indent(object):
     # Aspose and LibreOffice show these indents. Style B has left 0.5,
     # hanging 0.25; style S is based on B and numbers at level 1 (left 1.0,
     # hanging 0.25); style Z is based on B, sets numId 0 and left 0.25;
-    # style L numbers with no ilvl, thus at level 0 (left 0.5, hanging 0.25).
+    # style L numbers with no ilvl, thus at level 0 (left 0.5, hanging 0.25);
+    # style T numbers at level 1 of a singleLevel list, which has level 0
+    # only (left 1.0, hanging 0.25); style N has no indent and no list.
     @pytest.fixture(params=[
         ('S', '', 0.75),
         # numId 0 sets both indents to 0, over those of the styles
@@ -508,6 +510,15 @@ class DescribeParagraph_norm_left_indent(object):
         ('S', '<w:numPr><w:numId w:val="91"/></w:numPr>', 0.75),
         # the paragraph gives only the ilvl: the numId comes from its style
         ('L', '<w:numPr><w:ilvl w:val="1"/></w:numPr>', 0.75),
+        # Word 16.0.20527 shows the indents of the next four cases. An item
+        # at a level that a singleLevel list does not have gets the indent
+        # of level 0, as it gets its label
+        ('N', '<w:numPr><w:ilvl w:val="1"/><w:numId w:val="92"/></w:numPr>', 0.75),
+        ('T', '', 0.75),
+        ('T', '<w:numPr><w:ilvl w:val="2"/></w:numPr>', 0.75),
+        # in a list of a different type, such an item gets no indent of
+        # the list
+        ('N', '<w:numPr><w:ilvl w:val="2"/><w:numId w:val="91"/></w:numPr>', 0.0),
     ])
     def indent_fixture(self, request):
         from docx import Document
@@ -519,6 +530,7 @@ class DescribeParagraph_norm_left_indent(object):
         numbering = document.part.numbering_part.element
         numbering.append(parse_xml(
             '<w:abstractNum %s w:abstractNumId="91">'
+            '  <w:multiLevelType w:val="multilevel"/>'
             '  <w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/>'
             '    <w:lvlText w:val="%%1."/>'
             '    <w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl>'
@@ -528,9 +540,18 @@ class DescribeParagraph_norm_left_indent(object):
             '</w:abstractNum>' % nsdecls('w')
         ))
         numbering.append(parse_xml(
-            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'
-            % nsdecls('w')
+            '<w:abstractNum %s w:abstractNumId="92">'
+            '  <w:multiLevelType w:val="singleLevel"/>'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/>'
+            '    <w:lvlText w:val="(%%1)"/>'
+            '    <w:pPr><w:ind w:left="1440" w:hanging="360"/></w:pPr></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
         ))
+        for numId in (91, 92):
+            numbering.append(parse_xml(
+                '<w:num %s w:numId="%d"><w:abstractNumId w:val="%d"/></w:num>'
+                % (nsdecls('w'), numId, numId)
+            ))
         for style_xml in (
             '<w:style %s w:type="paragraph" w:styleId="B"><w:name w:val="B"/>'
             '<w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:style>',
@@ -542,6 +563,11 @@ class DescribeParagraph_norm_left_indent(object):
             '<w:ind w:left="360"/></w:pPr></w:style>',
             '<w:style %s w:type="paragraph" w:styleId="L"><w:name w:val="L"/>'
             '<w:pPr><w:numPr><w:numId w:val="91"/></w:numPr></w:pPr></w:style>',
+            '<w:style %s w:type="paragraph" w:styleId="T"><w:name w:val="T"/>'
+            '<w:pPr><w:numPr><w:ilvl w:val="1"/><w:numId w:val="92"/></w:numPr>'
+            '</w:pPr></w:style>',
+            '<w:style %s w:type="paragraph" w:styleId="N"><w:name w:val="N"/>'
+            '</w:style>',
         ):
             document.styles.element.append(parse_xml(style_xml % nsdecls('w')))
         paragraph = document.add_paragraph('Text.')

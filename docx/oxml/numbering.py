@@ -349,6 +349,9 @@ class CT_Numbering(BaseOxmlElement):
         ilvl. The styles of the paragraph then give the other one, as they
         do for the label: Word shows the label and the indent of the same
         level. The styles are those that ``use_styles`` got.
+
+        An item at a level that a ``singleLevel`` list does not have gets
+        the indent of level 0, as it gets its label (see ``_level_in_list``).
         """
         self.use_styles(styles_cache)
         try:
@@ -368,21 +371,22 @@ class CT_Numbering(BaseOxmlElement):
         if props is None:
             return None
         ilvl, numId = props
-        return self._lvl_of(numId, ilvl)
+        return self._lvl_of(numId, self._level_in_list(numId, ilvl))
 
     def get_lvl_from_style(self, style_id, styles_cache):
         """
         Return the ``w:lvl`` of the list that the style having *style_id*
         puts a paragraph in, or None if it puts it in no list. The numId and
         the ilvl each come from the style, or else from the nearest of the
-        styles it is based on.
+        styles it is based on. The level is the one that Word uses (see
+        ``_level_in_list``).
         """
         self.use_styles(styles_cache)
         props = _ilvl_and_numId(_style_numPrs(style_id, styles_cache or {}))
         if props is None:
             return None
         ilvl, numId = props
-        return self._lvl_of(numId, ilvl)
+        return self._lvl_of(numId, self._level_in_list(numId, ilvl))
 
     def get_num_for_p(self, p, styles_cache, append_suffix=True):
         """
@@ -558,9 +562,10 @@ class CT_Numbering(BaseOxmlElement):
         Return the level that Word uses for an item of the ``<w:num>``
         having *numId* at *ilvl*. That is level 0 if the list is a
         ``singleLevel`` list and does not have *ilvl*: in DCMR 24-3306,
-        the items at level 1 of such a list show "(1)" to "(5)". In a list
-        of a different type, Word shows no label for an item at a level
-        that the list does not have.
+        the items at level 1 of such a list show "(1)" to "(5)". Word also
+        gives such an item the indent of level 0. In a list of a different
+        type, Word shows no label for an item at a level that the list does
+        not have, and gives it no indent of the list.
         """
         if ilvl and self._lvl_of(numId, ilvl) is None:
             abstractNum_el = self.get_abstractNum(numId)
