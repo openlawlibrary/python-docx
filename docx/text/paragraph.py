@@ -16,8 +16,8 @@ from ..enum.style import WD_STYLE_TYPE
 from .parfmt import ParagraphFormat
 from .run import Run
 from .hyperlink import Hyperlink
-from ..shared import Parented, Length, find_containing_document, is_valid_url, lazyproperty, Inches, cache, bust_cache
-from ..oxml.ns import nsmap
+from ..shared import Parented, Length, find_containing_document, is_valid_url, lazyproperty, Inches, Pt, cache, bust_cache
+from ..oxml.ns import nsmap, qn
 from ..oxml.text.hyperlink import CT_Hyperlink
 from docx.bookmark import BookmarkParent
 from docx.parts.image import ImagePart
@@ -137,9 +137,9 @@ class Paragraph(Parented, BookmarkParent):
         an bookmark name.
         """
         if is_valid_url(reference):
-            # Store URL as relationship rId
-            rId = find_containing_document(self).part.relate_to(
-                reference, RT.HYPERLINK, True)
+            # Store the URL as a relationship of the part that holds this
+            # paragraph, e.g. the footnotes part for a footnote.
+            rId = self.part.relate_to(reference, RT.HYPERLINK, True)
             reference = rId
         return Hyperlink(self._p.add_hyperlink(text, reference), self)
 
@@ -382,11 +382,25 @@ class Paragraph(Parented, BookmarkParent):
                 curpos = endpos
 
         paras.append(next_para)
+        self._forget_list_items()
         return paras
 
     def remove(self):
         """Removes this paragraph from its container."""
         self._p.getparent().remove(self._p)
+        self._forget_list_items()
+
+    def _forget_list_items(self):
+        """
+        Tell the numbering that the paragraphs of the document changed. It
+        counts the list items of all the paragraphs together and keeps the
+        count, so the numbers of the other paragraphs can change too.
+        """
+        try:
+            self.part.numbering_part._element.forget_list_items()
+        except (AttributeError, NotImplementedError):
+            # a part with no numbering has no count to forget
+            pass
 
     @text_changing
     def remove_text(self, start=0, end=-1):
@@ -444,6 +458,16 @@ class Paragraph(Parented, BookmarkParent):
         """
         Gets the list item number with trailing space, if paragraph is part of the numbered
         list, otherwise returns None.
+
+        The numbering counts the list items of all the paragraphs one time
+        and keeps the count. ``remove``, ``split``, ``insert_paragraph_before``,
+        ``set_li_lvl`` and a change of ``style`` tell it to count again. A
+        direct change of the XML does not, for example the removal of a table
+        with ``getparent().remove()``. After such a change, call
+        ``part.numbering_part._element.forget_list_items()``, or this property
+        can give the number from before the change. A |Paragraph| object also
+        keeps the number that it read: get the paragraphs again to read the
+        new numbers.
         """
         if self._number is None:
             try:
@@ -469,7 +493,7 @@ class Paragraph(Parented, BookmarkParent):
         if self._lvl_from_para_props is None:
             try:
                 self._lvl_from_para_props = self._p.lvl_from_para_props(
-                    self.part.numbering_part._element)
+                    self.part.numbering_part._element, self.part.cached_styles)
             except (AttributeError, NotImplementedError):
                 return None
         return self._lvl_from_para_props
@@ -550,6 +574,7 @@ class Paragraph(Parented, BookmarkParent):
         )
         self._p.style = style_id
         self._cache = {}
+        self._forget_list_items()
 
     def set_li_lvl(self, styles, prev, ilvl):
         """
@@ -752,6 +777,7 @@ class Paragraph(Parented, BookmarkParent):
         paragraph.
         """
         p = self._p.add_p_before()
+        self._forget_list_items()
         return Paragraph(p, self._parent)
 
     @property
@@ -762,14 +788,6 @@ class Paragraph(Parented, BookmarkParent):
         It takes into account user parameters ``u_*``, and inherited style parameters ``s_*``,
         where ``*`` is param name. Default tab stop ``DEFAULT_TAB_STOP`` has (.5 Inches) val.
         """
-
-        def get_base_style_attr(obj, attr_name):
-            if getattr(obj, 'base_style', None) is None:
-                return Length(0)
-            elif getattr(obj.base_style, 'paragraph_format', None) is not None:
-                if getattr(obj.base_style.paragraph_format, attr_name, None) is not None:
-                    return getattr(obj.base_style.paragraph_format, attr_name)
-            return get_base_style_attr(obj.base_style, attr_name)
 
         def get_tabstops(para):
             """
@@ -808,23 +826,59 @@ class Paragraph(Parented, BookmarkParent):
                     left_indent = getattr(source, 'left_indent')
             return first_line_indent, left_indent
 
-        # Apply paragraph styles by priority (from lowest to highest).
-        # Formatting from the base style has the lowest priority.
-        first_line_indent = get_base_style_attr(
-            self.style, 'first_line_indent')
-        left_indent = get_base_style_attr(self.style, 'left_indent')
-        # Next, we apply formatting from numbering properties defined in paragraph style.
-        first_line_indent, left_indent = apply_formatting(
-            self.style_numbering_format, first_line_indent, left_indent)
-        # Then formatting from paragraph style.
-        first_line_indent, left_indent = apply_formatting(
-            self.style.paragraph_format, first_line_indent, left_indent)
+        def apply_numbering(numbering_format, pPr, first_line_indent, left_indent):
+            # numId 0 turns the numbering off. Word then sets both indents
+            # to 0, as a list level would.
+            numPr = pPr.numPr if pPr is not None else None
+            if numPr is not None and numPr.numId is not None and numPr.numId.val == 0:
+                return Length(0), Length(0)
+            return apply_formatting(numbering_format, first_line_indent, left_indent)
+
+        # A paragraph in a part with no numbering (a header, a footnote)
+        # gets no list level from its styles.
+        try:
+            numbering = self.part.numbering_part._element
+            styles = self.part.cached_styles
+        except (AttributeError, NotImplementedError):
+            numbering = styles = None
+
+        def style_indents(style, seen=()):
+            """
+            The indents that *style* gives. Each style of the chain, from
+            the one that is based on no style, applies the indents of its
+            list level and then its own indents.
+            """
+            if style is None or style.style_id in seen:
+                return Length(0), Length(0)
+            first_line_indent, left_indent = style_indents(
+                getattr(style, 'base_style', None), seen + (style.style_id,))
+            pPr = style._element.pPr
+            if pPr is not None and pPr.numPr is not None:
+                lvl = None
+                if numbering is not None:
+                    lvl = numbering.get_lvl_from_style(style.style_id, styles)
+                first_line_indent, left_indent = apply_numbering(
+                    ParagraphFormat(lvl) if lvl is not None else None, pPr,
+                    first_line_indent, left_indent)
+            return apply_formatting(
+                getattr(style, 'paragraph_format', None), first_line_indent, left_indent)
+
+        # Apply paragraph styles by priority (from lowest to highest): the
+        # styles that the style is based on, then the style. Each applies
+        # the formatting of its numbering properties, then its own.
+        first_line_indent, left_indent = style_indents(self.style)
         # Next, formatting from numbering properties defined in direct paragraph properties is applied.
-        first_line_indent, left_indent = apply_formatting(
-            self.para_numbering_format, first_line_indent, left_indent)
+        first_line_indent, left_indent = apply_numbering(
+            self.para_numbering_format, self._p.pPr, first_line_indent, left_indent)
         # Finally, we apply formatting from direct paragraph formatting.
         first_line_indent, left_indent = apply_formatting(
             self.paragraph_format, first_line_indent, left_indent)
+        # Word can keep the indent in characters of a style. The left
+        # indent is then that position plus the hanging indent.
+        first_line_start = self._first_line_start_from_style_chars()
+        if first_line_start is not None:
+            hanging = -min(first_line_indent or 0, 0)
+            left_indent = Length(first_line_start + hanging)
 
         # Get explicitly set indentation
         if first_line_indent is not None:
@@ -885,6 +939,70 @@ class Paragraph(Parented, BookmarkParent):
                 indent /= (1 / DEFAULT_TAB_STOP)
 
         return Inches(indent)
+
+    def _first_line_start_from_style_chars(self):
+        """
+        Where the first line starts when Word keeps the ``w:leftChars`` of
+        a style, as a |Length|. |None| in all other cases.
+
+        Word uses an indent in characters before an indent in twips. When
+        the ``w:ind`` of the paragraph gives ``w:left`` and no
+        ``w:leftChars``, the ``w:leftChars`` of its style stays, and Word
+        does not use the ``w:left`` of the paragraph. The first line then
+        starts at that number of characters. One character is as wide as
+        the font size of the default paragraph style. A ``w:hanging`` of
+        the paragraph moves the other lines, not the first line.
+
+        Word is proven only for a paragraph with no list, so a paragraph
+        or a style with ``w:numPr`` gets |None|.
+        """
+        pPr = self._p.pPr
+        ind = pPr.ind if pPr is not None else None
+        if ind is None or pPr.numPr is not None:
+            return None
+
+        def chars_of(ind):
+            for name in ('w:leftChars', 'w:startChars'):
+                if ind.get(qn(name)) is not None:
+                    return int(ind.get(qn(name)))
+            return None
+
+        if chars_of(ind) is not None:
+            return None
+        if ind.get(qn('w:left')) is None and ind.get(qn('w:start')) is None:
+            return None
+
+        chars = None
+        style, seen = self.style, set()
+        while style is not None and style.style_id not in seen:
+            seen.add(style.style_id)
+            style_pPr = style._element.pPr
+            if style_pPr is not None:
+                if style_pPr.numPr is not None:
+                    return None
+                # the style nearest to the paragraph gives the value
+                if chars is None and style_pPr.ind is not None:
+                    chars = chars_of(style_pPr.ind)
+            style = getattr(style, 'base_style', None)
+        if not chars:
+            return None
+        return Pt(chars / 100 * self._default_font_size)
+
+    @property
+    def _default_font_size(self):
+        """
+        The font size of the default paragraph style, in points. The
+        document defaults give it when the style does not. Word uses 10
+        when the document gives no size.
+        """
+        styles = self.style._element.getparent()
+        default = styles.default_for(WD_STYLE_TYPE.PARAGRAPH)
+        defaults = styles.find('%s/%s/%s' % (
+            qn('w:docDefaults'), qn('w:rPrDefault'), qn('w:rPr')))
+        for rPr in (default.rPr if default is not None else None, defaults):
+            if rPr is not None and rPr.sz_val is not None:
+                return rPr.sz_val.pt
+        return 10.0
 
     def __repr__(self):
         text_stripped = self.text.strip()

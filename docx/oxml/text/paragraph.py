@@ -8,6 +8,11 @@ from ..sdts import CT_SdtBase
 from ..xmlchemy import BaseOxmlElement, OxmlElement, ZeroOrMore, ZeroOrOne
 
 
+#: Content in these elements is not there when the tracked changes are
+#: accepted.
+_DELETED = (qn('w:del'), qn('w:moveFrom'))
+
+
 class CT_P(BaseOxmlElement):
     """
     ``<w:p>`` element, containing the properties, text for a paragraph and content controls.
@@ -86,10 +91,7 @@ class CT_P(BaseOxmlElement):
         Return all footnote reference ids (``<w:footnoteReference>``) form the paragraph,
         or |None| if not present.
         """
-        footnote_ids = []
-        for run in self.r_lst:
-            footnote_ids.extend([ref_id for ref_id in run.footnote_reference_ids])
-        return footnote_ids
+        return [ref.id for ref in self._iter_shown(qn('w:footnoteReference'))]
 
     @property
     def endnote_reference_ids(self):
@@ -97,16 +99,30 @@ class CT_P(BaseOxmlElement):
         Return all endnote reference ids (``<w:endnoteReference>``) from the paragraph,
         or |None| if not present.
         """
-        endnote_ids = []
-        for run in self.r_lst:
-            endnote_ids.extend([ref_id for ref_id in run.endnote_reference_ids])
-        return endnote_ids
+        return [ref.id for ref in self._iter_shown(qn('w:endnoteReference'))]
 
-    def lvl_from_para_props(self, numbering_el):
+    def _iter_shown(self, tag):
+        """
+        Generate the *tag* elements of this paragraph in document order.
+        Tracked changes are read as accepted: an element in ``<w:ins>`` or
+        ``<w:moveTo>`` is included, one in ``<w:del>`` or ``<w:moveFrom>``
+        is not. An element in a text box of this paragraph is not included:
+        it is an element of the paragraph in the text box.
+        """
+        for el in self.iter(tag):
+            if next(el.iterancestors(qn('w:p'))) is not self:
+                continue
+            if not any(ancestor.tag in _DELETED for ancestor in el.iterancestors()):
+                yield el
+
+    def lvl_from_para_props(self, numbering_el, styles_cache=None):
         """
         Returns ``<w:lvl>`` numbering level paragraph formatting for the current paragraph using
-        numbering linked via the direct paragraph formatting.
+        numbering linked via the direct paragraph formatting. The numbering needs
+        *styles_cache* for a list that links to a numbering style, and for the numId or
+        the ilvl that the ``w:numPr`` of the paragraph does not give.
         """
+        numbering_el.use_styles(styles_cache)
         return numbering_el.get_lvl_from_props(self)
 
     def lvl_from_style_props(self, numbering_el, styles_cache):
@@ -159,13 +175,26 @@ class CT_P(BaseOxmlElement):
         hyperlinks and content controls.
         If the argument `return_hyperlinks` is `True` then the hyperlinks
         will be yielded as `CT_Hyperlink`.
+        Tracked changes are read as accepted: runs inside ``<w:ins>`` and
+        ``<w:moveTo>`` are included, runs inside ``<w:del>`` and
+        ``<w:moveFrom>`` are not.
         """
+
+        def children(elem):
+            # A tracked insertion is read as accepted, so its children are
+            # children of the element that holds it. A complex field can
+            # then start outside the insertion and end in it.
+            for child in elem:
+                if child.tag in (qn('w:ins'), qn('w:moveTo')):
+                    yield from children(child)
+                else:
+                    yield child
 
         def get_el(elem):
             # Two flags used to remove hidden parts of complex field characters.
             ignoreRun = 0 # used to count nesting of ``<w:fldChar>``, if it's 0 then the run property is not inside a hidden part of ``<w:fldChar>``
             hasSeparate = False
-            for child in elem:
+            for child in children(elem):
                 if child.tag == qn('w:r'):
                     # Remove run's elements that are not visible.
                     # Complex field characters have not visible part and they are removed.

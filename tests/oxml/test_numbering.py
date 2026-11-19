@@ -1,0 +1,436 @@
+# encoding: utf-8
+
+"""
+Test suite for the list labels computed in ``docx.oxml.numbering``.
+"""
+
+from __future__ import absolute_import, print_function, unicode_literals
+
+import pytest
+
+from docx import Document
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
+
+
+class DescribeCT_Numbering(object):
+
+    def it_computes_multi_level_labels(self, labels_fixture):
+        document, expected_labels = labels_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
+    def it_counts_list_items_as_word_does(self, counting_fixture):
+        document, expected_labels = counting_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
+    def it_starts_a_level_at_the_startOverride_of_its_num(self, start_fixture):
+        document, expected_labels = start_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
+    def it_finds_the_list_of_a_paragraph_in_its_styles(self, style_fixture):
+        document, expected_labels = style_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
+    def it_uses_the_levels_of_a_num_that_overrides_them(self, override_lvl_fixture):
+        document, expected_labels = override_lvl_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
+    def it_follows_a_numStyleLink_to_the_levels(self, link_fixture):
+        document, expected_labels = link_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
+    def it_reads_a_level_with_no_numFmt_or_no_lvlText(self, partial_lvl_fixture):
+        document, expected_labels = partial_lvl_fixture
+        assert [p.number for p in document.paragraphs] == expected_labels
+
+    def it_counts_again_after_forget_list_items(self):
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91"><w:lvl w:ilvl="0">'
+            '<w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/>'
+            '</w:lvl></w:abstractNum>' % nsdecls('w')
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'
+            % nsdecls('w')
+        ))
+        numPr = '<w:numPr %s><w:ilvl w:val="0"/><w:numId w:val="91"/></w:numPr>' % nsdecls('w')
+        document.add_paragraph('Item.')._p.get_or_add_pPr().append(parse_xml(numPr))
+        table = document.add_table(1, 1)
+        table.cell(0, 0).paragraphs[0]._p.get_or_add_pPr().append(parse_xml(numPr))
+        document.add_paragraph('Item.')._p.get_or_add_pPr().append(parse_xml(numPr))
+        assert [p.number for p in document.paragraphs] == ['1.\t', '3.\t']
+
+        # A direct change of the XML does not tell the numbering.
+        table._tbl.getparent().remove(table._tbl)
+        numbering.forget_list_items()
+
+        assert [p.number for p in document.paragraphs] == ['1.\t', '2.\t']
+
+    def it_finds_a_num_that_was_added_after_a_count(self):
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91"><w:lvl w:ilvl="0">'
+            '<w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/>'
+            '</w:lvl></w:abstractNum>' % nsdecls('w')
+        ))
+        num = '<w:num %s w:numId="%d"><w:abstractNumId w:val="91"/></w:num>'
+        numPr = '<w:numPr %s><w:ilvl w:val="0"/><w:numId w:val="%d"/></w:numPr>'
+        numbering.append(parse_xml(num % (nsdecls('w'), 91)))
+        document.add_paragraph('Item.')._p.get_or_add_pPr().append(
+            parse_xml(numPr % (nsdecls('w'), 91)))
+        assert [p.number for p in document.paragraphs] == ['1.\t']
+
+        # The numbering keeps the w:num elements that it read. This one
+        # comes later, and not from add_num.
+        numbering.append(parse_xml(num % (nsdecls('w'), 92)))
+        document.add_paragraph('Item.')._p.get_or_add_pPr().append(
+            parse_xml(numPr % (nsdecls('w'), 92)))
+
+        assert [p.number for p in document.paragraphs] == ['1.\t', '2.\t']
+
+    # fixtures -------------------------------------------------------
+
+    @pytest.fixture(params=[
+        # Word shows %1 as nothing when level 1 has numFmt="none"
+        ('none', '%12030.%2', '', ['2030.1\t', '2030.2\t']),
+        ('decimal', '%1.%2', '', ['2030.1\t', '2030.2\t']),
+        # each level shows in its own numFmt, unless the level has isLgl
+        ('upperRoman', '%1.%2', '', ['MMXXX.1\t', 'MMXXX.2\t']),
+        ('upperRoman', '%1.%2', '<w:isLgl/>', ['2030.1\t', '2030.2\t']),
+    ])
+    def labels_fixture(self, request):
+        lvl0_numFmt, lvl1_text, lvl1_isLgl, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="90">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="2030"/>'
+            '    <w:numFmt w:val="%s"/><w:lvlText w:val="2030"/></w:lvl>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>%s'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%s"/></w:lvl>'
+            '</w:abstractNum>' % (nsdecls('w'), lvl0_numFmt, lvl1_isLgl, lvl1_text)
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="90"><w:abstractNumId w:val="90"/></w:num>'
+            % nsdecls('w')
+        ))
+        for text in ('First.', 'Second.'):
+            paragraph = document.add_paragraph(text)
+            paragraph._p.get_or_add_pPr().append(parse_xml(
+                '<w:numPr %s><w:ilvl w:val="1"/><w:numId w:val="90"/></w:numPr>'
+                % nsdecls('w')
+            ))
+        return document, expected_labels
+
+    # Word 16.0.20527 shows these labels for items at the levels 0, 0, 1, 0.
+    @pytest.fixture(params=[
+        # a level with no w:numFmt is decimal
+        ('<w:lvlText w:val="%1."/>', 'decimal',
+         ['1.\t', '2.\t', '2.1.\t', '3.\t']),
+        # also in the label of a level below it that has a different format
+        ('<w:lvlText w:val="%1."/>', 'lowerLetter',
+         ['1.\t', '2.\t', '2.a.\t', '3.\t']),
+        # a level with no w:lvlText has no label, and its items count
+        ('<w:numFmt w:val="decimal"/>', 'decimal',
+         [None, None, '2.1.\t', None]),
+    ])
+    def partial_lvl_fixture(self, request):
+        lvl0_xml, lvl1_numFmt, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>%s</w:lvl>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="%s"/><w:lvlText w:val="%%1.%%2."/></w:lvl>'
+            '</w:abstractNum>' % (nsdecls('w'), lvl0_xml, lvl1_numFmt)
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'
+            % nsdecls('w')
+        ))
+        for ilvl in (0, 0, 1, 0):
+            paragraph = document.add_paragraph('Item.')
+            paragraph._p.get_or_add_pPr().append(parse_xml(
+                '<w:numPr %s><w:ilvl w:val="%d"/><w:numId w:val="91"/></w:numPr>'
+                % (nsdecls('w'), ilvl)
+            ))
+        return document, expected_labels
+
+    # Aspose and LibreOffice show these labels. LibreOffice does not use
+    # w:lvlRestart; Aspose does, as the standard says.
+    @pytest.fixture(params=[
+        # w:num elements on one w:abstractNum share its counters
+        ({1: {}, 2: {}}, [(1, 0), (1, 0), (2, 0), (1, 0)],
+         ['1.', '2.', '3.', '4.']),
+        # a startOverride restarts the shared counter at the first use of
+        # its w:num, and only there
+        ({1: {}, 2: {0: 1}}, [(1, 0), (1, 0), (2, 0), (1, 0), (2, 0), (1, 0)],
+         ['1.', '2.', '1.', '2.', '3.', '4.']),
+        ({1: {}, 2: {0: 5}}, [(1, 0), (2, 0), (1, 0)],
+         ['1.', '5.', '6.']),
+        ({1: {}, 2: {0: 0}}, [(1, 0), (1, 0), (2, 0), (1, 0)],
+         ['1.', '2.', '0.', '1.']),
+        # the restart waits for the first use at its own level
+        ({1: {}, 2: {0: 1}}, [(1, 0), (1, 0), (2, 1), (2, 0), (1, 0)],
+         ['1.', '2.', '(a)', '1.', '2.']),
+        # a w:num restarts a counter one time only: Word shows (c), not (a),
+        # for the first item of numId 2 at level 1 (as DCMR 11-X305)
+        ({1: {}, 2: {0: 1, 1: 1}}, [(2, 0), (1, 1), (1, 1), (2, 1), (2, 0)],
+         ['1.', '(a)', '(b)', '(c)', '2.']),
+        # Word 16.0.20527 shows the labels of the next three cases.
+        # a first item at a level with no startOverride uses up nothing:
+        # numId 2 restarts level 2 later, at its first item there
+        ({1: {}, 2: {2: 1}},
+         [(1, 0), (1, 1), (1, 2), (2, 1), (1, 2), (1, 2), (2, 2), (2, 2)],
+         ['1.', '(a)', '(i)', '(b)', '(i)', '(ii)', '(i)', '(ii)']),
+        # the restart at level 1 uses up the override at level 0
+        ({1: {}, 2: {0: 1, 1: 1}},
+         [(1, 0), (1, 0), (1, 1), (2, 1), (2, 0), (2, 1)],
+         ['1.', '2.', '(a)', '(a)', '3.', '(a)']),
+        # a startOverride does not change a level above the item that has
+        # an item
+        ({1: {}, 2: {0: 5, 1: 7}}, [(1, 0), (1, 1), (2, 1), (2, 1), (2, 0)],
+         ['1.', '(a)', '(g)', '(h)', '2.']),
+        # an item of any w:num of the list restarts the levels below it
+        ({1: {}, 2: {}}, [(1, 1), (1, 1), (2, 0), (1, 1)],
+         ['(a)', '(b)', '2.', '(a)']),
+        # an item starts the levels above it
+        ({1: {}}, [(1, 1), (1, 1), (1, 0), (1, 1)],
+         ['(a)', '(b)', '2.', '(a)']),
+        ({1: {}}, [(1, 2), (1, 0)],
+         ['(i)', '2.']),
+        # decimalZero shows at least two digits
+        ({5: {0: 9}}, [(5, 0), (5, 0), (5, 0)],
+         ['09.', '10.', '11.']),
+        # an item at a level that a singleLevel list does not have is an
+        # item of level 0 (Word, as DCMR 24-3306)
+        ({5: {}}, [(5, 0), (5, 1), (5, 1), (5, 0), (5, 2)],
+         ['01.', '02.', '03.', '04.', '05.']),
+        # in a list of a different type, such an item has no label and
+        # does not count (Word)
+        ({1: {}}, [(1, 0), (1, 1), (1, 3), (1, 3), (1, 1)],
+         ['1.', '(a)', None, None, '(b)']),
+        # lvlRestart 0: level 1 never restarts
+        ({3: {}}, [(3, 1), (3, 1), (3, 0), (3, 1)],
+         ['(a)', '(b)', '2.', '(c)']),
+        # lvlRestart 1: level 2 restarts after level 0 only
+        ({3: {}}, [(3, 0), (3, 2), (3, 2), (3, 1), (3, 2), (3, 0), (3, 2)],
+         ['1.', '(i)', '(ii)', '(b)', '(iii)', '2.', '(i)']),
+        # w:num elements on two w:abstractNum elements do not share
+        ({1: {}, 4: {}}, [(1, 0), (1, 0), (4, 0), (1, 0)],
+         ['1.', '2.', '1.', '3.']),
+    ])
+    def counting_fixture(self, request):
+        nums, paragraphs, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        for abstractNum_id, restarts in ((91, ('', '')), (92, ('', '')),
+                                         (93, ('0', '1'))):
+            numbering.append(parse_xml(
+                '<w:abstractNum %s w:abstractNumId="%d">'
+                '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+                '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/></w:lvl>'
+                '  <w:lvl w:ilvl="1"><w:start w:val="1"/>%s'
+                '    <w:numFmt w:val="lowerLetter"/><w:lvlText w:val="(%%2)"/></w:lvl>'
+                '  <w:lvl w:ilvl="2"><w:start w:val="1"/>%s'
+                '    <w:numFmt w:val="lowerRoman"/><w:lvlText w:val="(%%3)"/></w:lvl>'
+                '</w:abstractNum>' % ((nsdecls('w'), abstractNum_id) + tuple(
+                    '<w:lvlRestart w:val="%s"/>' % r if r else '' for r in restarts))
+            ))
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="94">'
+            '  <w:multiLevelType w:val="singleLevel"/>'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimalZero"/><w:lvlText w:val="%%1."/></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
+        ))
+        abstractNum_of = {1: 91, 2: 91, 3: 93, 4: 92, 5: 94}
+        for numId, overrides in nums.items():
+            numbering.append(parse_xml(
+                '<w:num %s w:numId="%d"><w:abstractNumId w:val="%d"/>%s</w:num>' % (
+                    nsdecls('w'), 90 + numId, abstractNum_of[numId], ''.join(
+                        '<w:lvlOverride w:ilvl="%d"><w:startOverride w:val="%d"/>'
+                        '</w:lvlOverride>' % item for item in overrides.items()))
+            ))
+        for numId, ilvl in paragraphs:
+            paragraph = document.add_paragraph('Item.')
+            paragraph._p.get_or_add_pPr().append(parse_xml(
+                '<w:numPr %s><w:ilvl w:val="%d"/><w:numId w:val="%d"/></w:numPr>'
+                % (nsdecls('w'), ilvl, 90 + numId)
+            ))
+        return document, [None if label is None else label + '\t'
+                          for label in expected_labels]
+
+    # Aspose shows these labels. LibreOffice counts one list for each
+    # numbering style instead: it shows 3. for the third item of the last two.
+    @pytest.fixture(params=[
+        # numIds 1 and 2 use definition 91, which links to the style
+        ([1, 2, 1], ['1.', '2.', '3.']),
+        # numId 3 uses definition 92, which links to the same style
+        ([1, 1, 3, 1], ['1.', '2.', '1.', '3.']),
+        # numId 4 uses definition 93, which has the levels of the style
+        ([4, 4, 1, 4], ['1.', '2.', '1.', '3.']),
+    ])
+    def link_fixture(self, request):
+        paragraphs, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        for abstractNum_id in (91, 92):
+            numbering.append(parse_xml(
+                '<w:abstractNum %s w:abstractNumId="%d">'
+                '  <w:numStyleLink w:val="Numbered"/>'
+                '</w:abstractNum>' % (nsdecls('w'), abstractNum_id)
+            ))
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="93">'
+            '  <w:styleLink w:val="Numbered"/>'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
+        ))
+        for numId, abstractNum_id in ((1, 91), (2, 91), (3, 92), (4, 93)):
+            numbering.append(parse_xml(
+                '<w:num %s w:numId="%d"><w:abstractNumId w:val="%d"/></w:num>'
+                % (nsdecls('w'), 90 + numId, abstractNum_id)
+            ))
+        for numId in paragraphs:
+            paragraph = document.add_paragraph('Item.')
+            paragraph._p.get_or_add_pPr().append(parse_xml(
+                '<w:numPr %s><w:ilvl w:val="0"/><w:numId w:val="%d"/></w:numPr>'
+                % (nsdecls('w'), 90 + numId)
+            ))
+        return document, [label + '\t' for label in expected_labels]
+
+    # Word 16.0.20527 shows these labels. Aspose shows the startOverride
+    # for a level above the item that has no item of its own: "5.1", "5.3"
+    # and "5.3.1" for the first items of the first three cases.
+    @pytest.fixture(params=[
+        # level 0 has no item: the level-1 items show its w:start. The
+        # first level-0 item restarts at 5 (as DCMR 11-U100).
+        ({0: 5}, [1, 1, 0, 1], ['1.1', '1.2', '5.', '5.1']),
+        # the restart at level 1 uses up the override at level 0: the
+        # counter of level 0 is at 5, and the first level-0 item shows 6
+        ({0: 5, 1: 3}, [1, 0, 1], ['1.3', '6.', '6.3']),
+        ({0: 5, 1: 3}, [2, 1, 0], ['1.1.1', '1.3', '6.']),
+        # level 1 starts at 5 again after level 0 restarts it
+        ({1: 5}, [0, 1, 1, 0, 1], ['1.', '1.5', '1.6', '2.', '2.5']),
+    ])
+    def start_fixture(self, request):
+        overrides, levels, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/></w:lvl>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1.%%2"/></w:lvl>'
+            '  <w:lvl w:ilvl="2"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1.%%2.%%3"/></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/>%s</w:num>' % (
+                nsdecls('w'), ''.join(
+                    '<w:lvlOverride w:ilvl="%d"><w:startOverride w:val="%d"/>'
+                    '</w:lvlOverride>' % item for item in overrides.items()))
+        ))
+        for ilvl in levels:
+            paragraph = document.add_paragraph('Item.')
+            paragraph._p.get_or_add_pPr().append(parse_xml(
+                '<w:numPr %s><w:ilvl w:val="%d"/><w:numId w:val="91"/></w:numPr>'
+                % (nsdecls('w'), ilvl)
+            ))
+        return document, [label + '\t' for label in expected_labels]
+
+    # Aspose and LibreOffice show these labels. Style A numbers at level 0;
+    # style B is based on A.
+    @pytest.fixture(params=[
+        # a style gets the list of the style it is based on
+        ([('B', ''), ('B', ''), ('A', '')], ['1.', '2.', '3.']),
+        # a paragraph that sets only ilvl gets the numId of its style
+        ([('A', ''), ('A', '<w:ilvl w:val="1"/>'), ('A', '<w:ilvl w:val="1"/>'),
+          ('A', '')], ['1.', '(a)', '(b)', '2.']),
+    ])
+    def style_fixture(self, request):
+        paragraphs, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1."/></w:lvl>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="lowerLetter"/><w:lvlText w:val="(%%2)"/></w:lvl>'
+            '</w:abstractNum>' % nsdecls('w')
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'
+            % nsdecls('w')
+        ))
+        document.styles.element.append(parse_xml(
+            '<w:style %s w:type="paragraph" w:styleId="A"><w:name w:val="A"/>'
+            '<w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="91"/></w:numPr>'
+            '</w:pPr></w:style>' % nsdecls('w')
+        ))
+        document.styles.element.append(parse_xml(
+            '<w:style %s w:type="paragraph" w:styleId="B"><w:name w:val="B"/>'
+            '<w:basedOn w:val="A"/></w:style>' % nsdecls('w')
+        ))
+        for style_id, numPr_xml in paragraphs:
+            paragraph = document.add_paragraph('Item.')
+            pPr = paragraph._p.get_or_add_pPr()
+            pPr.append(parse_xml('<w:pStyle %s w:val="%s"/>' % (nsdecls('w'), style_id)))
+            if numPr_xml:
+                pPr.append(parse_xml('<w:numPr %s>%s</w:numPr>' % (nsdecls('w'), numPr_xml)))
+        return document, [label + '\t' for label in expected_labels]
+
+    # Aspose and LibreOffice show these labels, except the last: there
+    # LibreOffice restarts at the startOverride (3) and shows C), D), 5.
+    # numId 2 gives level 0 its own w:lvl: upperLetter "%1)", w:start 5.
+    @pytest.fixture(params=[
+        # the w:num shares the counters of its definition
+        ({}, [(1, 0), (1, 0), (2, 0), (1, 0), (2, 0)],
+         ['1.', '2.', 'C)', '4.', 'E)']),
+        # the parent level shows in the format of the w:num's own level
+        ({}, [(1, 0), (2, 1), (1, 1)], ['I.', '1.1', 'I.2']),
+        # with a startOverride, it restarts at the w:start of its w:lvl
+        ({0: 3}, [(1, 0), (2, 0), (2, 0), (1, 0)], ['1.', 'E)', 'F)', '7.']),
+    ])
+    def override_lvl_fixture(self, request):
+        startOverrides, paragraphs, expected_labels = request.param
+        document = Document()
+        numbering = document.part.numbering_part.element
+        numbering.append(parse_xml(
+            '<w:abstractNum %s w:abstractNumId="91">'
+            '  <w:lvl w:ilvl="0"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="%s"/><w:lvlText w:val="%%1."/></w:lvl>'
+            '  <w:lvl w:ilvl="1"><w:start w:val="1"/>'
+            '    <w:numFmt w:val="decimal"/><w:lvlText w:val="%%1.%%2"/></w:lvl>'
+            '</w:abstractNum>' % (
+                nsdecls('w'), 'upperRoman' if len(paragraphs) == 3 else 'decimal')
+        ))
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="91"><w:abstractNumId w:val="91"/></w:num>'
+            % nsdecls('w')
+        ))
+        level = ('decimal', '%1.', 1) if len(paragraphs) == 3 else ('upperLetter', '%1)', 5)
+        numbering.append(parse_xml(
+            '<w:num %s w:numId="92"><w:abstractNumId w:val="91"/>'
+            '  <w:lvlOverride w:ilvl="0">%s<w:lvl w:ilvl="0"><w:start w:val="%d"/>'
+            '    <w:numFmt w:val="%s"/><w:lvlText w:val="%s"/></w:lvl></w:lvlOverride>'
+            '</w:num>' % (nsdecls('w'), ''.join(
+                '<w:startOverride w:val="%d"/>' % v for v in startOverrides.values()),
+                level[2], level[0], level[1])
+        ))
+        for numId, ilvl in paragraphs:
+            paragraph = document.add_paragraph('Item.')
+            paragraph._p.get_or_add_pPr().append(parse_xml(
+                '<w:numPr %s><w:ilvl w:val="%d"/><w:numId w:val="%d"/></w:numPr>'
+                % (nsdecls('w'), ilvl, 90 + numId)
+            ))
+        return document, [label + '\t' for label in expected_labels]
